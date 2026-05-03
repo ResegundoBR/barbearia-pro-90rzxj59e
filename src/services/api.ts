@@ -23,6 +23,11 @@ export const getAppointmentsByClient = (clientId: string) =>
       expand: 'service_id,barber_id',
       sort: '-date',
     })
+export const createAppointment = (data: any) => pb.collection('appointments').create(data)
+export const updateAppointment = (id: string, data: any) =>
+  pb.collection('appointments').update(id, data)
+export const consumePackage = (id: string, data: any) =>
+  pb.collection('client_packages').update(id, data)
 
 export const getServices = () => pb.collection('services').getFullList({ sort: '-created' })
 export const createService = (data: any) => pb.collection('services').create(data)
