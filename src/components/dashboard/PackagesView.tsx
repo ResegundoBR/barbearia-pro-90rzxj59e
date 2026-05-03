@@ -1,13 +1,41 @@
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { useRealtime } from '@/hooks/use-realtime'
+import { getClientPackage } from '@/services/packages'
 
 interface PackagesViewProps {
   packages: any[]
 }
 
-export function PackagesView({ packages }: PackagesViewProps) {
+export function PackagesView({ packages: initialPackages }: PackagesViewProps) {
+  const [packages, setPackages] = useState<any[]>(initialPackages)
+
+  useEffect(() => {
+    setPackages(initialPackages)
+  }, [initialPackages])
+
+  useRealtime('client_packages', async (e) => {
+    try {
+      if (e.action === 'delete') {
+        setPackages((prev) => prev.filter((p) => p.id !== e.record.id))
+      } else {
+        const pkg = await getClientPackage(e.record.id)
+        setPackages((prev) => {
+          if (e.action === 'create') {
+            return [pkg, ...prev.filter((p) => p.id !== pkg.id)]
+          } else {
+            return prev.map((p) => (p.id === pkg.id ? pkg : p))
+          }
+        })
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  })
+
   const activePackages = packages.filter((p) => p.remaining_uses > 0)
 
   return (

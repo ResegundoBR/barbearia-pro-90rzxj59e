@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T16:55:42.722Z",
+  "generatedAt": "2026-05-03T17:03:47.889Z",
   "collections": [
     {
       "name": "users",
@@ -351,6 +351,13 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "client_package_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "client_packages"
         }
       ],
       "indexes": [
