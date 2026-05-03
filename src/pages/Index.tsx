@@ -21,7 +21,17 @@ import {
   getProductPurchases,
 } from '@/services/api'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { format, startOfWeek, startOfMonth, startOfYear, addDays, differenceInDays } from 'date-fns'
+import {
+  format,
+  startOfWeek,
+  startOfMonth,
+  startOfYear,
+  addDays,
+  differenceInDays,
+  isTomorrow,
+  isThisWeek,
+  isThisMonth,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -56,6 +66,7 @@ export default function Index() {
   const isAdmin =
     user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
 
+  const [isLoading, setIsLoading] = useState(true)
   const [appointments, setAppointments] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [packages, setPackages] = useState<any[]>([])
@@ -82,6 +93,7 @@ export default function Index() {
   const [advanceAmount, setAdvanceAmount] = useState('')
 
   const loadData = async () => {
+    setIsLoading(true)
     let dateFilter = ''
     const now = new Date()
 
@@ -101,6 +113,7 @@ export default function Index() {
     setProducts(await getProducts())
     setCommissions(await getCommissions(filterStr || createdFilterStr))
     setProductPurchases(await getProductPurchases(filterStr))
+    setIsLoading(false)
   }
 
   useEffect(() => {
@@ -186,6 +199,29 @@ export default function Index() {
   const aptsTomorrowList = filteredAppointments.filter(
     (a) => a.date && a.date.startsWith(tomorrowStr) && a.status !== 'Cancelado',
   )
+
+  const calcApptRevenue = (a: any) => {
+    let price = a.price || a.expand?.service_id?.price || 0
+    if (a.expand?.client_package_id?.expand?.package_id) {
+      const pkg = a.expand.client_package_id.expand.package_id
+      if (pkg.quantity > 0) price = pkg.price / pkg.quantity
+    }
+    return price
+  }
+
+  const predictedTomorrow = filteredAppointments
+    .filter((a) => a.status !== 'Cancelado' && a.date && isTomorrow(new Date(a.date)))
+    .reduce((acc, a) => acc + calcApptRevenue(a), 0)
+  const predictedWeek = filteredAppointments
+    .filter(
+      (a) =>
+        a.status !== 'Cancelado' && a.date && isThisWeek(new Date(a.date), { weekStartsOn: 1 }),
+    )
+    .reduce((acc, a) => acc + calcApptRevenue(a), 0)
+  const predictedMonth = filteredAppointments
+    .filter((a) => a.status !== 'Cancelado' && a.date && isThisMonth(new Date(a.date)))
+    .reduce((acc, a) => acc + calcApptRevenue(a), 0)
+
   const lowStockProductsList = products.filter(
     (p) => (p.stock_quantity || 0) <= Math.max(p.reorder_point || 0, p.min_stock || 0),
   )
@@ -537,6 +573,46 @@ export default function Index() {
             </Card>
           </div>
 
+          <div className="grid grid-cols-1 gap-4">
+            <Card className="bg-glass border-none w-full">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
+                  Previsão de Recebimento
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Amanhã</p>
+                  {isLoading ? (
+                    <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
+                  ) : (
+                    <p className="text-2xl font-bold text-primary">
+                      R$ {predictedTomorrow.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Esta Semana</p>
+                  {isLoading ? (
+                    <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
+                  ) : (
+                    <p className="text-2xl font-bold text-primary">R$ {predictedWeek.toFixed(2)}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Este Mês</p>
+                  {isLoading ? (
+                    <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
+                  ) : (
+                    <p className="text-2xl font-bold text-primary">
+                      R$ {predictedMonth.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-glass border-none">
               <CardHeader className="pb-2">
@@ -670,24 +746,35 @@ export default function Index() {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Profissional</TableHead>
                   <TableHead>Serviço</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {aptsTomorrowList.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell>{a.time}</TableCell>
-                    <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
-                    <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
-                    <TableCell>{a.expand?.service_id?.name || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{a.status}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {aptsTomorrowList.map((a) => {
+                  let price = a.price || a.expand?.service_id?.price || 0
+                  if (a.expand?.client_package_id?.expand?.package_id) {
+                    const pkg = a.expand.client_package_id.expand.package_id
+                    if (pkg.quantity > 0) price = pkg.price / pkg.quantity
+                  }
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell>{a.time}</TableCell>
+                      <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
+                      <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
+                      <TableCell>{a.expand?.service_id?.name || '-'}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        R$ {price.toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{a.status}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
                 {aptsTomorrowList.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                       Nenhum agendamento para amanhã.
                     </TableCell>
                   </TableRow>

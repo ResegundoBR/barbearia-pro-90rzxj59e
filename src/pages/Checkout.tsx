@@ -157,7 +157,7 @@ export default function Checkout() {
         const status = isCredit ? 'pending' : 'available'
         const due_date = isCredit ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
 
-        await createCommission({
+        const commPayload: any = {
           barber_id: barber.id,
           amount: commAmount,
           type: 'package_sale',
@@ -165,8 +165,10 @@ export default function Checkout() {
           is_advance: false,
           payment_method: pkgForm.payment_method,
           status,
-          due_date: due_date || undefined,
-        })
+        }
+        if (due_date) commPayload.due_date = due_date
+
+        await createCommission(commPayload)
       }
 
       setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
@@ -231,6 +233,12 @@ export default function Checkout() {
         clientId = apt.client_id
         barberId = apt.barber_id
 
+        if (selectedProducts.length > 0 && !clientId) {
+          throw new Error(
+            'É necessário ter um cliente associado no agendamento para realizar a venda de produtos.',
+          )
+        }
+
         let finalPackageId = apt.client_package_id
         if (packageToConsume) {
           finalPackageId = packageToConsume
@@ -277,7 +285,7 @@ export default function Checkout() {
         }
 
         if (commAmount > 0) {
-          await createCommission({
+          const commPayload: any = {
             barber_id: barber.id,
             amount: commAmount,
             type: 'service',
@@ -285,23 +293,28 @@ export default function Checkout() {
             is_advance: false,
             payment_method: svcForm.payment_method,
             status,
-            due_date: due_date || undefined,
-          })
+          }
+          if (due_date) commPayload.due_date = due_date
+          await createCommission(commPayload)
         }
       }
 
       const productOps = selectedProducts.map(async (sp) => {
         const prod = sp.product
 
-        await updateProduct(prod.id, { stock_quantity: (prod.stock_quantity || 0) - sp.quantity })
+        await updateProduct(prod.id, {
+          stock_quantity: Math.max(0, (prod.stock_quantity || 0) - sp.quantity),
+        })
 
-        await createProductPurchase({
+        const purchasePayload: any = {
           client_id: clientId,
           product_id: prod.id,
-          barber_id: barberId,
-          price_at_sale: prod.price,
+          price_at_sale: prod.price || 0,
           date: now,
-        })
+        }
+        if (barberId) purchasePayload.barber_id = barberId
+
+        await createProductPurchase(purchasePayload)
 
         if (barber) {
           let prodComm = 0
@@ -339,7 +352,7 @@ export default function Checkout() {
           }
 
           if (prodComm > 0) {
-            await createCommission({
+            const prodCommPayload: any = {
               barber_id: barber.id,
               amount: prodComm,
               type: 'product',
@@ -347,8 +360,9 @@ export default function Checkout() {
               is_advance: false,
               payment_method: svcForm.payment_method,
               status,
-              due_date: due_date || undefined,
-            })
+            }
+            if (due_date) prodCommPayload.due_date = due_date
+            await createCommission(prodCommPayload)
           }
         }
       })
