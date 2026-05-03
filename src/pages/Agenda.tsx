@@ -420,7 +420,7 @@ export default function Agenda() {
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {visibleBarbers.map((b) => (
+                    {data.barbers.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
                         {b.name}
                       </SelectItem>
