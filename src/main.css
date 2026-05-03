@@ -67,6 +67,36 @@
     animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
+  .bg-glass {
+    @apply bg-card/60 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-amber-200 to-primary;
+  }
+
+  .glow-card {
+    position: relative;
+  }
+  .glow-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      to bottom right,
+      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0.05)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
   @keyframes fade-in {
     from {
       opacity: 0;

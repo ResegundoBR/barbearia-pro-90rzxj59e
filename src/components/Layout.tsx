@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/select'
 import useMainStore from '@/stores/main'
 import { SubscriptionTier } from '@/lib/tiers'
+import { Link as RouterLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
@@ -43,7 +44,8 @@ const navItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Agenda', url: '/agenda', icon: CalendarDays },
   { title: 'Clientes', url: '/clientes', icon: Users },
-  { title: 'Estoque & Pacotes', url: '/estoque', icon: Package },
+  { title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
+  { title: 'Equipe & Comissões', url: '/staff', icon: Users },
   { title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign },
 ]
 

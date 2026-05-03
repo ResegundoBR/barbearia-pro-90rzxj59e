@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T14:11:13.379Z",
+  "generatedAt": "2026-05-03T14:31:33.648Z",
   "collections": [
     {
       "name": "users",
@@ -44,6 +44,31 @@
           "required": false,
           "system": false,
           "selectValues": ["Free", "Basic", "Pro", "Platinum"]
+        },
+        {
+          "name": "specialties",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "join_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "experience_years",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "access_level",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Admin", "Barber", "Staff"]
         }
       ],
       "indexes": [
@@ -87,6 +112,19 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "commission_type",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["percentage", "fixed"]
+        },
+        {
+          "name": "commission_value",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -133,6 +171,37 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "surname",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "email",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "birthday",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "location_type",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["passage", "nearby", "other_city"]
         }
       ],
       "indexes": []
@@ -179,6 +248,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -289,6 +364,119 @@
         {
           "name": "is_advance",
           "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "packages",
+      "type": "base",
+      "apiRules": {
+        "list": "",
+        "view": "",
+        "create": "",
+        "update": "",
+        "delete": ""
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "service_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "services"
+        },
+        {
+          "name": "quantity",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "price",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "client_packages",
+      "type": "base",
+      "apiRules": {
+        "list": "",
+        "view": "",
+        "create": "",
+        "update": "",
+        "delete": ""
+      },
+      "fields": [
+        {
+          "name": "client_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "package_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "packages"
+        },
+        {
+          "name": "remaining_uses",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "expires_at",
+          "type": "date",
           "required": false,
           "system": false
         },

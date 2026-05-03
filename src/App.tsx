@@ -7,6 +7,7 @@ import Agenda from './pages/Agenda'
 import Clientes from './pages/Clientes'
 import Estoque from './pages/Estoque'
 import Checkout from './pages/Checkout'
+import Staff from './pages/Staff'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/estoque" element={<Estoque />} />
+              <Route path="/staff" element={<Staff />} />
               <Route path="/checkout" element={<Checkout />} />
             </Route>
             <Route path="*" element={<NotFound />} />

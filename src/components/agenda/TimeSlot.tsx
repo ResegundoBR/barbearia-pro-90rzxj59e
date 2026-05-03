@@ -9,9 +9,16 @@ interface TimeSlotProps {
   barberId: string
   appointment?: Appointment
   customerName?: string
+  onSlotClick?: (time: string, barberId: string) => void
 }
 
-export function TimeSlot({ time, barberId, appointment, customerName }: TimeSlotProps) {
+export function TimeSlot({
+  time,
+  barberId,
+  appointment,
+  customerName,
+  onSlotClick,
+}: TimeSlotProps) {
   if (appointment) {
     const isCompleted = appointment.status === 'Concluído'
     const isPending = appointment.status === 'Pendente'
@@ -50,13 +57,16 @@ export function TimeSlot({ time, barberId, appointment, customerName }: TimeSlot
   }
 
   return (
-    <div className="h-24 border border-dashed rounded-md p-2 relative group hover:border-primary/50 hover:bg-muted/10 transition-colors flex flex-col justify-center items-center">
+    <div
+      onClick={() => onSlotClick && onSlotClick(time, barberId)}
+      className="h-24 border border-dashed rounded-md p-2 relative group hover:border-primary/50 hover:bg-muted/10 transition-colors flex flex-col justify-center items-center cursor-pointer"
+    >
       <span className="text-xs text-muted-foreground absolute top-2 right-2">{time}</span>
       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-xs border border-primary/20 text-primary"
+          className="h-7 text-xs border border-primary/20 text-primary pointer-events-none"
         >
           Agendar
         </Button>
