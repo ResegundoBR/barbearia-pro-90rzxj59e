@@ -27,23 +27,19 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Edit, Plus, Trash2 } from 'lucide-react'
+import { getBarbers, createBarber, updateBarber } from '@/services/barbers'
 import {
-  getBarbers,
-  getAppointments,
-  createBarber,
-  updateBarber,
   getCommissionRules,
   createCommissionRule,
   deleteCommissionRule,
-  getServices,
-  getProducts,
-  getPackages,
-} from '@/services/api'
+} from '@/services/commission_rules'
+import { getServices } from '@/services/services'
+import { getProducts } from '@/services/products'
+import { getPackages } from '@/services/packages'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Staff() {
   const [barbers, setBarbers] = useState<any[]>([])
-  const [appointments, setAppointments] = useState<any[]>([])
   const [rules, setRules] = useState<any[]>([])
   const [services, setServices] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
@@ -73,7 +69,6 @@ export default function Staff() {
 
   const loadData = async () => {
     setBarbers(await getBarbers())
-    setAppointments(await getAppointments())
     setRules(await getCommissionRules())
     setServices(await getServices())
     setProducts(await getProducts())
