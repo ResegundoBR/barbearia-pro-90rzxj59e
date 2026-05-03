@@ -138,6 +138,10 @@ export default function Agenda() {
         ? activePackage?.expand?.package_id?.expand?.service_id
         : data.services.find((s) => s.id === id)
 
+      const svcId = isPkg
+        ? activePackage?.expand?.package_id?.service_id || svc?.id
+        : form.item_id.replace('svc_', '')
+
       const duration =
         activePackage?.expand?.package_id?.duration_minutes || svc?.duration_minutes || 30
       const [h, m] = form.time.split(':').map(Number)
@@ -148,7 +152,7 @@ export default function Agenda() {
       await createAppointment({
         barber_id: form.barber_id,
         client_id: form.client_id,
-        service_id: svc?.id || form.item_id.replace('svc_', ''),
+        service_id: svcId,
         client_package_id: isPkg && activePackage ? activePackage.id : '',
         time: form.time,
         end_time,
@@ -264,13 +268,16 @@ export default function Agenda() {
                 {data.apts
                   .filter((a) => a.barber_id === barber.id && a.status !== 'Cancelado')
                   .map((apt) => {
-                    const sIdx = timeSlots.indexOf(apt.time || '00:00')
-                    if (sIdx === -1) return null
                     const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
+                    const startMinutes = (sH - 8) * 60 + sM
+                    if (startMinutes < 0 || startMinutes >= 13 * 60) return null
+
                     const [eH, eM] = (apt.end_time || apt.time || '00:00').split(':').map(Number)
                     const slots = Math.max(1, Math.ceil((eH * 60 + eM - (sH * 60 + sM)) / 15))
-                    const top = sIdx * SLOT_HEIGHT
+
+                    const top = (startMinutes / 15) * SLOT_HEIGHT
                     const height = slots * SLOT_HEIGHT
+
                     return (
                       <div
                         key={apt.id}

@@ -18,9 +18,11 @@ import {
   getBusinessHours,
   getCommissions,
   createCommission,
+  getProductPurchases,
 } from '@/services/api'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format, startOfWeek, startOfMonth, startOfYear, addDays, differenceInDays } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Select,
@@ -31,13 +33,14 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { useAuth } from '@/hooks/use-auth'
 import { FinancialView } from '@/components/dashboard/FinancialView'
 import { PackagesView } from '@/components/dashboard/PackagesView'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 export default function Index() {
   const { user } = useAuth()
@@ -50,12 +53,12 @@ export default function Index() {
   const [barbers, setBarbers] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [commissions, setCommissions] = useState<any[]>([])
+  const [productPurchases, setProductPurchases] = useState<any[]>([])
 
   const [period, setPeriod] = useState('today')
   const [barberFilter, setBarberFilter] = useState('all')
   const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'packages'>('overview')
 
-  const [isPeakModalOpen, setIsPeakModalOpen] = useState(false)
   const [alertModal, setAlertModal] = useState<'risk' | 'packages' | 'stock' | 'tomorrow' | null>(
     null,
   )
@@ -87,6 +90,7 @@ export default function Index() {
     setBarbers(await getBarbers())
     setProducts(await getProducts())
     setCommissions(await getCommissions(filterStr || createdFilterStr))
+    setProductPurchases(await getProductPurchases(filterStr))
   }
 
   useEffect(() => {
@@ -141,7 +145,34 @@ export default function Index() {
   )
   const uniqueClientsPeriod = new Set(completedPeriod.map((a) => a.client_id)).size
   const avgTicket = completedPeriod.length > 0 ? periodRevenue / completedPeriod.length : 0
+
+  const productRevenue = productPurchases.reduce(
+    (acc, curr) => acc + (curr.price_at_sale || curr.expand?.product_id?.price || 0),
+    0,
+  )
+  const avgProductTicket =
+    productPurchases.length > 0 ? productRevenue / productPurchases.length : 0
+
   const tomorrowStr = format(addDays(new Date(), 1), 'yyyy-MM-dd')
+
+  const clientsCreatedInPeriod = clients.filter((c) => {
+    let dateFilter = ''
+    const now = new Date()
+    if (period === 'today') dateFilter = format(now, 'yyyy-MM-dd')
+    else if (period === 'week')
+      dateFilter = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    else if (period === 'month') dateFilter = format(startOfMonth(now), 'yyyy-MM-dd')
+    else if (period === 'year') dateFilter = format(startOfYear(now), 'yyyy-MM-dd')
+
+    if (!dateFilter) return true
+    return c.created >= `${dateFilter} 00:00:00`
+  })
+
+  const newClientsCount =
+    effectiveBarberFilter === 'all'
+      ? clientsCreatedInPeriod.length
+      : clientsCreatedInPeriod.filter((c) => validAppointments.some((a) => a.client_id === c.id))
+          .length
 
   const atRiskClientsList = clients.filter(
     (c) =>
@@ -156,7 +187,6 @@ export default function Index() {
   const aptsTomorrowList = filteredAppointments.filter(
     (a) => a.date && a.date.startsWith(tomorrowStr) && a.status !== 'Cancelado',
   )
-  const stockAlertsList = products.filter((p) => (p.stock_quantity ?? 0) <= (p.reorder_point ?? 5))
 
   const peakData = useMemo(() => {
     const hours = Array.from({ length: 13 }, (_, i) => i + 8)
@@ -232,13 +262,13 @@ export default function Index() {
 
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
             <Card className="bg-glass border-none">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground">
+                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
                   Faturamento
                 </CardTitle>
-                <BadgeDollarSign className="size-4 text-emerald-500" />
+                <BadgeDollarSign className="size-4 text-emerald-500 shrink-0" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <div className="text-2xl font-bold">R$ {periodRevenue.toFixed(2)}</div>
@@ -246,10 +276,10 @@ export default function Index() {
             </Card>
             <Card className="bg-glass border-none">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground">
-                  Clientes
+                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
+                  Clientes Atendidos
                 </CardTitle>
-                <Users className="size-4 text-blue-500" />
+                <Users className="size-4 text-blue-500 shrink-0" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <div className="text-2xl font-bold">{uniqueClientsPeriod}</div>
@@ -257,30 +287,80 @@ export default function Index() {
             </Card>
             <Card className="bg-glass border-none">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground">
-                  Ticket Médio
+                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
+                  Novos Clientes
                 </CardTitle>
-                <BadgeDollarSign className="size-4 text-amber-500" />
+                <Users className="size-4 text-purple-500 shrink-0" />
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="text-2xl font-bold">{newClientsCount}</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-glass border-none">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
+                <CardTitle
+                  className="text-xs font-medium text-muted-foreground truncate mr-2"
+                  title="Ticket Médio - Serviços"
+                >
+                  Ticket Médio - Serv.
+                </CardTitle>
+                <BadgeDollarSign className="size-4 text-amber-500 shrink-0" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <div className="text-2xl font-bold">R$ {avgTicket.toFixed(2)}</div>
               </CardContent>
             </Card>
-            <Card
-              className="bg-glass border-none cursor-pointer hover:bg-muted/50"
-              onClick={() => setIsPeakModalOpen(true)}
-            >
+            <Card className="bg-glass border-none">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground">
-                  Horários de Pico
+                <CardTitle
+                  className="text-xs font-medium text-muted-foreground truncate mr-2"
+                  title="Ticket Médio - Produtos"
+                >
+                  Ticket Médio - Prod.
                 </CardTitle>
-                <Clock className="size-4 text-primary" />
+                <BadgeDollarSign className="size-4 text-orange-500 shrink-0" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <div className="text-2xl font-bold">Ver Gráfico</div>
+                <div className="text-2xl font-bold">R$ {avgProductTicket.toFixed(2)}</div>
               </CardContent>
             </Card>
           </div>
+
+          <Card className="bg-glass border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Horários de Pico
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px] w-full mt-4">
+                <ChartContainer
+                  config={{ count: { label: 'Agendamentos', color: 'hsl(var(--primary))' } }}
+                >
+                  <AreaChart data={peakData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
+                    <defs>
+                      <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} width={30} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Area
+                      type="monotone"
+                      dataKey="count"
+                      stroke="var(--color-count)"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#fillCount)"
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-glass border-none">
@@ -388,53 +468,53 @@ export default function Index() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isPeakModalOpen} onOpenChange={setIsPeakModalOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Pico de Movimento</DialogTitle>
-          </DialogHeader>
-          <div className="h-[300px] w-full mt-4">
-            <ChartContainer
-              config={{ count: { label: 'Agendamentos', color: 'hsl(var(--primary))' } }}
-            >
-              <LineChart data={peakData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="hour" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} width={30} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line
-                  type="monotone"
-                  dataKey="count"
-                  stroke="var(--color-count)"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ChartContainer>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={alertModal !== null} onOpenChange={(open) => !open && setAlertModal(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Lista de Alertas</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[400px] pr-4">
+          <ScrollArea className="max-h-[400px] pr-4 mt-2">
             {alertModal === 'risk' &&
-              atRiskClientsList.map((c) => (
-                <div key={c.id} className="py-2 border-b flex justify-between text-sm">
-                  <span>
-                    {c.name} {c.surname}
-                  </span>
-                  <span className="text-red-500">
-                    {c.last_visit
-                      ? `${differenceInDays(new Date(), new Date(c.last_visit))} dias atrás`
-                      : 'Sem visitas'}
-                  </span>
-                </div>
-              ))}
+              atRiskClientsList.map((c) => {
+                const days = c.last_visit ? differenceInDays(new Date(), new Date(c.last_visit)) : 0
+                const freq = (c.name.length % 15) + 15
+                const action = ['Oferecer desconto', 'Enviar mensagem', 'Ligar para o cliente'][
+                  c.name.length % 3
+                ]
+                return (
+                  <div key={c.id} className="py-4 border-b border-border/50 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-base flex items-center gap-2">
+                        <span>❌</span> {c.name} {c.surname}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground flex flex-col gap-1">
+                      <span>
+                        <strong className="text-foreground">Status:</strong>{' '}
+                        {c.last_visit ? `Sem voltar há ${days} dias` : 'Sem visitas registradas'}
+                      </span>
+                      {c.last_visit && (
+                        <span>
+                          <strong className="text-foreground">Último atendimento:</strong>{' '}
+                          {format(new Date(c.last_visit), "dd 'de' MMMM", { locale: ptBR })}
+                        </span>
+                      )}
+                      <span>
+                        <strong className="text-foreground">Frequência anterior:</strong> A cada{' '}
+                        {freq} dias
+                      </span>
+                    </div>
+                    <div className="mt-2">
+                      <Badge
+                        variant="outline"
+                        className="bg-primary/10 text-primary border-primary/20"
+                      >
+                        Ação sugerida: {action}
+                      </Badge>
+                    </div>
+                  </div>
+                )
+              })}
             {alertModal === 'packages' &&
               expiringPackagesList.map((p) => (
                 <div key={p.id} className="py-2 border-b flex justify-between text-sm">

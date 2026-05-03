@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +32,38 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     .reduce((acc, c) => acc + c.amount, 0)
 
   const netAvailable = totalAvailable - totalAdvances
+
+  const barberStats = commissions.reduce(
+    (acc, c) => {
+      const barberId = c.expand?.barber_id?.id || 'unknown'
+      const barberName = c.expand?.barber_id?.name || 'Desconhecido'
+      if (!acc[barberId]) {
+        acc[barberId] = {
+          name: barberName,
+          servicesCount: 0,
+          servicesTotal: 0,
+          packagesCount: 0,
+          packagesTotal: 0,
+          advances: 0,
+          total: 0,
+        }
+      }
+      if (c.is_advance) {
+        acc[barberId].advances += c.amount
+      } else {
+        acc[barberId].total += c.amount
+        if (c.type === 'service') {
+          acc[barberId].servicesCount++
+          acc[barberId].servicesTotal += c.amount
+        } else {
+          acc[barberId].packagesCount++
+          acc[barberId].packagesTotal += c.amount
+        }
+      }
+      return acc
+    },
+    {} as Record<string, any>,
+  )
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -132,6 +165,48 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           </Table>
         </CardContent>
       </Card>
+
+      <div className="mt-8 space-y-4">
+        <h3 className="text-lg font-semibold uppercase">
+          Comissões - {format(new Date(), 'MMMM', { locale: ptBR })}
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.values(barberStats).map((stats: any) => (
+            <Card key={stats.name} className="bg-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-bold">{stats.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Serviços ({stats.servicesCount})</span>
+                  <span>R$ {stats.servicesTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2 border-border/50">
+                  <span className="text-muted-foreground">Pacotes ({stats.packagesCount})</span>
+                  <span>R$ {stats.packagesTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-medium pt-1">
+                  <span>Total</span>
+                  <span>R$ {stats.total.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-red-500">
+                  <span>Adiantamentos</span>
+                  <span>- R$ {stats.advances.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-emerald-500 pt-2 border-t border-border/50">
+                  <span>A Receber</span>
+                  <span>R$ {(stats.total - stats.advances).toFixed(2)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {Object.keys(barberStats).length === 0 && (
+            <div className="text-muted-foreground text-sm col-span-full">
+              Nenhuma comissão registrada.
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
