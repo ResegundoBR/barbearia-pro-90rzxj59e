@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format, startOfWeek, startOfMonth, startOfYear, addDays, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Select,
@@ -73,6 +74,8 @@ export default function Index() {
   const [dashboardModal, setDashboardModal] = useState<
     'revenue' | 'clients' | 'new_clients' | null
   >(null)
+
+  const [historyType, setHistoryType] = useState<'services' | 'products'>('services')
 
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false)
   const [advanceBarber, setAdvanceBarber] = useState('')
@@ -199,6 +202,28 @@ export default function Index() {
     })
     return counts
   }, [validAppointments])
+
+  const historyData = useMemo(() => {
+    const dataMap: Record<string, number> = {}
+
+    if (historyType === 'services') {
+      completedPeriod.forEach((a) => {
+        const d = a.date ? a.date.substring(0, 10) : a.updated.substring(0, 10)
+        dataMap[d] = (dataMap[d] || 0) + 1
+      })
+    } else {
+      productPurchases.forEach((p) => {
+        const d = p.date ? p.date.substring(0, 10) : p.created.substring(0, 10)
+        dataMap[d] = (dataMap[d] || 0) + 1
+      })
+    }
+
+    const sortedDates = Object.keys(dataMap).sort()
+    return sortedDates.map((dateStr) => ({
+      date: format(new Date(dateStr + 'T12:00:00'), 'dd/MM'),
+      count: dataMap[dateStr],
+    }))
+  }, [completedPeriod, productPurchases, historyType])
 
   const clientsServed = useMemo(() => {
     return Array.from(new Set(completedPeriod.map((a) => a.client_id))).map((id) => {
@@ -350,41 +375,115 @@ export default function Index() {
             </Card>
           </div>
 
-          <Card className="bg-glass border-none">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Horários de Pico
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px] w-full mt-4">
-                <ChartContainer
-                  config={{ count: { label: 'Agendamentos', color: 'hsl(var(--primary))' } }}
-                >
-                  <AreaChart data={peakData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
-                    <defs>
-                      <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.1} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis dataKey="hour" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} width={30} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Area
-                      type="monotone"
-                      dataKey="count"
-                      stroke="var(--color-count)"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#fillCount)"
-                    />
-                  </AreaChart>
-                </ChartContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="bg-glass border-none">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Horários de Pico
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px] w-full mt-4">
+                  <ChartContainer
+                    config={{ count: { label: 'Agendamentos', color: 'hsl(var(--primary))' } }}
+                  >
+                    <AreaChart
+                      data={peakData}
+                      margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                    >
+                      <defs>
+                        <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="hour" tickLine={false} axisLine={false} />
+                      <YAxis tickLine={false} axisLine={false} width={30} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area
+                        type="monotone"
+                        dataKey="count"
+                        stroke="var(--color-count)"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#fillCount)"
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-glass border-none">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Histórico de Vendas
+                </CardTitle>
+                <div className="flex bg-muted/50 rounded-md p-1">
+                  <button
+                    onClick={() => setHistoryType('services')}
+                    className={cn(
+                      'text-xs px-2 py-1 rounded-sm transition-colors',
+                      historyType === 'services'
+                        ? 'bg-background shadow-sm text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    Serviços
+                  </button>
+                  <button
+                    onClick={() => setHistoryType('products')}
+                    className={cn(
+                      'text-xs px-2 py-1 rounded-sm transition-colors',
+                      historyType === 'products'
+                        ? 'bg-background shadow-sm text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    Produtos
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px] w-full mt-4">
+                  {historyData.length > 0 ? (
+                    <ChartContainer
+                      config={{ count: { label: 'Quantidade', color: 'hsl(var(--primary))' } }}
+                    >
+                      <AreaChart
+                        data={historyData}
+                        margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                      >
+                        <defs>
+                          <linearGradient id="fillHistory" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.1} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                        <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                        <YAxis tickLine={false} axisLine={false} width={30} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area
+                          type="monotone"
+                          dataKey="count"
+                          stroke="var(--color-count)"
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#fillHistory)"
+                        />
+                      </AreaChart>
+                    </ChartContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      Sem dados para o período.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-glass border-none">

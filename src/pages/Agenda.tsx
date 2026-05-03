@@ -279,7 +279,8 @@ export default function Agenda() {
                   {apt.expand?.client_id?.name}
                 </div>
                 <div className="text-[10px] opacity-90 drop-shadow-sm leading-tight mt-0.5">
-                  {apt.time} - {apt.expand?.barber_id?.name || 'Profissional'}
+                  {apt.time} - {apt.expand?.barber_id?.name?.split(' ')[0] || 'Profissional'} •{' '}
+                  {apt.expand?.service_id?.name || 'Serviço'}
                 </div>
               </div>
             )
@@ -341,7 +342,8 @@ export default function Agenda() {
                         backgroundColor: apt.expand?.barber_id?.color || 'hsl(var(--primary))',
                       }}
                     >
-                      {apt.time} {apt.expand?.client_id?.name}
+                      {apt.time} - {apt.expand?.barber_id?.name?.split(' ')[0]} -{' '}
+                      {apt.expand?.service_id?.name} ({apt.expand?.client_id?.name})
                     </div>
                   ))}
                   {events.length > 4 && (
