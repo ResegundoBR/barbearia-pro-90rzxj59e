@@ -18,7 +18,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Trash2, Check, ShoppingBag, Scissors, ReceiptText, Users, Tag } from 'lucide-react'
+import {
+  Plus,
+  Trash2,
+  Check,
+  ShoppingBag,
+  Scissors,
+  ReceiptText,
+  Users,
+  Tag,
+  Landmark,
+} from 'lucide-react'
 import {
   getBarbers,
   getClients,
@@ -297,6 +307,10 @@ export default function Checkout() {
               pRule.type === 'percentage'
                 ? prod.price * sp.quantity * (pRule.value / 100)
                 : pRule.value * sp.quantity
+          } else if (prod.category === 'Beleza') {
+            prodComm = prod.price * sp.quantity * 0.1
+          } else if (prod.category === 'Bebidas') {
+            prodComm = prod.price * sp.quantity * 0.05
           } else {
             prodComm =
               barber.commission_type === 'percentage'

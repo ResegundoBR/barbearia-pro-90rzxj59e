@@ -23,6 +23,13 @@ import {
 import { Plus, Edit } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export function ProductsTab() {
   const [items, setItems] = useState<any[]>([])
@@ -32,6 +39,7 @@ export function ProductsTab() {
     price: '',
     stock_quantity: '',
     min_stock: '',
+    category: 'Beleza',
     is_active: true,
   })
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -48,10 +56,17 @@ export function ProductsTab() {
 
   const handleOpen = (item?: any) => {
     if (item) {
-      setForm({ ...item })
+      setForm({ ...item, category: item.category || 'Beleza' })
       setEditingId(item.id)
     } else {
-      setForm({ name: '', price: '', stock_quantity: 0, min_stock: 0, is_active: true })
+      setForm({
+        name: '',
+        price: '',
+        stock_quantity: 0,
+        min_stock: 0,
+        category: 'Beleza',
+        is_active: true,
+      })
       setEditingId(null)
     }
     setIsOpen(true)
@@ -104,6 +119,7 @@ export function ProductsTab() {
               <TableHead>Preço</TableHead>
               <TableHead>Estoque Atual</TableHead>
               <TableHead>Estoque Mínimo</TableHead>
+              <TableHead>Categoria</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -121,6 +137,7 @@ export function ProductsTab() {
                   </Badge>
                 </TableCell>
                 <TableCell>{item.min_stock}</TableCell>
+                <TableCell>{item.category || '-'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -144,7 +161,7 @@ export function ProductsTab() {
             ))}
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                   Nenhum produto encontrado.
                 </TableCell>
               </TableRow>
@@ -196,6 +213,22 @@ export function ProductsTab() {
                   placeholder="3"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select
+                value={form.category}
+                onValueChange={(v) => setForm({ ...form, category: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Beleza">Beleza</SelectItem>
+                  <SelectItem value="Bebidas">Bebidas</SelectItem>
+                  <SelectItem value="Acessórios">Acessórios</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center space-x-2 mt-4">
               <Switch

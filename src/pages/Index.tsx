@@ -203,6 +203,31 @@ export default function Index() {
     return counts
   }, [validAppointments])
 
+  const topSellers = useMemo(() => {
+    const counts: Record<string, { name: string; type: string; count: number; revenue: number }> =
+      {}
+
+    completedPeriod.forEach((a) => {
+      const name = a.expand?.service_id?.name || 'Serviço Avulso'
+      const price = a.price || a.expand?.service_id?.price || 0
+      if (!counts[name]) counts[name] = { name, type: 'Serviço', count: 0, revenue: 0 }
+      counts[name].count++
+      counts[name].revenue += price
+    })
+
+    productPurchases.forEach((p) => {
+      const name = p.expand?.product_id?.name || 'Produto Avulso'
+      const price = p.price_at_sale || p.expand?.product_id?.price || 0
+      if (!counts[name]) counts[name] = { name, type: 'Produto', count: 0, revenue: 0 }
+      counts[name].count++
+      counts[name].revenue += price
+    })
+
+    return Object.values(counts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+  }, [completedPeriod, productPurchases])
+
   const historyData = useMemo(() => {
     const dataMap: Record<string, number> = {}
 
@@ -375,7 +400,7 @@ export default function Index() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <Card className="bg-glass border-none">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -481,6 +506,49 @@ export default function Index() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-glass border-none">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Itens Mais Vendidos (Top 5)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Qtd</TableHead>
+                      <TableHead className="text-right">Receita</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topSellers.map((item, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">
+                            {item.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{item.count}</TableCell>
+                        <TableCell className="text-right text-emerald-500 font-medium">
+                          R$ {item.revenue.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {topSellers.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                          Nenhuma venda no período.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </div>
