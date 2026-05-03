@@ -19,35 +19,67 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Edit, Plus } from 'lucide-react'
-import { FeatureGuard } from '@/components/FeatureGuard'
-import { getBarbers, getAppointments, createBarber, updateBarber } from '@/services/api'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Edit, Plus, Trash2 } from 'lucide-react'
+import {
+  getBarbers,
+  getAppointments,
+  createBarber,
+  updateBarber,
+  getCommissionRules,
+  createCommissionRule,
+  deleteCommissionRule,
+  getServices,
+  getProducts,
+  getPackages,
+} from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
-import { useRealtime } from '@/hooks/use-realtime'
 
 export default function Staff() {
   const [barbers, setBarbers] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
+  const [rules, setRules] = useState<any[]>([])
+  const [services, setServices] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
+  const [packages, setPackages] = useState<any[]>([])
+
   const [bDialog, setBDialog] = useState(false)
+  const [rDialog, setRDialog] = useState(false)
+
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<any>({
     name: '',
     commission_type: 'percentage',
     commission_value: 0,
   })
+  const [rForm, setRForm] = useState<any>({
+    barber_id: '',
+    item_id: '',
+    item_type: 'service',
+    value: 0,
+    type: 'percentage',
+  })
+
   const { toast } = useToast()
 
   const loadData = async () => {
     setBarbers(await getBarbers())
     setAppointments(await getAppointments())
+    setRules(await getCommissionRules())
+    setServices(await getServices())
+    setProducts(await getProducts())
+    setPackages(await getPackages())
   }
 
   useEffect(() => {
     loadData()
   }, [])
-  useRealtime('barbers', loadData)
-  useRealtime('appointments', loadData)
 
   const openBarber = (b?: any) => {
     setForm(b ? { ...b } : { name: '', commission_type: 'percentage', commission_value: 0 })
@@ -62,22 +94,42 @@ export default function Staff() {
       else await createBarber(form)
       toast({ title: 'Profissional salvo!' })
       setBDialog(false)
+      loadData()
     } catch {
       toast({ title: 'Erro', variant: 'destructive' })
     }
+  }
+
+  const handleRuleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await createCommissionRule(rForm)
+      toast({ title: 'Regra criada!' })
+      setRDialog(false)
+      loadData()
+    } catch {
+      toast({ title: 'Erro ao criar regra', variant: 'destructive' })
+    }
+  }
+
+  const getItemName = (type: string, id: string) => {
+    if (type === 'service') return services.find((s) => s.id === id)?.name || 'Desconhecido'
+    if (type === 'product') return products.find((p) => p.id === id)?.name || 'Desconhecido'
+    if (type === 'package') return packages.find((p) => p.id === id)?.name || 'Desconhecido'
+    return id
   }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Equipe & Comissões</h2>
-        <p className="text-muted-foreground">Gestão de profissionais e relatórios de pagamento.</p>
+        <p className="text-muted-foreground">Gestão de profissionais e regras específicas.</p>
       </div>
 
       <Tabs defaultValue="staff" className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="staff">Profissionais</TabsTrigger>
-          <TabsTrigger value="commissions">Comissões</TabsTrigger>
+          <TabsTrigger value="rules">Regras Granulares</TabsTrigger>
         </TabsList>
 
         <TabsContent value="staff" className="mt-4 space-y-4">
@@ -92,8 +144,7 @@ export default function Staff() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Tipo Comissão</TableHead>
-                    <TableHead>Valor/Taxa</TableHead>
+                    <TableHead>Comissão Padrão</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -101,13 +152,10 @@ export default function Staff() {
                   {barbers.map((b) => (
                     <TableRow key={b.id}>
                       <TableCell className="font-medium">{b.name}</TableCell>
-                      <TableCell className="capitalize">
-                        {b.commission_type === 'percentage' ? 'Porcentagem' : 'Fixo'}
-                      </TableCell>
                       <TableCell>
                         {b.commission_type === 'percentage'
                           ? `${b.commission_value}%`
-                          : `R$ ${b.commission_value?.toFixed(2)}`}
+                          : `R$ ${b.commission_value}`}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => openBarber(b)}>
@@ -122,55 +170,59 @@ export default function Staff() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="commissions" className="mt-4">
-          <FeatureGuard feature="Pro">
-            <Card>
-              <CardHeader>
-                <CardTitle>Relatório de Comissões</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Profissional</TableHead>
-                      <TableHead>Serviços Realizados</TableHead>
-                      <TableHead>Bruto (Serviços)</TableHead>
-                      <TableHead className="text-primary font-bold text-right">
-                        Líquido a Receber
-                      </TableHead>
+        <TabsContent value="rules" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => setRDialog(true)}>
+              <Plus className="size-4 mr-2" /> Nova Regra
+            </Button>
+          </div>
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Tipo Item</TableHead>
+                    <TableHead>Comissão Específica</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rules.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{barbers.find((b) => b.id === r.barber_id)?.name}</TableCell>
+                      <TableCell>{getItemName(r.item_type, r.item_id)}</TableCell>
+                      <TableCell className="capitalize">{r.item_type}</TableCell>
+                      <TableCell>
+                        {r.type === 'percentage' ? `${r.value}%` : `R$ ${r.value}`}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={async () => {
+                            await deleteCommissionRule(r.id)
+                            loadData()
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {barbers.map((b) => {
-                      const bApts = appointments.filter(
-                        (a) => a.barber_id === b.id && a.status === 'Concluído',
-                      )
-                      let net = 0,
-                        bruto = 0
-                      bApts.forEach((a) => {
-                        const price = a.price || a.expand?.service_id?.price || 0
-                        bruto += price
-                        net +=
-                          b.commission_type === 'percentage'
-                            ? price * (b.commission_value / 100)
-                            : b.commission_value
-                      })
-                      return (
-                        <TableRow key={b.id}>
-                          <TableCell className="font-medium">{b.name}</TableCell>
-                          <TableCell>{bApts.length}</TableCell>
-                          <TableCell>R$ {bruto.toFixed(2)}</TableCell>
-                          <TableCell className="font-bold text-primary text-right">
-                            R$ {net.toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </FeatureGuard>
+                  ))}
+                  {rules.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Nenhuma regra específica cadastrada.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -189,27 +241,24 @@ export default function Staff() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Tipo de Comissão</Label>
-              <RadioGroup
+              <Label>Tipo Comissão Padrão</Label>
+              <Select
                 value={form.commission_type}
                 onValueChange={(v) => setForm({ ...form, commission_type: v })}
-                className="flex gap-4"
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="percentage" id="c1" />
-                  <Label htmlFor="c1">Porcentagem (%)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="fixed" id="c2" />
-                  <Label htmlFor="c2">Valor Fixo (R$)</Label>
-                </div>
-              </RadioGroup>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Porcentagem (%)</SelectItem>
+                  <SelectItem value="fixed">Fixo (R$)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
-              <Label>Valor da Comissão</Label>
+              <Label>Valor</Label>
               <Input
                 type="number"
-                step={form.commission_type === 'percentage' ? '1' : '0.01'}
                 required
                 value={form.commission_value}
                 onChange={(e) => setForm({ ...form, commission_value: Number(e.target.value) })}
@@ -217,6 +266,101 @@ export default function Staff() {
             </div>
             <DialogFooter>
               <Button type="submit">Salvar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rDialog} onOpenChange={setRDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Regra de Comissão</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleRuleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Profissional</Label>
+              <Select
+                required
+                value={rForm.barber_id}
+                onValueChange={(v) => setRForm({ ...rForm, barber_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {barbers.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de Item</Label>
+              <Select
+                value={rForm.item_type}
+                onValueChange={(v) => setRForm({ ...rForm, item_type: v, item_id: '' })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="service">Serviço</SelectItem>
+                  <SelectItem value="product">Produto</SelectItem>
+                  <SelectItem value="package">Pacote</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Item</Label>
+              <Select
+                required
+                value={rForm.item_id}
+                onValueChange={(v) => setRForm({ ...rForm, item_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o item..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(rForm.item_type === 'service'
+                    ? services
+                    : rForm.item_type === 'product'
+                      ? products
+                      : packages
+                  ).map((i) => (
+                    <SelectItem key={i.id} value={i.id}>
+                      {i.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select value={rForm.type} onValueChange={(v) => setRForm({ ...rForm, type: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">%</SelectItem>
+                    <SelectItem value="fixed">R$</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Valor</Label>
+                <Input
+                  type="number"
+                  required
+                  value={rForm.value}
+                  onChange={(e) => setRForm({ ...rForm, value: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">Salvar Regra</Button>
             </DialogFooter>
           </form>
         </DialogContent>

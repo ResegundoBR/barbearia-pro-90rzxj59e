@@ -29,13 +29,19 @@ import {
   consumePackage,
 } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
+import { useRealtime } from '@/hooks/use-realtime'
+import { format } from 'date-fns'
 
 const generateTimeSlots = () => {
   const slots = []
-  for (let h = 9; h <= 19; h++) {
+  for (let h = 8; h <= 20; h++) {
     const hr = h.toString().padStart(2, '0')
     slots.push(`${hr}:00`)
-    if (h !== 19) slots.push(`${hr}:30`)
+    if (h !== 20) {
+      slots.push(`${hr}:15`)
+      slots.push(`${hr}:30`)
+      slots.push(`${hr}:45`)
+    }
   }
   return slots
 }
@@ -52,17 +58,21 @@ export default function Agenda() {
 
   const [form, setForm] = useState({ barber_id: '', client_id: '', service_id: '', time: '09:00' })
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
   const loadData = async () => {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const apts = await getAppointments(`date >= "${today} 00:00:00" && date <= "${today} 23:59:59"`)
+    setAppointments(apts)
     setBarbers(await getBarbers())
-    setAppointments(await getAppointments())
     setClients(await getClients())
     setServices(await getServices())
     setPackages(await getClientPackages())
   }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  useRealtime('appointments', loadData)
 
   const handleSlotClick = (time: string, barberId: string) => {
     setForm({ ...form, time, barber_id: barberId })
@@ -78,19 +88,20 @@ export default function Agenda() {
           p.remaining_uses > 0,
       )
 
+      const svc = services.find((s) => s.id === form.service_id)
       const newApt = {
         barber_id: form.barber_id,
         client_id: form.client_id,
         service_id: form.service_id,
         time: form.time,
-        date: new Date().toISOString().split('T')[0],
+        date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
         status: 'Confirmado',
-        price: activePackage ? 0 : services.find((s) => s.id === form.service_id)?.price || 0,
+        price: activePackage ? 0 : svc?.price || 0,
       }
 
       await createAppointment(newApt)
       if (activePackage) {
-        await consumePackage(activePackage.id, activePackage.remaining_uses)
+        await consumePackage(activePackage.id, { remaining_uses: activePackage.remaining_uses - 1 })
         toast({ title: 'Agendamento salvo. Usado 1 crédito do pacote.' })
       } else {
         toast({ title: 'Agendamento salvo!' })
@@ -116,24 +127,24 @@ export default function Agenda() {
 
       <ScrollArea className="flex-1 rounded-xl border bg-card/30 shadow-inner">
         <div className="flex gap-2 sm:gap-4 p-2 sm:p-4 min-w-max">
-          <div className="w-16 shrink-0 flex flex-col gap-2 mt-[68px]">
+          <div className="w-12 shrink-0 flex flex-col gap-1 mt-[56px]">
             {timeSlots.map((time) => (
               <div
                 key={time}
-                className="h-24 flex items-start justify-end pr-2 pt-1 text-xs text-muted-foreground font-medium"
+                className="h-14 flex items-start justify-end pr-2 pt-1 text-[10px] text-muted-foreground font-medium"
               >
-                {time}
+                {time.endsWith(':00') ? time : time.split(':')[1]}
               </div>
             ))}
           </div>
 
           {barbers.map((barber) => (
-            <div key={barber.id} className="w-[240px] sm:w-[280px] shrink-0 flex flex-col gap-2">
-              <div className="sticky top-0 z-10 flex items-center justify-center gap-3 py-2 px-4 bg-card/95 backdrop-blur rounded-md border shadow-sm mb-2">
-                <Avatar className="size-8">
+            <div key={barber.id} className="w-[200px] sm:w-[240px] shrink-0 flex flex-col gap-1">
+              <div className="sticky top-0 z-10 flex items-center justify-center gap-2 py-2 px-3 bg-card/95 backdrop-blur rounded-md border shadow-sm mb-1">
+                <Avatar className="size-6">
                   <AvatarFallback>{barber.name.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <div className="font-semibold text-sm">{barber.name}</div>
+                <div className="font-semibold text-xs truncate">{barber.name}</div>
               </div>
               {timeSlots.map((time) => {
                 const apt = appointments.find((a) => a.barber_id === barber.id && a.time === time)
@@ -166,7 +177,7 @@ export default function Agenda() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[200px]">
                   {timeSlots.map((t) => (
                     <SelectItem key={t} value={t}>
                       {t}

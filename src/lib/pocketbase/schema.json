@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T14:47:04.330Z",
+  "generatedAt": "2026-05-03T15:01:22.464Z",
   "collections": [
     {
       "name": "users",
@@ -329,7 +329,10 @@
           "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
-      "indexes": []
+      "indexes": [
+        "CREATE INDEX `idx_appointments_date` ON `appointments` (date)",
+        "CREATE INDEX `idx_appointments_status` ON `appointments` (status)"
+      ]
     },
     {
       "name": "commissions",
@@ -501,7 +504,7 @@
           "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
-      "indexes": []
+      "indexes": ["CREATE INDEX `idx_client_packages_expires_at` ON `client_packages` (expires_at)"]
     },
     {
       "name": "products",
@@ -585,6 +588,67 @@
           "type": "date",
           "required": true,
           "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "commission_rules",
+      "type": "base",
+      "apiRules": {
+        "list": "",
+        "view": "",
+        "create": "",
+        "update": "",
+        "delete": ""
+      },
+      "fields": [
+        {
+          "name": "barber_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "barbers"
+        },
+        {
+          "name": "item_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "item_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["service", "package", "product"]
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["percentage", "fixed"]
         },
         {
           "name": "created",

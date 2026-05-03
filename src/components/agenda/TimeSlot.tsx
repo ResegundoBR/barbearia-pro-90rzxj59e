@@ -1,13 +1,11 @@
-import { Appointment } from '@/stores/main'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Clock } from 'lucide-react'
 
 interface TimeSlotProps {
   time: string
   barberId: string
-  appointment?: Appointment
+  appointment?: any
   customerName?: string
   onSlotClick?: (time: string, barberId: string) => void
 }
@@ -21,31 +19,31 @@ export function TimeSlot({
 }: TimeSlotProps) {
   if (appointment) {
     const isCompleted = appointment.status === 'Concluído'
-    const isPending = appointment.status === 'Pendente'
+    const isPending = appointment.status === 'Pendente' || appointment.status === 'Confirmado'
 
     return (
       <div
         className={cn(
-          'h-24 rounded-md p-2 flex flex-col justify-between border cursor-pointer transition-colors shadow-sm',
+          'h-14 rounded-md p-1.5 flex justify-between items-center border cursor-pointer transition-colors shadow-sm',
           isCompleted
             ? 'bg-muted/50 border-border'
             : 'bg-card border-l-4 hover:bg-muted/30 border-l-primary',
         )}
       >
-        <div className="flex justify-between items-start">
-          <div className="font-medium text-sm truncate pr-2" title={customerName}>
+        <div className="flex flex-col overflow-hidden">
+          <div className="font-medium text-xs truncate" title={customerName}>
             {customerName}
           </div>
-          <span className="text-xs text-muted-foreground flex-shrink-0 flex items-center gap-1">
-            <Clock className="size-3" /> {time}
-          </span>
+          <div className="text-[10px] text-muted-foreground truncate">
+            {appointment.expand?.service_id?.name || 'Serviço'}
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground truncate">{appointment.service}</div>
-        <div className="mt-1">
+        <div className="flex flex-col items-end gap-1 ml-1 shrink-0">
+          <span className="text-[10px] text-muted-foreground font-medium">{time}</span>
           <Badge
             variant={isCompleted ? 'outline' : isPending ? 'secondary' : 'default'}
             className={cn(
-              'text-[10px] px-1.5 py-0',
+              'text-[8px] px-1 py-0 h-4',
               isPending && 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30',
             )}
           >
@@ -59,14 +57,16 @@ export function TimeSlot({
   return (
     <div
       onClick={() => onSlotClick && onSlotClick(time, barberId)}
-      className="h-24 border border-dashed rounded-md p-2 relative group hover:border-primary/50 hover:bg-muted/10 transition-colors flex flex-col justify-center items-center cursor-pointer"
+      className="h-14 border border-dashed rounded-md p-1 relative group hover:border-primary/50 hover:bg-muted/10 transition-colors flex justify-center items-center cursor-pointer"
     >
-      <span className="text-xs text-muted-foreground absolute top-2 right-2">{time}</span>
+      <span className="text-[10px] text-muted-foreground absolute top-1 right-1 opacity-50 group-hover:opacity-100 transition-opacity">
+        {time}
+      </span>
       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-xs border border-primary/20 text-primary pointer-events-none"
+          className="h-6 text-[10px] border border-primary/20 text-primary pointer-events-none"
         >
           Agendar
         </Button>
