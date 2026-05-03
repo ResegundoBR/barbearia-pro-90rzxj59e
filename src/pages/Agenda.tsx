@@ -71,7 +71,7 @@ export default function Agenda() {
   })
   const [clientSearchOpen, setClientSearchOpen] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', phone: '' })
-  const [isNewClient, setIsNewClient] = useState(false)
+  const [newClientDialogOpen, setNewClientDialogOpen] = useState(false)
 
   const loadData = async () => {
     const dayStr = format(selectedDate, 'yyyy-MM-dd')
@@ -102,7 +102,7 @@ export default function Agenda() {
     const defaultBarber = barberId || (isAdmin ? '' : visibleBarbers[0]?.id || '')
     setForm({ barber_id: defaultBarber, client_id: '', item_id: '', time, date: selectedDate })
     setNewClient({ name: '', phone: '' })
-    setIsNewClient(false)
+    setNewClientDialogOpen(false)
     setClientSearchOpen(false)
     setIsOpen(true)
   }
@@ -115,8 +115,7 @@ export default function Agenda() {
       const c = await createClient({ ...newClient, location_type: 'nearby', is_active: true })
       setData((prev) => ({ ...prev, clients: [c, ...prev.clients] }))
       setForm((f) => ({ ...f, client_id: c.id }))
-      setIsNewClient(false)
-      setClientSearchOpen(false)
+      setNewClientDialogOpen(false)
       toast({ title: 'Cliente criado!' })
     } catch {
       toast({ title: 'Erro ao criar cliente', variant: 'destructive' })
@@ -150,6 +149,7 @@ export default function Agenda() {
         barber_id: form.barber_id,
         client_id: form.client_id,
         service_id: svc?.id || form.item_id.replace('svc_', ''),
+        client_package_id: isPkg && activePackage ? activePackage.id : '',
         time: form.time,
         end_time,
         date: format(form.date, 'yyyy-MM-dd 12:00:00'),
@@ -297,6 +297,37 @@ export default function Agenda() {
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
 
+      <Dialog open={newClientDialogOpen} onOpenChange={setNewClientDialogOpen}>
+        <DialogContent className="max-w-sm" style={{ zIndex: 10000 }}>
+          <DialogHeader>
+            <DialogTitle>Novo Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input
+                placeholder="Nome do cliente"
+                value={newClient.name}
+                onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Celular</Label>
+              <Input
+                placeholder="(00) 00000-0000"
+                value={newClient.phone}
+                onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleClientCreate} className="w-full">
+              Salvar Cliente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -305,73 +336,59 @@ export default function Agenda() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Cliente</Label>
-              <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="w-full justify-between">
-                    {form.client_id
-                      ? data.clients.find((c) => c.id === form.client_id)?.name
-                      : 'Buscar cliente...'}
-                    <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[380px] p-0" style={{ zIndex: 9999 }}>
-                  <Command>
-                    <CommandInput placeholder="Buscar nome ou telefone..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
-                      <CommandGroup>
-                        {data.clients.map((c) => (
-                          <CommandItem
-                            key={c.id}
-                            value={`${c.name} ${c.phone}`}
-                            onSelect={() => {
-                              setForm({ ...form, client_id: c.id })
-                              setClientSearchOpen(false)
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                'mr-2 size-4',
-                                form.client_id === c.id ? 'opacity-100' : 'opacity-0',
-                              )}
-                            />
-                            {c.name} {c.surname || ''} ({c.phone})
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                    <div className="p-2 border-t">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => setIsNewClient(true)}
-                      >
-                        <Plus className="size-4 mr-2" /> Novo Cliente
-                      </Button>
-                    </div>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              {isNewClient && (
-                <div className="flex gap-2 mt-2 bg-muted/30 p-3 rounded-md border">
-                  <div className="flex-1 space-y-2">
-                    <Input
-                      placeholder="Nome"
-                      value={newClient.name}
-                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                    />
-                    <Input
-                      placeholder="Celular"
-                      value={newClient.phone}
-                      onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button onClick={handleClientCreate}>Salvar</Button>
-                  </div>
-                </div>
-              )}
+              <div className="flex gap-2">
+                <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="flex-1 justify-between">
+                      {form.client_id
+                        ? data.clients.find((c) => c.id === form.client_id)?.name
+                        : 'Buscar cliente...'}
+                      <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[380px] p-0" style={{ zIndex: 9999 }}>
+                    <Command>
+                      <CommandInput placeholder="Buscar nome ou telefone..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          {data.clients.map((c) => (
+                            <CommandItem
+                              key={c.id}
+                              value={`${c.name} ${c.phone}`}
+                              onSelect={() => {
+                                setForm({ ...form, client_id: c.id })
+                                setClientSearchOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 size-4',
+                                  form.client_id === c.id ? 'opacity-100' : 'opacity-0',
+                                )}
+                              />
+                              {c.name} {c.surname || ''} ({c.phone})
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => {
+                    setNewClient({ name: '', phone: '' })
+                    setNewClientDialogOpen(true)
+                  }}
+                  title="Novo Cliente"
+                  type="button"
+                >
+                  <Plus className="size-4" />
+                </Button>
+              </div>
             </div>
 
             {clientPkgs.length > 0 && (

@@ -36,10 +36,15 @@ import {
 import { getServices } from '@/services/services'
 import { getProducts } from '@/services/products'
 import { getPackages } from '@/services/packages'
+import { getCommissions } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
+import { DollarSign } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 export default function Staff() {
   const [barbers, setBarbers] = useState<any[]>([])
+  const [commissions, setCommissions] = useState<any[]>([])
+  const [selectedBarberCommissions, setSelectedBarberCommissions] = useState<any>(null)
   const [rules, setRules] = useState<any[]>([])
   const [services, setServices] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
@@ -73,6 +78,7 @@ export default function Staff() {
     setServices(await getServices())
     setProducts(await getProducts())
     setPackages(await getPackages())
+    setCommissions(await getCommissions())
   }
 
   useEffect(() => {
@@ -152,25 +158,62 @@ export default function Staff() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Comissão Padrão</TableHead>
+                    <TableHead>Comissões Pagas</TableHead>
+                    <TableHead>Comissões a Pagar</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {barbers.map((b) => (
-                    <TableRow key={b.id}>
-                      <TableCell className="font-medium">{b.name}</TableCell>
-                      <TableCell>
-                        {b.commission_type === 'percentage'
-                          ? `${b.commission_value}%`
-                          : `R$ ${b.commission_value}`}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => openBarber(b)}>
-                          <Edit className="size-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {barbers.map((b) => {
+                    const bComms = commissions.filter((c) => c.barber_id === b.id)
+                    const paid = bComms
+                      .filter((c) => c.status === 'paid')
+                      .reduce((acc, c) => acc + (c.amount || 0), 0)
+                    const pending = bComms
+                      .filter((c) => c.status === 'pending' || c.status === 'available')
+                      .reduce((acc, c) => acc + (c.amount || 0), 0)
+
+                    return (
+                      <TableRow key={b.id}>
+                        <TableCell className="font-medium">{b.name}</TableCell>
+                        <TableCell>
+                          {b.commission_type === 'percentage'
+                            ? `${b.commission_value}%`
+                            : `R$ ${b.commission_value}`}
+                        </TableCell>
+                        <TableCell>
+                          {new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          }).format(paid)}
+                        </TableCell>
+                        <TableCell>
+                          {new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          }).format(pending)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedBarberCommissions(b)}
+                            title="Ver Comissões"
+                          >
+                            <DollarSign className="size-4 text-green-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openBarber(b)}
+                            title="Editar Profissional"
+                          >
+                            <Edit className="size-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -404,6 +447,101 @@ export default function Staff() {
               <Button type="submit">Salvar Regra</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!selectedBarberCommissions}
+        onOpenChange={(v) => !v && setSelectedBarberCommissions(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Comissões a Pagar - {selectedBarberCommissions?.name}</DialogTitle>
+          </DialogHeader>
+
+          <div className="overflow-auto flex-1 pr-2">
+            {(() => {
+              if (!selectedBarberCommissions) return null
+
+              const pending = commissions.filter(
+                (c) =>
+                  c.barber_id === selectedBarberCommissions.id &&
+                  (c.status === 'pending' || c.status === 'available'),
+              )
+
+              if (pending.length === 0) {
+                return (
+                  <div className="py-8 text-center text-muted-foreground">
+                    Nenhuma comissão pendente.
+                  </div>
+                )
+              }
+
+              const grouped = {
+                Serviços: pending.filter((c) => c.type === 'service' || c.type === 'Serviço'),
+                Pacotes: pending.filter((c) => c.type === 'package' || c.type === 'Pacote'),
+                Produtos: pending.filter((c) => c.type === 'product' || c.type === 'Produto'),
+                Outros: pending.filter(
+                  (c) =>
+                    !['service', 'Serviço', 'package', 'Pacote', 'product', 'Produto'].includes(
+                      c.type,
+                    ),
+                ),
+              }
+
+              const formatCurrency = (val: number) =>
+                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+
+              return (
+                <div className="space-y-6">
+                  {Object.entries(grouped).map(([groupName, items]) => {
+                    if (items.length === 0) return null
+                    const total = items.reduce((acc, item) => acc + (item.amount || 0), 0)
+                    return (
+                      <div key={groupName} className="space-y-2">
+                        <div className="flex justify-between items-center border-b pb-1">
+                          <h4 className="font-semibold text-sm">{groupName}</h4>
+                          <span className="font-bold text-sm">{formatCurrency(total)}</span>
+                        </div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[100px]">Data</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Valor</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {items.map((item) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="text-xs">
+                                  {item.date
+                                    ? new Date(item.date).toLocaleDateString('pt-BR')
+                                    : '-'}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    {item.status === 'pending' ? 'Pendente' : 'Disponível'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right text-xs font-medium">
+                                  {formatCurrency(item.amount || 0)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </div>
+          <DialogFooter className="mt-4 border-t pt-4">
+            <Button variant="outline" onClick={() => setSelectedBarberCommissions(null)}>
+              Fechar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
