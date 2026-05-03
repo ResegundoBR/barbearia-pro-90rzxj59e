@@ -25,6 +25,7 @@ import {
   createCommission,
   updateAppointment,
   consumePackage,
+  getClientPackages,
 } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
 import { addDays, format } from 'date-fns'
@@ -33,6 +34,7 @@ export default function Checkout() {
   const [barbers, setBarbers] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [packages, setPackages] = useState<any[]>([])
+  const [clientPackages, setClientPackages] = useState<any[]>([])
   const [rules, setRules] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
@@ -48,6 +50,8 @@ export default function Checkout() {
     service_price: '',
     payment_method: '',
   })
+  const [packageToConsume, setPackageToConsume] = useState<string | null>(null)
+
   const [selectedProducts, setSelectedProducts] = useState<
     { product_id: string; product: any; quantity: number }[]
   >([])
@@ -68,13 +72,15 @@ export default function Checkout() {
       getCommissionRules(),
       getAppointments(`status != 'Concluído' && status != 'Cancelado'`),
       getProducts(),
-    ]).then(([b, c, p, r, a, prods]) => {
+      getClientPackages(),
+    ]).then(([b, c, p, r, a, prods, cp]) => {
       setBarbers(b)
       setClients(c)
       setPackages(p)
       setRules(r)
       setAppointments(a)
       setProducts(prods.filter((prod) => prod.is_active !== false))
+      setClientPackages(cp.filter((pkg) => pkg.remaining_uses > 0))
     })
   }
 
@@ -162,14 +168,28 @@ export default function Checkout() {
       const finalServicePrice = parseFloat(svcForm.service_price.toString().replace(',', '.'))
       if (isNaN(finalServicePrice)) throw new Error('Preço do serviço inválido')
 
-      await updateAppointment(apt.id, { status: 'Concluído', price: finalServicePrice })
-
-      if (apt.client_package_id && apt.expand?.client_package_id) {
+      let finalPackageId = apt.client_package_id
+      if (packageToConsume) {
+        finalPackageId = packageToConsume
+        const cp = clientPackages.find((c) => c.id === packageToConsume)
+        if (cp) {
+          const currentUses = cp.remaining_uses || 0
+          await consumePackage(cp.id, {
+            remaining_uses: Math.max(0, currentUses - 1),
+          })
+        }
+      } else if (apt.client_package_id && apt.expand?.client_package_id) {
         const currentUses = apt.expand.client_package_id.remaining_uses || 0
         await consumePackage(apt.client_package_id, {
           remaining_uses: Math.max(0, currentUses - 1),
         })
       }
+
+      await updateAppointment(apt.id, {
+        status: 'Concluído',
+        price: finalServicePrice,
+        client_package_id: finalPackageId || undefined,
+      })
 
       const barber = barbers.find((b) => b.id === apt.barber_id)
       const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
@@ -271,6 +291,7 @@ export default function Checkout() {
       toast({ title: 'Serviço e produtos finalizados com sucesso!' })
       setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
       setSelectedProducts([])
+      setPackageToConsume(null)
       loadData()
       setSuccessState({ type: 'service', message: 'Serviço e produtos finalizados com sucesso!' })
     } catch (err: any) {
@@ -283,11 +304,25 @@ export default function Checkout() {
   const handleAppointmentChange = (val: string) => {
     const apt = appointments.find((a) => a.id === val)
     let price = apt?.price?.toString() || apt?.expand?.service_id?.price?.toString() || '0'
+    let pkgIdToConsume = apt?.client_package_id || null
 
     if (apt?.expand?.client_package_id?.expand?.package_id) {
       const pkg = apt.expand.client_package_id.expand.package_id
       if (pkg.quantity > 0) {
         price = (pkg.price / pkg.quantity).toFixed(2)
+      }
+    } else if (apt) {
+      // Look for an available package for this client and service
+      const availablePkg = clientPackages.find(
+        (cp) =>
+          cp.client_id === apt.client_id && cp.expand?.package_id?.service_id === apt.service_id,
+      )
+      if (availablePkg && availablePkg.expand?.package_id) {
+        const pkg = availablePkg.expand.package_id
+        if (pkg.quantity > 0) {
+          price = (pkg.price / pkg.quantity).toFixed(2)
+          pkgIdToConsume = availablePkg.id
+        }
       }
     }
 
@@ -296,6 +331,7 @@ export default function Checkout() {
       appointment_id: val,
       service_price: price,
     })
+    setPackageToConsume(pkgIdToConsume)
   }
 
   const handleAddProduct = () => {
@@ -372,6 +408,7 @@ export default function Checkout() {
             setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
             setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
             setSelectedProducts([])
+            setPackageToConsume(null)
           }}
         >
           <TabsList className="grid w-full grid-cols-2">
@@ -417,15 +454,22 @@ export default function Checkout() {
 
                   <div className="space-y-2">
                     <Label>Valor do Serviço (R$)</Label>
-                    <Input
-                      required
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={svcForm.service_price}
-                      onChange={(e) => setSvcForm({ ...svcForm, service_price: e.target.value })}
-                    />
+                    <div className="flex flex-col gap-1">
+                      <Input
+                        required
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={svcForm.service_price}
+                        onChange={(e) => setSvcForm({ ...svcForm, service_price: e.target.value })}
+                      />
+                      {packageToConsume && (
+                        <span className="text-xs font-medium text-emerald-500">
+                          Pacote do cliente aplicado automaticamente. Valor unitário calculado.
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-4 border rounded-md p-4 bg-muted/20">

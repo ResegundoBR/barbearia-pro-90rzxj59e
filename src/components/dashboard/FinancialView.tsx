@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,7 +12,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, CalendarIcon } from 'lucide-react'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import pb from '@/lib/pocketbase/client'
 
 interface FinancialViewProps {
@@ -42,21 +51,40 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
   const [transactions, setTransactions] = useState<TransactionGroup[]>([])
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
 
-  const totalAvailable = commissions
+  const [date, setDate] = useState<{ from: Date; to: Date }>({
+    from: new Date(new Date().setDate(new Date().getDate() - 30)),
+    to: new Date(),
+  })
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  const filteredCommissions = useMemo(() => {
+    return commissions.filter((c) => {
+      const cDate = new Date(c.date || c.created)
+      const inRange = cDate >= date.from && cDate <= new Date(date.to.getTime() + 86400000)
+      let matchStatus = statusFilter === 'all' || c.status === statusFilter
+      if (statusFilter !== 'all' && c.is_advance) {
+        matchStatus = statusFilter === 'paid'
+      }
+      return inRange && matchStatus
+    })
+  }, [commissions, date, statusFilter])
+
+  const totalAvailable = filteredCommissions
     .filter((c) => !c.is_advance && c.status === 'available')
     .reduce((acc, c) => acc + c.amount, 0)
 
-  const totalAdvances = commissions
+  const totalAdvances = filteredCommissions
     .filter((c) => c.is_advance)
     .reduce((acc, c) => acc + c.amount, 0)
 
-  const totalReceivables = commissions
+  const totalReceivables = filteredCommissions
     .filter((c) => !c.is_advance && c.status === 'pending')
     .reduce((acc, c) => acc + c.amount, 0)
 
-  const netAvailable = totalAvailable - totalAdvances
+  const netAvailable =
+    totalAvailable - (statusFilter === 'all' || statusFilter === 'available' ? totalAdvances : 0)
 
-  const barberStats = commissions.reduce(
+  const barberStats = filteredCommissions.reduce(
     (acc, c) => {
       const barberId = c.expand?.barber_id?.id || 'unknown'
       const barberName = c.expand?.barber_id?.name || 'Desconhecido'
@@ -100,24 +128,26 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
   useEffect(() => {
     const loadTransactions = async () => {
       try {
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        const filterStr = `updated >= "${thirtyDaysAgo.toISOString()}"`
-        const filterStrCreated = `created >= "${thirtyDaysAgo.toISOString()}"`
+        const startStr = date.from ? date.from.toISOString() : ''
+        const endStr = date.to ? new Date(date.to.getTime() + 86400000).toISOString() : ''
+
+        let aptFilter = `status = 'Concluído'`
+        let prodFilter = ''
+        if (startStr && endStr) {
+          aptFilter += ` && updated >= "${startStr}" && updated <= "${endStr}"`
+          prodFilter = `created >= "${startStr}" && created <= "${endStr}"`
+        }
 
         const [aptsRes, prodsRes, pkgsRes] = await Promise.all([
-          pb.collection('appointments').getFullList({
-            filter: `status = 'Concluído' && ${filterStr}`,
-            expand: 'client_id,service_id,barber_id',
-          }),
-          pb.collection('product_purchases').getFullList({
-            filter: filterStrCreated,
-            expand: 'client_id,product_id,barber_id',
-          }),
-          pb.collection('client_packages').getFullList({
-            filter: filterStrCreated,
-            expand: 'client_id,package_id,barber_id',
-          }),
+          pb
+            .collection('appointments')
+            .getFullList({ filter: aptFilter, expand: 'client_id,service_id,barber_id' }),
+          pb
+            .collection('product_purchases')
+            .getFullList({ filter: prodFilter, expand: 'client_id,product_id,barber_id' }),
+          pb
+            .collection('client_packages')
+            .getFullList({ filter: prodFilter, expand: 'client_id,package_id,barber_id' }),
         ])
 
         const groups: TransactionGroup[] = []
@@ -130,7 +160,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
               p.client_id === apt.client_id &&
               Math.abs(new Date(p.created).getTime() - aptTime) < 15000,
           )
-          const comms = commissions.filter(
+          const comms = filteredCommissions.filter(
             (c) =>
               c.barber_id === apt.barber_id &&
               !c.is_advance &&
@@ -139,7 +169,9 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
           comms.forEach((c) => usedComms.add(c.id))
 
-          if (comms.length === 0 && aptTime < thirtyDaysAgo.getTime()) continue
+          if (comms.length === 0 && statusFilter !== 'all') continue
+          // If no commission mapped and we aren't filtering by status, we still show the transaction
+          if (comms.length === 0 && aptTime < date.from.getTime()) continue
 
           const serviceAmount = apt.price || 0
           const productAmount = prods.reduce((acc, p) => acc + (p.price_at_sale || 0), 0)
@@ -148,6 +180,8 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
           const payment_method = comms[0]?.payment_method || '-'
           const status = comms[0]?.status || 'paid'
+
+          if (statusFilter !== 'all' && status !== statusFilter) continue
 
           const items = [apt.expand?.service_id?.name || 'Serviço']
           prods.forEach((p) => items.push(p.expand?.product_id?.name || 'Produto'))
@@ -172,7 +206,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
         for (const pkg of pkgsRes) {
           const pkgTime = new Date(pkg.created).getTime()
-          const comms = commissions.filter(
+          const comms = filteredCommissions.filter(
             (c) =>
               c.barber_id === pkg.barber_id &&
               !c.is_advance &&
@@ -181,13 +215,16 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
           comms.forEach((c) => usedComms.add(c.id))
 
-          if (comms.length === 0 && pkgTime < thirtyDaysAgo.getTime()) continue
+          if (comms.length === 0 && statusFilter !== 'all') continue
+          if (comms.length === 0 && pkgTime < date.from.getTime()) continue
 
           const serviceAmount = pkg.expand?.package_id?.price || 0
           const commissionAmount = comms.reduce((acc, c) => acc + (c.amount || 0), 0)
 
           const payment_method = comms[0]?.payment_method || '-'
           const status = comms[0]?.status || 'paid'
+
+          if (statusFilter !== 'all' && status !== statusFilter) continue
 
           groups.push({
             id: pkg.id,
@@ -207,7 +244,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           })
         }
 
-        for (const comm of commissions) {
+        for (const comm of filteredCommissions) {
           if (usedComms.has(comm.id)) continue
 
           groups.push({
@@ -246,7 +283,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     }
 
     loadTransactions()
-  }, [commissions])
+  }, [filteredCommissions, date, statusFilter])
 
   const translatePayment = (method: string) => {
     if (method === 'cash') return 'Dinheiro'
@@ -259,6 +296,56 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-[280px] justify-start text-left font-normal bg-card"
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {date?.from ? (
+                date.to ? (
+                  <>
+                    {format(date.from, 'dd/MM/yyyy')} - {format(date.to, 'dd/MM/yyyy')}
+                  </>
+                ) : (
+                  format(date.from, 'dd/MM/yyyy')
+                )
+              ) : (
+                <span>Selecione o período</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={date?.from}
+              selected={{ from: date.from, to: date.to }}
+              onSelect={(range: any) => {
+                if (range?.from) {
+                  setDate({ from: range.from, to: range.to || range.from })
+                }
+              }}
+              numberOfMonths={2}
+            />
+          </PopoverContent>
+        </Popover>
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[200px] bg-card">
+            <SelectValue placeholder="Filtrar por Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Status</SelectItem>
+            <SelectItem value="paid">Pagas</SelectItem>
+            <SelectItem value="available">Disponíveis</SelectItem>
+            <SelectItem value="pending">A Vencer / A Pagar</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-glass border-none">
           <CardHeader className="pb-2">
@@ -279,7 +366,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
             <div className="text-2xl font-bold text-amber-500">
               R$ {totalReceivables.toFixed(2)}
             </div>
-            <p className="text-xs text-muted-foreground">Cartões pendentes</p>
+            <p className="text-xs text-muted-foreground">Cartões pendentes (A Vencer)</p>
           </CardContent>
         </Card>
         <Card className="bg-glass border-none">
@@ -356,7 +443,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                         {t.status === 'available'
                           ? 'Disponível'
                           : t.status === 'pending'
-                            ? 'Pendente'
+                            ? 'A Vencer'
                             : 'Pago'}
                       </Badge>
                     </TableCell>
@@ -410,7 +497,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
               {transactions.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                    Nenhuma transação encontrada no período.
+                    Nenhuma transação encontrada no período e filtros selecionados.
                   </TableCell>
                 </TableRow>
               )}
@@ -420,9 +507,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
       </Card>
 
       <div className="mt-8 space-y-4">
-        <h3 className="text-lg font-semibold uppercase">
-          Comissões - {format(new Date(), 'MMMM', { locale: ptBR })}
-        </h3>
+        <h3 className="text-lg font-semibold uppercase">Comissões Filtradas</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Object.values(barberStats).map((stats: any) => (
             <Card key={stats.name} className="bg-card">
@@ -451,7 +536,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                   <span>- R$ {stats.advances.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-emerald-500 pt-2 border-t border-border/50">
-                  <span>A Receber</span>
+                  <span>Total Líquido</span>
                   <span>R$ {(stats.total - stats.advances).toFixed(2)}</span>
                 </div>
               </CardContent>
