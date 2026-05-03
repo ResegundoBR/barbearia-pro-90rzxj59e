@@ -17,7 +17,7 @@ migrate(
     // update services with default duration 30
     const services = app.findRecordsByFilter(
       'services',
-      'duration_minutes = null OR duration_minutes = 0',
+      'duration_minutes = null || duration_minutes = 0',
       '',
       1000,
       0,

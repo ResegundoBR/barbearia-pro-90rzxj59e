@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T15:12:45.659Z",
+  "generatedAt": "2026-05-03T15:17:05.011Z",
   "collections": [
     {
       "name": "users",
@@ -260,6 +260,12 @@
           "type": "bool",
           "required": false,
           "system": false
+        },
+        {
+          "name": "duration_minutes",
+          "type": "number",
+          "required": true,
+          "system": false
         }
       ],
       "indexes": []
@@ -327,6 +333,18 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "time",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "end_time",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -548,6 +566,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -635,7 +659,7 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["service", "package", "product"]
+          "selectValues": ["service", "package", "product", "category"]
         },
         {
           "name": "value",
@@ -663,6 +687,45 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "business_hours",
+      "type": "base",
+      "apiRules": {
+        "list": "",
+        "view": "",
+        "create": "",
+        "update": "",
+        "delete": ""
+      },
+      "fields": [
+        {
+          "name": "day_of_week",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["0", "1", "2", "3", "4", "5", "6"]
+        },
+        {
+          "name": "open_time",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "close_time",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
