@@ -32,6 +32,7 @@ import { getBarbers, createBarber, updateBarber } from '@/services/barbers'
 import {
   getCommissionRules,
   createCommissionRule,
+  updateCommissionRule,
   deleteCommissionRule,
 } from '@/services/commission_rules'
 import { getServices } from '@/services/services'
@@ -68,6 +69,7 @@ export default function Staff() {
     color: '#3b82f6',
   })
   const [rForm, setRForm] = useState<any>({
+    id: null,
     barber_id: '',
     item_id: '',
     item_type: 'service',
@@ -229,16 +231,21 @@ export default function Staff() {
   const handleRuleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      if (!rForm.item_id) {
-        toast({ title: 'Selecione um item/categoria', variant: 'destructive' })
+      if (rForm.item_type === 'category' && !rForm.item_id) {
+        toast({ title: 'Selecione uma categoria', variant: 'destructive' })
         return
       }
-      await createCommissionRule(rForm)
-      toast({ title: 'Regra criada!' })
+      if (rForm.id) {
+        await updateCommissionRule(rForm.id, rForm)
+        toast({ title: 'Regra atualizada!' })
+      } else {
+        await createCommissionRule(rForm)
+        toast({ title: 'Regra criada!' })
+      }
       setRDialog(false)
       loadData()
     } catch {
-      toast({ title: 'Erro ao criar regra', variant: 'destructive' })
+      toast({ title: 'Erro ao salvar regra', variant: 'destructive' })
     }
   }
 
@@ -324,7 +331,19 @@ export default function Staff() {
 
         <TabsContent value="rules" className="mt-4 space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setRDialog(true)}>
+            <Button
+              onClick={() => {
+                setRForm({
+                  id: null,
+                  barber_id: '',
+                  item_id: '',
+                  item_type: 'service',
+                  value: 0,
+                  type: 'percentage',
+                })
+                setRDialog(true)
+              }}
+            >
               <Plus className="size-4 mr-2" /> Nova Regra
             </Button>
           </div>
@@ -333,50 +352,56 @@ export default function Staff() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Profissional</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Tipo Item</TableHead>
-                    <TableHead>Comissão Específica</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead>Categoria/Tipo</TableHead>
+                    <TableHead>Comissão (%)</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rules.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>{barbers.find((b) => b.id === r.barber_id)?.name}</TableCell>
-                      <TableCell>
-                        {r.item_type === 'product' && r.item_id === 'all'
-                          ? 'Todos os Produtos'
-                          : r.item_id}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {r.item_type === 'category'
-                          ? 'Categoria'
-                          : r.item_type === 'product'
-                            ? 'Produto'
-                            : r.item_type}
-                      </TableCell>
-                      <TableCell>
-                        {r.type === 'percentage' ? `${r.value}%` : `R$ ${r.value}`}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={async () => {
-                            await deleteCommissionRule(r.id)
-                            loadData()
-                          }}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {rules.length === 0 && (
+                  {rules
+                    .filter((r) => !r.barber_id)
+                    .map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">
+                          {r.item_type === 'service'
+                            ? 'Serviços'
+                            : r.item_type === 'package'
+                              ? 'Pacotes'
+                              : r.item_type === 'category'
+                                ? `Produtos - ${r.item_id}`
+                                : r.item_type === 'product'
+                                  ? 'Todos os Produtos'
+                                  : r.item_type}
+                        </TableCell>
+                        <TableCell>{r.value}%</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setRForm({ ...r })
+                              setRDialog(true)
+                            }}
+                          >
+                            <Edit className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive"
+                            onClick={async () => {
+                              await deleteCommissionRule(r.id)
+                              loadData()
+                            }}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {rules.filter((r) => !r.barber_id).length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
                         Nenhuma regra cadastrada.
                       </TableCell>
                     </TableRow>
@@ -548,55 +573,31 @@ export default function Staff() {
       <Dialog open={rDialog} onOpenChange={setRDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova Regra de Comissão</DialogTitle>
+            <DialogTitle>{rForm.id ? 'Editar Regra' : 'Nova Regra de Comissão'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleRuleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>Profissional</Label>
-              <Select
-                required
-                value={rForm.barber_id}
-                onValueChange={(v) => setRForm({ ...rForm, barber_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {barbers.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Tipo de Item</Label>
+              <Label>Categoria / Tipo</Label>
               <Select
                 value={rForm.item_type}
                 onValueChange={(v) => {
-                  if (v === 'product') {
-                    setRForm({ ...rForm, item_type: v, item_id: 'all' })
-                  } else {
-                    setRForm({ ...rForm, item_type: v, item_id: '' })
-                  }
+                  setRForm({ ...rForm, item_type: v, item_id: v === 'category' ? 'Beleza' : '' })
                 }}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="service">Serviço</SelectItem>
-                  <SelectItem value="product">Produto (Todos)</SelectItem>
+                  <SelectItem value="service">Serviços</SelectItem>
+                  <SelectItem value="package">Pacotes</SelectItem>
                   <SelectItem value="category">Categoria de Produto</SelectItem>
-                  <SelectItem value="package">Pacote</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {rForm.item_type === 'category' ? (
+            {rForm.item_type === 'category' && (
               <div className="space-y-2">
-                <Label>Categoria</Label>
+                <Label>Qual Categoria?</Label>
                 <Select
                   required
                   value={rForm.item_id}
@@ -606,48 +607,31 @@ export default function Staff() {
                     <SelectValue placeholder="Selecione a categoria..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from(new Set(products.map((p) => p.category).filter(Boolean))).map(
-                      (cat) => (
-                        <SelectItem key={cat as string} value={cat as string}>
-                          {cat as string}
-                        </SelectItem>
-                      ),
-                    )}
+                    {Array.from(
+                      new Set([
+                        'Beleza',
+                        'Bebidas',
+                        ...products.map((p) => p.category).filter(Boolean),
+                      ]),
+                    ).map((cat) => (
+                      <SelectItem key={cat as string} value={cat as string}>
+                        {cat as string}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            ) : rForm.item_type !== 'product' ? (
-              <div className="space-y-2">
-                <Label>Item ID (Copie o ID do item)</Label>
-                <Input
-                  required
-                  value={rForm.item_id}
-                  onChange={(e) => setRForm({ ...rForm, item_id: e.target.value })}
-                />
-              </div>
-            ) : null}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select value={rForm.type} onValueChange={(v) => setRForm({ ...rForm, type: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">%</SelectItem>
-                    <SelectItem value="fixed">R$</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Valor</Label>
-                <Input
-                  type="number"
-                  required
-                  value={rForm.value}
-                  onChange={(e) => setRForm({ ...rForm, value: Number(e.target.value) })}
-                />
-              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Comissão (%)</Label>
+              <Input
+                type="number"
+                required
+                min="0"
+                max="100"
+                value={rForm.value}
+                onChange={(e) => setRForm({ ...rForm, value: Number(e.target.value) })}
+              />
             </div>
             <DialogFooter>
               <Button type="submit">Salvar Regra</Button>

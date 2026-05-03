@@ -116,7 +116,7 @@ export default function Checkout() {
 
       let commAmount = 0
       const rule = rules.find(
-        (r) => r.barber_id === barber.id && r.item_id === pkg.id && r.item_type === 'package',
+        (r) => r.item_type === 'package' && (!r.barber_id || r.barber_id === ''),
       )
       if (rule) {
         commAmount = rule.type === 'percentage' ? pkg.price * (rule.value / 100) : rule.value
@@ -200,8 +200,7 @@ export default function Checkout() {
       if (barber && finalServicePrice > 0) {
         let commAmount = 0
         const rule = rules.find(
-          (r) =>
-            r.barber_id === barber.id && r.item_id === apt.service_id && r.item_type === 'service',
+          (r) => r.item_type === 'service' && (!r.barber_id || r.barber_id === ''),
         )
         if (rule) {
           commAmount =
@@ -246,20 +245,17 @@ export default function Checkout() {
 
         if (barber) {
           let prodComm = 0
-          const specificRule = rules.find(
-            (r) => r.barber_id === barber.id && r.item_id === prod.id && r.item_type === 'product',
-          )
           const categoryRule = rules.find(
             (r) =>
-              r.barber_id === barber.id &&
+              r.item_type === 'category' &&
               r.item_id === prod.category &&
-              r.item_type === 'category',
+              (!r.barber_id || r.barber_id === ''),
           )
           const allProductRule = rules.find(
-            (r) => r.barber_id === barber.id && r.item_type === 'product' && r.item_id === 'all',
+            (r) => r.item_type === 'product' && (!r.barber_id || r.barber_id === ''),
           )
 
-          const pRule = specificRule || categoryRule || allProductRule
+          const pRule = categoryRule || allProductRule
 
           if (pRule) {
             prodComm =

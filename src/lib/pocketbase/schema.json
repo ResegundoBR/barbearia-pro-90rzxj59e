@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T19:18:30.714Z",
+  "generatedAt": "2026-05-03T19:28:04.952Z",
   "collections": [
     {
       "name": "users",
@@ -727,14 +727,14 @@
         {
           "name": "barber_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "barbers"
         },
         {
           "name": "item_id",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
