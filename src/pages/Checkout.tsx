@@ -190,6 +190,14 @@ export default function Checkout() {
 
     setIsSubmitting(true)
     try {
+      // Validate stock before proceeding with any operation
+      for (const sp of selectedProducts) {
+        const prod = sp.product
+        if ((prod.stock_quantity || 0) - sp.quantity < 0) {
+          throw new Error(`Estoque insuficiente para o produto: ${prod.name}.`)
+        }
+      }
+
       const finalServicePrice = parseFloat(svcForm.service_price.toString().replace(',', '.')) || 0
 
       let apt: any = null
@@ -282,11 +290,8 @@ export default function Checkout() {
         }
       }
 
-      for (const sp of selectedProducts) {
+      const productOps = selectedProducts.map(async (sp) => {
         const prod = sp.product
-        if ((prod.stock_quantity || 0) - sp.quantity < 0) {
-          toast({ title: `Aviso: Estoque de ${prod.name} ficou negativo.`, variant: 'destructive' })
-        }
 
         await updateProduct(prod.id, { stock_quantity: (prod.stock_quantity || 0) - sp.quantity })
 
@@ -300,6 +305,12 @@ export default function Checkout() {
 
         if (barber) {
           let prodComm = 0
+          const specificProductRule = rules.find(
+            (r) =>
+              r.item_type === 'product' &&
+              r.item_id === prod.id &&
+              (!r.barber_id || r.barber_id === ''),
+          )
           const categoryRule = rules.find(
             (r) =>
               r.item_type === 'category' &&
@@ -307,20 +318,19 @@ export default function Checkout() {
               (!r.barber_id || r.barber_id === ''),
           )
           const allProductRule = rules.find(
-            (r) => r.item_type === 'product' && (!r.barber_id || r.barber_id === ''),
+            (r) =>
+              r.item_type === 'product' &&
+              (!r.item_id || r.item_id === 'all') &&
+              (!r.barber_id || r.barber_id === ''),
           )
 
-          const pRule = categoryRule || allProductRule
+          const pRule = specificProductRule || categoryRule || allProductRule
 
           if (pRule) {
             prodComm =
               pRule.type === 'percentage'
                 ? prod.price * sp.quantity * (pRule.value / 100)
                 : pRule.value * sp.quantity
-          } else if (prod.category === 'Beleza') {
-            prodComm = prod.price * sp.quantity * 0.1
-          } else if (prod.category === 'Bebidas') {
-            prodComm = prod.price * sp.quantity * 0.05
           } else {
             prodComm =
               barber.commission_type === 'percentage'
@@ -341,7 +351,9 @@ export default function Checkout() {
             })
           }
         }
-      }
+      })
+
+      await Promise.all(productOps)
 
       setSvcForm({ appointment_id: '', service_price: '', payment_method: 'debito' })
       setManualForm({ client_id: '', barber_id: '', service_id: '' })

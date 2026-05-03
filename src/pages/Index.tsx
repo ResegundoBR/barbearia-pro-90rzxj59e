@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { AreaChart, Area, BarChart, Bar, Legend, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { useAuth } from '@/hooks/use-auth'
 import { FinancialView } from '@/components/dashboard/FinancialView'
 import { PackagesView } from '@/components/dashboard/PackagesView'
@@ -229,26 +229,27 @@ export default function Index() {
   }, [completedPeriod, productPurchases])
 
   const historyData = useMemo(() => {
-    const dataMap: Record<string, number> = {}
+    const dataMap: Record<string, { date: string; services: number; products: number }> = {}
 
-    if (historyType === 'services') {
-      completedPeriod.forEach((a) => {
-        const d = a.date ? a.date.substring(0, 10) : a.updated.substring(0, 10)
-        dataMap[d] = (dataMap[d] || 0) + 1
-      })
-    } else {
-      productPurchases.forEach((p) => {
-        const d = p.date ? p.date.substring(0, 10) : p.created.substring(0, 10)
-        dataMap[d] = (dataMap[d] || 0) + 1
-      })
-    }
+    completedPeriod.forEach((a) => {
+      const d = a.date ? a.date.substring(0, 10) : a.updated.substring(0, 10)
+      if (!dataMap[d]) dataMap[d] = { date: d, services: 0, products: 0 }
+      dataMap[d].services += a.price || a.expand?.service_id?.price || 0
+    })
+
+    productPurchases.forEach((p) => {
+      const d = p.date ? p.date.substring(0, 10) : p.created.substring(0, 10)
+      if (!dataMap[d]) dataMap[d] = { date: d, services: 0, products: 0 }
+      dataMap[d].products += p.price_at_sale || p.expand?.product_id?.price || 0
+    })
 
     const sortedDates = Object.keys(dataMap).sort()
     return sortedDates.map((dateStr) => ({
       date: format(new Date(dateStr + 'T12:00:00'), 'dd/MM'),
-      count: dataMap[dateStr],
+      services: dataMap[dateStr].services,
+      products: dataMap[dateStr].products,
     }))
-  }, [completedPeriod, productPurchases, historyType])
+  }, [completedPeriod, productPurchases])
 
   const clientsServed = useMemo(() => {
     return Array.from(new Set(completedPeriod.map((a) => a.client_id))).map((id) => {
@@ -440,65 +441,48 @@ export default function Index() {
               </CardContent>
             </Card>
 
-            <Card className="bg-glass border-none">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <Card className="bg-glass border-none w-full">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Histórico de Vendas
+                  Histórico de Vendas (Receita)
                 </CardTitle>
-                <div className="flex bg-muted/50 rounded-md p-1">
-                  <button
-                    onClick={() => setHistoryType('services')}
-                    className={cn(
-                      'text-xs px-2 py-1 rounded-sm transition-colors',
-                      historyType === 'services'
-                        ? 'bg-background shadow-sm text-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    Serviços
-                  </button>
-                  <button
-                    onClick={() => setHistoryType('products')}
-                    className={cn(
-                      'text-xs px-2 py-1 rounded-sm transition-colors',
-                      historyType === 'products'
-                        ? 'bg-background shadow-sm text-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    Produtos
-                  </button>
-                </div>
               </CardHeader>
               <CardContent>
-                <div className="h-[250px] w-full mt-4">
+                <div className="h-[300px] w-full mt-4">
                   {historyData.length > 0 ? (
                     <ChartContainer
-                      config={{ count: { label: 'Quantidade', color: 'hsl(var(--primary))' } }}
+                      config={{
+                        services: { label: 'Serviços & Pacotes', color: 'hsl(var(--primary))' },
+                        products: { label: 'Produtos', color: '#10b981' },
+                      }}
                     >
-                      <AreaChart
+                      <BarChart
                         data={historyData}
                         margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
                       >
-                        <defs>
-                          <linearGradient id="fillHistory" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.1} />
-                          </linearGradient>
-                        </defs>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
                         <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                        <YAxis tickLine={false} axisLine={false} width={30} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Area
-                          type="monotone"
-                          dataKey="count"
-                          stroke="var(--color-count)"
-                          strokeWidth={2}
-                          fillOpacity={1}
-                          fill="url(#fillHistory)"
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          width={50}
+                          tickFormatter={(val) => `R$ ${val}`}
                         />
-                      </AreaChart>
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Legend verticalAlign="top" height={36} />
+                        <Bar
+                          dataKey="services"
+                          stackId="a"
+                          fill="var(--color-services)"
+                          radius={[0, 0, 4, 4]}
+                        />
+                        <Bar
+                          dataKey="products"
+                          stackId="a"
+                          fill="var(--color-products)"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
                     </ChartContainer>
                   ) : (
                     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">

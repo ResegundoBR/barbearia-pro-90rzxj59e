@@ -368,9 +368,11 @@ export default function Staff() {
                             : r.item_type === 'package'
                               ? 'Pacotes'
                               : r.item_type === 'category'
-                                ? `Produtos - ${r.item_id}`
+                                ? `Categoria - ${r.item_id}`
                                 : r.item_type === 'product'
-                                  ? 'Todos os Produtos'
+                                  ? !r.item_id || r.item_id === 'all'
+                                    ? 'Todos os Produtos'
+                                    : `Produto: ${products.find((p) => p.id === r.item_id)?.name || 'Desconhecido'}`
                                   : r.item_type}
                         </TableCell>
                         <TableCell>{r.value}%</TableCell>
@@ -581,7 +583,11 @@ export default function Staff() {
               <Select
                 value={rForm.item_type}
                 onValueChange={(v) => {
-                  setRForm({ ...rForm, item_type: v, item_id: v === 'category' ? 'Beleza' : '' })
+                  setRForm({
+                    ...rForm,
+                    item_type: v,
+                    item_id: v === 'category' ? 'Beleza' : v === 'product' ? 'all' : '',
+                  })
                 }}
               >
                 <SelectTrigger>
@@ -591,6 +597,7 @@ export default function Staff() {
                   <SelectItem value="service">Serviços</SelectItem>
                   <SelectItem value="package">Pacotes</SelectItem>
                   <SelectItem value="category">Categoria de Produto</SelectItem>
+                  <SelectItem value="product">Produtos</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -607,15 +614,29 @@ export default function Staff() {
                     <SelectValue placeholder="Selecione a categoria..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from(
-                      new Set([
-                        'Beleza',
-                        'Bebidas',
-                        ...products.map((p) => p.category).filter(Boolean),
-                      ]),
-                    ).map((cat) => (
-                      <SelectItem key={cat as string} value={cat as string}>
-                        {cat as string}
+                    <SelectItem value="Beleza">Beleza</SelectItem>
+                    <SelectItem value="Bebidas">Bebidas</SelectItem>
+                    <SelectItem value="Acessórios">Acessórios</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {rForm.item_type === 'product' && (
+              <div className="space-y-2">
+                <Label>Qual Produto?</Label>
+                <Select
+                  required
+                  value={rForm.item_id}
+                  onValueChange={(v) => setRForm({ ...rForm, item_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o produto..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Produtos</SelectItem>
+                    {products.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
