@@ -59,7 +59,7 @@ export function PackagesView({ packages }: PackagesViewProps) {
                   <span>
                     Vence: {p.expires_at ? format(new Date(p.expires_at), 'dd/MM/yyyy') : '-'}
                   </span>
-                  <span>Por: {p.expand?.barber_id?.name || 'Sistema'}</span>
+                  <span>Vendido por: {p.expand?.barber_id?.name || 'Não informado'}</span>
                 </div>
               </div>
             </CardContent>
