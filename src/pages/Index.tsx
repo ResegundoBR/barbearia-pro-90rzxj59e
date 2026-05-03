@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BadgeDollarSign, Users, TrendingUp, Clock, CalendarDays } from 'lucide-react'
 import { getAppointments, getClients } from '@/services/api'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { format, startOfWeek, startOfMonth } from 'date-fns'
 
 export default function Index() {
   const [appointments, setAppointments] = useState<any[]>([])
@@ -10,9 +11,40 @@ export default function Index() {
   const [period, setPeriod] = useState('week')
 
   useEffect(() => {
-    getAppointments().then(setAppointments)
-    getClients().then(setClients)
-  }, [])
+    const fetchData = async () => {
+      let aptFilter = ''
+      let cltFilter = ''
+      const now = new Date()
+
+      if (period === 'week') {
+        const start = startOfWeek(now, { weekStartsOn: 1 })
+        const dateStr = format(start, 'yyyy-MM-dd 00:00:00')
+        aptFilter = `date >= "${dateStr}"`
+        cltFilter = `created >= "${dateStr}"`
+      } else if (period === 'month') {
+        const start = startOfMonth(now)
+        const dateStr = format(start, 'yyyy-MM-dd 00:00:00')
+        aptFilter = `date >= "${dateStr}"`
+        cltFilter = `created >= "${dateStr}"`
+      }
+
+      try {
+        const apts = await getAppointments(aptFilter)
+        setAppointments(apts)
+      } catch (error) {
+        console.error('Error fetching appointments:', error)
+      }
+
+      try {
+        const clts = await getClients(cltFilter)
+        setClients(clts)
+      } catch (error) {
+        console.error('Error fetching clients:', error)
+      }
+    }
+
+    fetchData()
+  }, [period])
 
   // KPI Calculations
   const completedApts = appointments.filter((a) => a.status === 'Concluído')
