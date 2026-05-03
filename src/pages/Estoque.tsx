@@ -249,7 +249,7 @@ export default function Estoque() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Duração</TableHead>
                     <TableHead>Preço Base</TableHead>
-                    <TableHead>Total Rendido</TableHead>
+                    <TableHead>Total Vendido</TableHead>
                     <TableHead>Ativo</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -366,7 +366,7 @@ export default function Estoque() {
                     <TableHead>Serviço Vinculado</TableHead>
                     <TableHead>Duração</TableHead>
                     <TableHead>Preço Total</TableHead>
-                    <TableHead>Total Rendido</TableHead>
+                    <TableHead>Total Vendido</TableHead>
                     <TableHead>Ativo</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>

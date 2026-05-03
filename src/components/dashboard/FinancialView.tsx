@@ -133,7 +133,15 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                   <TableCell>
                     {c.is_advance ? 'Adiantamento' : c.type === 'service' ? 'Serviço' : 'Pacote'}
                   </TableCell>
-                  <TableCell className="capitalize">{c.payment_method || '-'}</TableCell>
+                  <TableCell className="capitalize">
+                    {c.payment_method === 'cash'
+                      ? 'Dinheiro'
+                      : c.payment_method === 'card'
+                        ? 'Cartão'
+                        : c.payment_method === 'pix'
+                          ? 'Pix'
+                          : '-'}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant={

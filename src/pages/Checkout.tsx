@@ -11,12 +11,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Plus, Trash2 } from 'lucide-react'
 import {
   getBarbers,
   getClients,
   getPackages,
   getCommissionRules,
   getAppointments,
+  getProducts,
+  updateProduct,
+  createProductPurchase,
   createClientPackage,
   createCommission,
   updateAppointment,
@@ -30,6 +34,7 @@ export default function Checkout() {
   const [packages, setPackages] = useState<any[]>([])
   const [rules, setRules] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
 
   const [pkgForm, setPkgForm] = useState({
     barber_id: '',
@@ -37,7 +42,15 @@ export default function Checkout() {
     package_id: '',
     payment_method: '',
   })
-  const [svcForm, setSvcForm] = useState({ appointment_id: '', price: '', payment_method: '' })
+  const [svcForm, setSvcForm] = useState({
+    appointment_id: '',
+    service_price: '',
+    payment_method: '',
+  })
+  const [selectedProducts, setSelectedProducts] = useState<
+    { product_id: string; product: any; quantity: number }[]
+  >([])
+  const [productToAdd, setProductToAdd] = useState('')
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
@@ -49,12 +62,14 @@ export default function Checkout() {
       getPackages(),
       getCommissionRules(),
       getAppointments(`status != 'Concluído' && status != 'Cancelado'`),
-    ]).then(([b, c, p, r, a]) => {
+      getProducts(),
+    ]).then(([b, c, p, r, a, prods]) => {
       setBarbers(b)
       setClients(c)
       setPackages(p)
       setRules(r)
       setAppointments(a)
+      setProducts(prods.filter((prod) => prod.is_active !== false))
     })
   }
 
@@ -101,20 +116,22 @@ export default function Checkout() {
             : barber.commission_value || 0
       }
 
-      const isCard = pkgForm.payment_method === 'card'
-      const status = isCard ? 'pending' : 'available'
-      const due_date = isCard ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
+      if (commAmount > 0) {
+        const isCard = pkgForm.payment_method === 'card'
+        const status = isCard ? 'pending' : 'available'
+        const due_date = isCard ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
 
-      await createCommission({
-        barber_id: barber.id,
-        amount: commAmount,
-        type: 'package_sale',
-        date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
-        is_advance: false,
-        payment_method: pkgForm.payment_method,
-        status,
-        due_date: due_date || undefined,
-      })
+        await createCommission({
+          barber_id: barber.id,
+          amount: commAmount,
+          type: 'package_sale',
+          date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
+          is_advance: false,
+          payment_method: pkgForm.payment_method,
+          status,
+          due_date: due_date || undefined,
+        })
+      }
 
       toast({ title: 'Pacote vendido com sucesso!' })
       setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
@@ -127,7 +144,7 @@ export default function Checkout() {
 
   const handleCloseService = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!svcForm.appointment_id || !svcForm.price || !svcForm.payment_method) {
+    if (!svcForm.appointment_id || !svcForm.service_price || !svcForm.payment_method) {
       return toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' })
     }
 
@@ -136,37 +153,39 @@ export default function Checkout() {
       const apt = appointments.find((a) => a.id === svcForm.appointment_id)
       if (!apt) throw new Error('Agendamento não encontrado')
 
-      const finalPrice = parseFloat(svcForm.price.toString().replace(',', '.'))
-      if (isNaN(finalPrice)) throw new Error('Preço inválido')
+      const finalServicePrice = parseFloat(svcForm.service_price.toString().replace(',', '.'))
+      if (isNaN(finalServicePrice)) throw new Error('Preço do serviço inválido')
 
-      await updateAppointment(apt.id, { status: 'Concluído', price: finalPrice })
+      await updateAppointment(apt.id, { status: 'Concluído', price: finalServicePrice })
 
       const barber = barbers.find((b) => b.id === apt.barber_id)
-      if (barber && finalPrice > 0) {
+      const now = format(new Date(), 'yyyy-MM-dd 12:00:00')
+      const isCard = svcForm.payment_method === 'card'
+      const status = isCard ? 'pending' : 'available'
+      const due_date = isCard ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
+
+      if (barber && finalServicePrice > 0) {
         let commAmount = 0
         const rule = rules.find(
           (r) =>
             r.barber_id === barber.id && r.item_id === apt.service_id && r.item_type === 'service',
         )
         if (rule) {
-          commAmount = rule.type === 'percentage' ? finalPrice * (rule.value / 100) : rule.value
+          commAmount =
+            rule.type === 'percentage' ? finalServicePrice * (rule.value / 100) : rule.value
         } else {
           commAmount =
             barber.commission_type === 'percentage'
-              ? finalPrice * ((barber.commission_value || 0) / 100)
+              ? finalServicePrice * ((barber.commission_value || 0) / 100)
               : barber.commission_value || 0
         }
 
         if (commAmount > 0) {
-          const isCard = svcForm.payment_method === 'card'
-          const status = isCard ? 'pending' : 'available'
-          const due_date = isCard ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
-
           await createCommission({
             barber_id: barber.id,
             amount: commAmount,
             type: 'service',
-            date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
+            date: now,
             is_advance: false,
             payment_method: svcForm.payment_method,
             status,
@@ -175,11 +194,61 @@ export default function Checkout() {
         }
       }
 
-      toast({ title: 'Serviço finalizado com sucesso!' })
-      setSvcForm({ appointment_id: '', price: '', payment_method: '' })
+      for (const sp of selectedProducts) {
+        const prod = sp.product
+
+        if ((prod.stock_quantity || 0) - sp.quantity < 0) {
+          toast({ title: `Aviso: Estoque de ${prod.name} ficou negativo.`, variant: 'destructive' })
+        }
+
+        await updateProduct(prod.id, { stock_quantity: (prod.stock_quantity || 0) - sp.quantity })
+
+        await createProductPurchase({
+          client_id: apt.client_id,
+          product_id: prod.id,
+          barber_id: apt.barber_id,
+          price_at_sale: prod.price,
+          date: now,
+        })
+
+        if (barber) {
+          let prodComm = 0
+          const pRule = rules.find(
+            (r) => r.barber_id === barber.id && r.item_id === prod.id && r.item_type === 'product',
+          )
+          if (pRule) {
+            prodComm =
+              pRule.type === 'percentage'
+                ? prod.price * sp.quantity * (pRule.value / 100)
+                : pRule.value * sp.quantity
+          } else {
+            prodComm =
+              barber.commission_type === 'percentage'
+                ? prod.price * sp.quantity * ((barber.commission_value || 0) / 100)
+                : (barber.commission_value || 0) * sp.quantity
+          }
+
+          if (prodComm > 0) {
+            await createCommission({
+              barber_id: barber.id,
+              amount: prodComm,
+              type: 'product',
+              date: now,
+              is_advance: false,
+              payment_method: svcForm.payment_method,
+              status,
+              due_date: due_date || undefined,
+            })
+          }
+        }
+      }
+
+      toast({ title: 'Serviço e produtos finalizados com sucesso!' })
+      setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
+      setSelectedProducts([])
       loadData()
     } catch (err: any) {
-      toast({ title: 'Erro ao finalizar serviço', variant: 'destructive' })
+      toast({ title: err.message || 'Erro ao finalizar serviço', variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
     }
@@ -187,8 +256,54 @@ export default function Checkout() {
 
   const handleAppointmentChange = (val: string) => {
     const apt = appointments.find((a) => a.id === val)
-    setSvcForm({ appointment_id: val, price: apt?.price?.toString() || '0' })
+    setSvcForm({
+      ...svcForm,
+      appointment_id: val,
+      service_price: apt?.price?.toString() || apt?.expand?.service_id?.price?.toString() || '0',
+    })
   }
+
+  const handleAddProduct = () => {
+    if (!productToAdd) return
+    const prod = products.find((p) => p.id === productToAdd)
+    if (!prod) return
+
+    const existing = selectedProducts.find((sp) => sp.product_id === productToAdd)
+    if (existing) {
+      setSelectedProducts(
+        selectedProducts.map((sp) =>
+          sp.product_id === productToAdd ? { ...sp, quantity: sp.quantity + 1 } : sp,
+        ),
+      )
+    } else {
+      setSelectedProducts([
+        ...selectedProducts,
+        { product_id: prod.id, product: prod, quantity: 1 },
+      ])
+    }
+    setProductToAdd('')
+  }
+
+  const updateProductQuantity = (id: string, qty: number) => {
+    if (qty <= 0) {
+      setSelectedProducts(selectedProducts.filter((sp) => sp.product_id !== id))
+    } else {
+      setSelectedProducts(
+        selectedProducts.map((sp) => (sp.product_id === id ? { ...sp, quantity: qty } : sp)),
+      )
+    }
+  }
+
+  const removeProduct = (id: string) => {
+    setSelectedProducts(selectedProducts.filter((sp) => sp.product_id !== id))
+  }
+
+  const productsTotal = selectedProducts.reduce(
+    (acc, curr) => acc + curr.product.price * curr.quantity,
+    0,
+  )
+  const serviceTotal = parseFloat(svcForm.service_price.replace(',', '.') || '0')
+  const grandTotal = (isNaN(serviceTotal) ? 0 : serviceTotal) + productsTotal
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-10">
@@ -202,7 +317,8 @@ export default function Checkout() {
         className="w-full"
         onValueChange={() => {
           setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
-          setSvcForm({ appointment_id: '', price: '', payment_method: '' })
+          setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
+          setSelectedProducts([])
         }}
       >
         <TabsList className="grid w-full grid-cols-2">
@@ -213,13 +329,13 @@ export default function Checkout() {
         <TabsContent value="service">
           <Card>
             <CardHeader>
-              <CardTitle>Finalizar Serviço</CardTitle>
+              <CardTitle>Finalizar Serviço & Produtos</CardTitle>
               <CardDescription>
-                Selecione o agendamento concluído e confirme o valor pago.
+                Selecione o agendamento concluído e adicione produtos se houver.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCloseService} className="space-y-4">
+              <form onSubmit={handleCloseService} className="space-y-6">
                 <div className="space-y-2">
                   <Label>Agendamento Pendente</Label>
                   <Select
@@ -247,16 +363,81 @@ export default function Checkout() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Valor Final (R$)</Label>
+                  <Label>Valor do Serviço (R$)</Label>
                   <Input
                     required
                     type="number"
                     step="0.01"
                     min="0"
                     placeholder="0.00"
-                    value={svcForm.price}
-                    onChange={(e) => setSvcForm({ ...svcForm, price: e.target.value })}
+                    value={svcForm.service_price}
+                    onChange={(e) => setSvcForm({ ...svcForm, service_price: e.target.value })}
                   />
+                </div>
+
+                <div className="space-y-4 border rounded-md p-4 bg-muted/20">
+                  <div>
+                    <Label className="text-base font-semibold">Produtos Adicionais</Label>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Vendeu algum produto durante o serviço? Adicione aqui.
+                    </p>
+                    <div className="flex gap-2">
+                      <Select value={productToAdd} onValueChange={setProductToAdd}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Buscar produto..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name} - R$ {p.price.toFixed(2)} (Estoque: {p.stock_quantity || 0})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="secondary" onClick={handleAddProduct}>
+                        <Plus className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {selectedProducts.length > 0 && (
+                    <div className="space-y-2">
+                      {selectedProducts.map((sp) => (
+                        <div
+                          key={sp.product_id}
+                          className="flex items-center justify-between gap-4 text-sm bg-background p-2 rounded border"
+                        >
+                          <div className="flex-1 font-medium truncate">{sp.product.name}</div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              className="w-16 h-8 text-center"
+                              min={1}
+                              value={sp.quantity}
+                              onChange={(e) =>
+                                updateProductQuantity(sp.product_id, parseInt(e.target.value))
+                              }
+                            />
+                            <div className="w-20 text-right text-muted-foreground">
+                              R$ {(sp.product.price * sp.quantity).toFixed(2)}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => removeProduct(sp.product_id)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="text-right text-sm font-medium pt-2 border-t">
+                        Total Produtos: R$ {productsTotal.toFixed(2)}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -277,12 +458,17 @@ export default function Checkout() {
                   </Select>
                 </div>
 
+                <div className="pt-4 border-t flex justify-between items-center font-bold text-lg">
+                  <span>Total Geral:</span>
+                  <span className="text-primary">R$ {grandTotal.toFixed(2)}</span>
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full"
                   disabled={isSubmitting || !svcForm.appointment_id}
                 >
-                  {isSubmitting ? 'Processando...' : 'Concluir Serviço'}
+                  {isSubmitting ? 'Processando...' : 'Concluir Venda'}
                 </Button>
               </form>
             </CardContent>

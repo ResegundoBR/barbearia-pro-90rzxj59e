@@ -187,6 +187,9 @@ export default function Index() {
   const aptsTomorrowList = filteredAppointments.filter(
     (a) => a.date && a.date.startsWith(tomorrowStr) && a.status !== 'Cancelado',
   )
+  const lowStockProductsList = products.filter(
+    (p) => (p.stock_quantity || 0) <= Math.max(p.reorder_point || 0, p.min_stock || 0),
+  )
 
   const peakData = useMemo(() => {
     const hours = Array.from({ length: 13 }, (_, i) => i + 8)
@@ -366,10 +369,26 @@ export default function Index() {
             <Card className="bg-glass border-none">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
-                  Alertas Proativos
+                  Alertas
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {lowStockProductsList.length > 0 && (
+                  <div
+                    className="flex items-center justify-between gap-3 bg-orange-500/10 text-orange-500 p-2 rounded-md cursor-pointer"
+                    onClick={() => setAlertModal('stock')}
+                  >
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="size-5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-sm">
+                          {lowStockProductsList.length} produtos com baixo estoque
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="size-4 opacity-50" />
+                  </div>
+                )}
                 <div
                   className="flex items-center justify-between gap-3 bg-red-500/10 text-red-500 p-2 rounded-md cursor-pointer"
                   onClick={() => setAlertModal('risk')}
@@ -485,32 +504,26 @@ export default function Index() {
                   <div key={c.id} className="py-4 border-b border-border/50 flex flex-col gap-2">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold text-base flex items-center gap-2">
-                        <span>❌</span> {c.name} {c.surname}
+                        <span>❌</span> {c.name} {c.surname}{' '}
+                        {c.last_visit
+                          ? `(Sem voltar há ${days} dias)`
+                          : '(Sem visitas registradas)'}
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground flex flex-col gap-1">
-                      <span>
-                        <strong className="text-foreground">Status:</strong>{' '}
-                        {c.last_visit ? `Sem voltar há ${days} dias` : 'Sem visitas registradas'}
-                      </span>
                       {c.last_visit && (
                         <span>
                           <strong className="text-foreground">Último atendimento:</strong>{' '}
-                          {format(new Date(c.last_visit), "dd 'de' MMMM", { locale: ptBR })}
+                          {format(new Date(c.last_visit), 'dd/MM/yyyy')}
                         </span>
                       )}
                       <span>
                         <strong className="text-foreground">Frequência anterior:</strong> A cada{' '}
                         {freq} dias
                       </span>
-                    </div>
-                    <div className="mt-2">
-                      <Badge
-                        variant="outline"
-                        className="bg-primary/10 text-primary border-primary/20"
-                      >
-                        Ação sugerida: {action}
-                      </Badge>
+                      <span>
+                        <strong className="text-foreground">Ação sugerida:</strong> {action}
+                      </span>
                     </div>
                   </div>
                 )
@@ -533,6 +546,19 @@ export default function Index() {
                   </span>
                 </div>
               ))}
+            {alertModal === 'stock' && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Lista a comprar:</p>
+                {lowStockProductsList.map((p) => (
+                  <div key={p.id} className="py-2 border-b flex justify-between text-sm">
+                    <span>{p.name}</span>
+                    <span className="text-orange-500 font-medium">
+                      Estoque: {p.stock_quantity || 0}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </ScrollArea>
         </DialogContent>
       </Dialog>
