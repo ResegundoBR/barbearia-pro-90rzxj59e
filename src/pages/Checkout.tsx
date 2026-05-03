@@ -226,9 +226,21 @@ export default function Checkout() {
 
         if (barber) {
           let prodComm = 0
-          const pRule = rules.find(
+          const specificRule = rules.find(
             (r) => r.barber_id === barber.id && r.item_id === prod.id && r.item_type === 'product',
           )
+          const categoryRule = rules.find(
+            (r) =>
+              r.barber_id === barber.id &&
+              r.item_id === prod.category &&
+              r.item_type === 'category',
+          )
+          const allProductRule = rules.find(
+            (r) => r.barber_id === barber.id && r.item_type === 'product' && r.item_id === 'all',
+          )
+
+          const pRule = specificRule || categoryRule || allProductRule
+
           if (pRule) {
             prodComm =
               pRule.type === 'percentage'

@@ -149,17 +149,22 @@ export default function Agenda() {
       startDate.setHours(h, m, 0, 0)
       const end_time = format(addMinutes(startDate, duration), 'HH:mm')
 
-      await createAppointment({
+      const payload: any = {
         barber_id: form.barber_id,
         client_id: form.client_id,
         service_id: svcId,
-        client_package_id: isPkg && activePackage ? activePackage.id : '',
         time: form.time,
         end_time,
         date: format(form.date, 'yyyy-MM-dd 12:00:00'),
         status: 'Confirmado',
         price: isPkg ? 0 : svc?.price || 0,
-      })
+      }
+
+      if (isPkg && activePackage) {
+        payload.client_package_id = activePackage.id
+      }
+
+      await createAppointment(payload)
 
       if (isPkg && activePackage) {
         await consumePackage(activePackage.id, { remaining_uses: activePackage.remaining_uses - 1 })

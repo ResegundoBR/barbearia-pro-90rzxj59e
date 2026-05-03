@@ -67,6 +67,8 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           servicesTotal: 0,
           packagesCount: 0,
           packagesTotal: 0,
+          productsCount: 0,
+          productsTotal: 0,
           advances: 0,
           total: 0,
         }
@@ -78,6 +80,9 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
         if (c.type === 'service') {
           acc[barberId].servicesCount++
           acc[barberId].servicesTotal += c.amount
+        } else if (c.type === 'product') {
+          acc[barberId].productsCount++
+          acc[barberId].productsTotal += c.amount
         } else {
           acc[barberId].packagesCount++
           acc[barberId].packagesTotal += c.amount
@@ -429,9 +434,13 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                   <span className="text-muted-foreground">Serviços ({stats.servicesCount})</span>
                   <span>R$ {stats.servicesTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between border-b pb-2 border-border/50">
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Pacotes ({stats.packagesCount})</span>
                   <span>R$ {stats.packagesTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2 border-border/50">
+                  <span className="text-muted-foreground">Produtos ({stats.productsCount})</span>
+                  <span>R$ {stats.productsTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-medium pt-1">
                   <span>Total</span>

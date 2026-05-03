@@ -467,6 +467,45 @@ export default function Index() {
       )}
       {activeTab === 'packages' && <PackagesView packages={filteredPackages} />}
 
+      <Dialog open={alertModal === 'stock'} onOpenChange={(v) => !v && setAlertModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Produtos com Estoque Baixo</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Produto</TableHead>
+                  <TableHead className="text-right">Estoque Atual</TableHead>
+                  <TableHead className="text-right">Estoque Mínimo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lowStockProductsList.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>{p.name}</TableCell>
+                    <TableCell className="text-right text-red-500 font-bold">
+                      {p.stock_quantity || 0}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {p.min_stock || p.reorder_point || 0}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {lowStockProductsList.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                      Nenhum produto com estoque baixo.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!dashboardModal} onOpenChange={(v) => !v && setDashboardModal(null)}>
         <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
           <DialogHeader>

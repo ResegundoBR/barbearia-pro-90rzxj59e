@@ -116,7 +116,7 @@ export default function Staff() {
             packageUsed: !!a.client_package_id,
             price: a.price || a.expand?.service_id?.price || 0,
             commission: c?.amount || 0,
-            status: c?.status || 'paid',
+            status: c ? c.status : 'none',
           }
         }),
         ...prods.map((p) => {
@@ -135,7 +135,7 @@ export default function Staff() {
             packageUsed: false,
             price: p.price_at_sale || 0,
             commission: c?.amount || 0,
-            status: c?.status || 'paid',
+            status: c ? c.status : 'none',
           }
         }),
         ...packs.map((pk) => {
@@ -154,7 +154,7 @@ export default function Staff() {
             packageUsed: false,
             price: pk.expand?.package_id?.price || 0,
             commission: c?.amount || 0,
-            status: c?.status || 'paid',
+            status: c ? c.status : 'none',
           }
         }),
       ].sort((a, b) => b.date.getTime() - a.date.getTime())
@@ -267,7 +267,6 @@ export default function Staff() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Comissão Padrão</TableHead>
                     <TableHead>Pagos (Total)</TableHead>
                     <TableHead>Comissão Disponível</TableHead>
                     <TableHead>Comissão a Vencer</TableHead>
@@ -289,11 +288,6 @@ export default function Staff() {
                     return (
                       <TableRow key={b.id}>
                         <TableCell className="font-medium">{b.name}</TableCell>
-                        <TableCell>
-                          {b.commission_type === 'percentage'
-                            ? `${b.commission_value}%`
-                            : `R$ ${b.commission_value}`}
-                        </TableCell>
                         <TableCell>R$ {paid.toFixed(2)}</TableCell>
                         <TableCell className="text-emerald-600 font-medium">
                           R$ {available.toFixed(2)}
@@ -350,8 +344,18 @@ export default function Staff() {
                   {rules.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell>{barbers.find((b) => b.id === r.barber_id)?.name}</TableCell>
-                      <TableCell>{r.item_id}</TableCell>
-                      <TableCell className="capitalize">{r.item_type}</TableCell>
+                      <TableCell>
+                        {r.item_type === 'product' && r.item_id === 'all'
+                          ? 'Todos os Produtos'
+                          : r.item_id}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {r.item_type === 'category'
+                          ? 'Categoria'
+                          : r.item_type === 'product'
+                            ? 'Produto'
+                            : r.item_type}
+                      </TableCell>
                       <TableCell>
                         {r.type === 'percentage' ? `${r.value}%` : `R$ ${r.value}`}
                       </TableCell>
@@ -436,7 +440,9 @@ export default function Staff() {
                             ? 'Pago'
                             : item.status === 'available'
                               ? 'Disponível'
-                              : 'A Vencer'}
+                              : item.status === 'pending'
+                                ? 'A Vencer'
+                                : '-'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
@@ -568,26 +574,58 @@ export default function Staff() {
               <Label>Tipo de Item</Label>
               <Select
                 value={rForm.item_type}
-                onValueChange={(v) => setRForm({ ...rForm, item_type: v, item_id: '' })}
+                onValueChange={(v) => {
+                  if (v === 'product') {
+                    setRForm({ ...rForm, item_type: v, item_id: 'all' })
+                  } else {
+                    setRForm({ ...rForm, item_type: v, item_id: '' })
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="service">Serviço</SelectItem>
-                  <SelectItem value="product">Produto</SelectItem>
+                  <SelectItem value="product">Produto (Todos)</SelectItem>
+                  <SelectItem value="category">Categoria de Produto</SelectItem>
                   <SelectItem value="package">Pacote</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Item ID (Copie o ID do item ou digite o nome se suportado)</Label>
-              <Input
-                required
-                value={rForm.item_id}
-                onChange={(e) => setRForm({ ...rForm, item_id: e.target.value })}
-              />
-            </div>
+
+            {rForm.item_type === 'category' ? (
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Select
+                  required
+                  value={rForm.item_id}
+                  onValueChange={(v) => setRForm({ ...rForm, item_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(new Set(products.map((p) => p.category).filter(Boolean))).map(
+                      (cat) => (
+                        <SelectItem key={cat as string} value={cat as string}>
+                          {cat as string}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : rForm.item_type !== 'product' ? (
+              <div className="space-y-2">
+                <Label>Item ID (Copie o ID do item)</Label>
+                <Input
+                  required
+                  value={rForm.item_id}
+                  onChange={(e) => setRForm({ ...rForm, item_id: e.target.value })}
+                />
+              </div>
+            ) : null}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tipo</Label>

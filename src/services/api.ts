@@ -25,13 +25,11 @@ export const updateCommissionRule = (id: string, data: any) =>
 export const deleteCommissionRule = (id: string) => pb.collection('commission_rules').delete(id)
 
 export const getAppointments = (filter?: string) =>
-  pb
-    .collection('appointments')
-    .getFullList({
-      expand: 'service_id,barber_id,client_id,client_package_id.package_id',
-      sort: '-date',
-      filter,
-    })
+  pb.collection('appointments').getFullList({
+    expand: 'service_id,barber_id,client_id,client_package_id.package_id',
+    sort: '-date',
+    filter,
+  })
 export const getAppointmentsByClient = (clientId: string) =>
   pb.collection('appointments').getFullList({
     filter: `client_id='${clientId}'`,
