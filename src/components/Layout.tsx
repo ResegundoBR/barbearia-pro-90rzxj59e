@@ -36,6 +36,8 @@ import {
 import useMainStore from '@/stores/main'
 import { SubscriptionTier } from '@/lib/tiers'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/hooks/use-auth'
+import pb from '@/lib/pocketbase/client'
 
 const navItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
@@ -47,7 +49,16 @@ const navItems = [
 
 export default function Layout() {
   const location = useLocation()
-  const { state, updateTier } = useMainStore()
+  const { state } = useMainStore()
+  const { user } = useAuth()
+
+  const currentPlan = user?.plan || 'Free'
+
+  const updateTier = async (v: string) => {
+    if (user) {
+      await pb.collection('users').update(user.id, { plan: v })
+    }
+  }
 
   return (
     <SidebarProvider>
@@ -91,7 +102,7 @@ export default function Layout() {
             <div className="bg-primary text-primary-foreground p-1 rounded-md">
               <Scissors className="size-4" />
             </div>
-            {state.tier}
+            {currentPlan}
           </div>
 
           <div className="flex-1 flex items-center max-w-md relative ml-2 md:ml-0">
@@ -103,7 +114,7 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-            <Select value={state.tier} onValueChange={(v) => updateTier(v as SubscriptionTier)}>
+            <Select value={currentPlan} onValueChange={updateTier}>
               <SelectTrigger className="w-[110px] sm:w-[130px] h-9 bg-secondary/50 text-xs border-dashed min-h-[44px]">
                 <Crown className="size-3 mr-1 text-primary" />
                 <SelectValue />

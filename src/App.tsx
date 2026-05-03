@@ -9,24 +9,50 @@ import Estoque from './pages/Estoque'
 import Checkout from './pages/Checkout'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
+import { AuthProvider, useAuth } from '@/hooks/use-auth'
+import { useEffect, useState } from 'react'
+
+function DemoLoginGuard({ children }: { children: React.ReactNode }) {
+  const { user, signIn, loading } = useAuth()
+  const [authenticating, setAuthenticating] = useState(false)
+
+  useEffect(() => {
+    if (!loading && !user && !authenticating) {
+      setAuthenticating(true)
+      signIn('reginaldo.segundo@planagroup.com.br', 'Skip@Pass').finally(() => {
+        setAuthenticating(false)
+      })
+    }
+  }, [loading, user, authenticating, signIn])
+
+  if (loading || authenticating) {
+    return <div className="h-screen w-screen flex items-center justify-center">Carregando...</div>
+  }
+
+  return <>{children}</>
+}
 
 const App = () => (
-  <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Index />} />
-          <Route path="/agenda" element={<Agenda />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/estoque" element={<Estoque />} />
-          <Route path="/checkout" element={<Checkout />} />
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </TooltipProvider>
-  </BrowserRouter>
+  <AuthProvider>
+    <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <DemoLoginGuard>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/agenda" element={<Agenda />} />
+              <Route path="/clientes" element={<Clientes />} />
+              <Route path="/estoque" element={<Estoque />} />
+              <Route path="/checkout" element={<Checkout />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </DemoLoginGuard>
+      </TooltipProvider>
+    </BrowserRouter>
+  </AuthProvider>
 )
 
 export default App
