@@ -26,7 +26,7 @@ import {
   getServices,
   createAppointment,
   getClientPackages,
-  usePackage,
+  consumePackage,
 } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
 
@@ -90,7 +90,7 @@ export default function Agenda() {
 
       await createAppointment(newApt)
       if (activePackage) {
-        await usePackage(activePackage.id, activePackage.remaining_uses)
+        await consumePackage(activePackage.id, activePackage.remaining_uses)
         toast({ title: 'Agendamento salvo. Usado 1 crédito do pacote.' })
       } else {
         toast({ title: 'Agendamento salvo!' })

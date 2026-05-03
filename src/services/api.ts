@@ -18,6 +18,6 @@ export const getCommissions = () =>
 
 export const createClient = (data: any) => pb.collection('clients').create(data)
 export const createAppointment = (data: any) => pb.collection('appointments').create(data)
-export const usePackage = async (clientPackageId: string, remaining: number) => {
+export const consumePackage = async (clientPackageId: string, remaining: number) => {
   return pb.collection('client_packages').update(clientPackageId, { remaining_uses: remaining - 1 })
 }
