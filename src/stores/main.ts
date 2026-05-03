@@ -34,12 +34,15 @@ export interface Appointment {
   date: string
   price: number
 }
+import { SubscriptionTier } from '@/lib/tiers'
+
 export interface ChartData {
   name: string
   receita: number
 }
 
 interface State {
+  tier: SubscriptionTier
   barbers: Barber[]
   customers: Customer[]
   products: Product[]
@@ -48,6 +51,7 @@ interface State {
 }
 
 const mockState: State = {
+  tier: 'Free',
   barbers: [
     {
       id: 'b1',
@@ -207,6 +211,10 @@ export default function useMainStore() {
     }
   }, [])
 
+  const updateTier = (tier: SubscriptionTier) => {
+    updateStore({ tier })
+  }
+
   const updateStore = (updates: Partial<State> | ((prev: State) => Partial<State>)) => {
     const newValues = typeof updates === 'function' ? updates(globalState) : updates
     globalState = { ...globalState, ...newValues }
@@ -227,5 +235,5 @@ export default function useMainStore() {
     }))
   }
 
-  return { state, updateStore, updateAppointmentStatus, updateProductStock }
+  return { state, updateStore, updateTier, updateAppointmentStatus, updateProductStock }
 }

@@ -2,8 +2,9 @@ import { KpiCards } from '@/components/dashboard/KpiCards'
 import { PerformanceChart } from '@/components/dashboard/PerformanceChart'
 import { AgendaPreview } from '@/components/dashboard/AgendaPreview'
 import { Button } from '@/components/ui/button'
-import { PlusCircle, ShoppingCart, UserPlus } from 'lucide-react'
+import { ShoppingCart, UserPlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { FeatureGuard } from '@/components/FeatureGuard'
 
 export default function Index() {
   return (
@@ -14,12 +15,12 @@ export default function Index() {
           <p className="text-muted-foreground">Resumo da sua barbearia hoje.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="secondary" className="flex-1 sm:flex-none gap-2" asChild>
+          <Button variant="secondary" className="flex-1 sm:flex-none gap-2 min-h-[44px]" asChild>
             <Link to="/clientes">
               <UserPlus className="size-4" /> Cliente
             </Link>
           </Button>
-          <Button className="flex-1 sm:flex-none gap-2" asChild>
+          <Button className="flex-1 sm:flex-none gap-2 min-h-[44px]" asChild>
             <Link to="/checkout">
               <ShoppingCart className="size-4" /> Venda Rápida
             </Link>
@@ -27,11 +28,30 @@ export default function Index() {
         </div>
       </div>
 
-      <KpiCards />
+      <FeatureGuard
+        requiredTier="Pro"
+        overlay
+        fallbackMessage="Resumo de KPI disponível no plano Pro."
+      >
+        <KpiCards />
+      </FeatureGuard>
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-        <PerformanceChart />
-        <AgendaPreview />
+        <FeatureGuard
+          requiredTier="Platinum"
+          overlay
+          fallbackMessage="Desempenho detalhado exclusivo no plano Platinum."
+        >
+          <PerformanceChart />
+        </FeatureGuard>
+
+        <FeatureGuard
+          requiredTier="Pro"
+          overlay
+          fallbackMessage="Visão da agenda disponível no plano Pro."
+        >
+          <AgendaPreview />
+        </FeatureGuard>
       </div>
     </div>
   )

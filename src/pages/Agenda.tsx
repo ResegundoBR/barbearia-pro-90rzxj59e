@@ -4,6 +4,7 @@ import useMainStore from '@/stores/main'
 import { TimeSlot } from '@/components/agenda/TimeSlot'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Plus } from 'lucide-react'
+import { TIER_LIMITS } from '@/lib/tiers'
 
 // Generate times from 09:00 to 19:00, every 30 mins
 const generateTimeSlots = () => {
@@ -21,21 +22,23 @@ const timeSlots = generateTimeSlots()
 export default function Agenda() {
   const { state } = useMainStore()
 
+  const allowedBarbers = state.barbers.slice(0, TIER_LIMITS[state.tier].barbers)
+
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col space-y-4">
+    <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-8rem)] flex flex-col space-y-4">
       <div className="flex justify-between items-center shrink-0">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Agenda Diária</h2>
           <p className="text-muted-foreground text-sm">Domingo, 03 de Maio de 2026</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2 min-h-[44px]">
           <Plus className="size-4" />
           <span className="hidden sm:inline">Agendamento</span>
         </Button>
       </div>
 
       <ScrollArea className="flex-1 rounded-xl border bg-card/30 shadow-inner">
-        <div className="flex gap-4 p-4 min-w-max">
+        <div className="flex gap-2 sm:gap-4 p-2 sm:p-4 min-w-max">
           <div className="w-16 shrink-0 flex flex-col gap-2 mt-[68px]">
             {timeSlots.map((time) => (
               <div
@@ -47,9 +50,9 @@ export default function Agenda() {
             ))}
           </div>
 
-          {state.barbers.map((barber) => (
-            <div key={barber.id} className="w-[280px] shrink-0 flex flex-col gap-2">
-              <div className="sticky top-0 z-10 flex items-center justify-center gap-3 py-3 px-4 bg-card rounded-md border shadow-sm mb-2">
+          {allowedBarbers.map((barber) => (
+            <div key={barber.id} className="w-[240px] sm:w-[280px] shrink-0 flex flex-col gap-2">
+              <div className="sticky top-0 z-10 flex items-center justify-center gap-3 py-2 sm:py-3 px-4 bg-card/95 backdrop-blur rounded-md border shadow-sm mb-2">
                 <Avatar className="size-8">
                   <AvatarImage src={barber.avatar} />
                   <AvatarFallback>{barber.name.charAt(0)}</AvatarFallback>
