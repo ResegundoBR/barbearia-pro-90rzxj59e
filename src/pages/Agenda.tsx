@@ -36,6 +36,7 @@ import { format, addMinutes, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
+import { extractFieldErrors } from '@/lib/pocketbase/errors'
 
 const SLOT_HEIGHT = 56
 const GAP = 4
@@ -102,7 +103,8 @@ export default function Agenda() {
       )
 
       const svc = services.find((s) => s.id === form.service_id)
-      const duration = svc?.duration_minutes || 30
+      const duration =
+        activePackage?.expand?.package_id?.duration_minutes || svc?.duration_minutes || 30
 
       const startParts = form.time.split(':')
       const startDate = new Date()
@@ -130,8 +132,10 @@ export default function Agenda() {
       }
       setIsOpen(false)
       loadData()
-    } catch (e) {
-      toast({ title: 'Erro ao agendar', variant: 'destructive' })
+    } catch (err: any) {
+      const errors = extractFieldErrors(err)
+      const msg = Object.values(errors).join(', ')
+      toast({ title: 'Erro ao agendar', description: msg, variant: 'destructive' })
     }
   }
 
@@ -266,7 +270,17 @@ export default function Agenda() {
                     const startIdx = timeSlots.indexOf(apt.time || '00:00')
                     if (startIdx === -1) return null
 
-                    const duration = apt.expand?.service_id?.duration_minutes || 30
+                    const getDurationInMinutes = (start: string, end: string) => {
+                      if (!start || !end) return 30
+                      const [sH, sM] = start.split(':').map(Number)
+                      const [eH, eM] = end.split(':').map(Number)
+                      return eH * 60 + eM - (sH * 60 + sM)
+                    }
+
+                    const duration =
+                      getDurationInMinutes(apt.time, apt.end_time) ||
+                      apt.expand?.service_id?.duration_minutes ||
+                      30
                     const slotsSpanned = Math.max(1, Math.ceil(duration / 15))
 
                     const top = startIdx * (SLOT_HEIGHT + GAP)

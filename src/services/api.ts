@@ -50,6 +50,7 @@ export const createPackage = (data: any) => pb.collection('packages').create(dat
 export const updatePackage = (id: string, data: any) => pb.collection('packages').update(id, data)
 
 export const getProducts = () => pb.collection('products').getFullList({ sort: '-created' })
+export const createProduct = (data: any) => pb.collection('products').create(data)
 export const updateProduct = (id: string, data: any) => pb.collection('products').update(id, data)
 export const getProductPurchasesByClient = (clientId: string) =>
   pb
