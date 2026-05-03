@@ -116,6 +116,7 @@ export default function Staff() {
     if (type === 'service') return services.find((s) => s.id === id)?.name || 'Desconhecido'
     if (type === 'product') return products.find((p) => p.id === id)?.name || 'Desconhecido'
     if (type === 'package') return packages.find((p) => p.id === id)?.name || 'Desconhecido'
+    if (type === 'category') return id
     return id
   }
 
@@ -309,32 +310,51 @@ export default function Staff() {
                   <SelectItem value="service">Serviço</SelectItem>
                   <SelectItem value="product">Produto</SelectItem>
                   <SelectItem value="package">Pacote</SelectItem>
+                  <SelectItem value="category">Categoria (Produtos)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Item</Label>
-              <Select
-                required
-                value={rForm.item_id}
-                onValueChange={(v) => setRForm({ ...rForm, item_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o item..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {(rForm.item_type === 'service'
-                    ? services
-                    : rForm.item_type === 'product'
-                      ? products
-                      : packages
-                  ).map((i) => (
-                    <SelectItem key={i.id} value={i.id}>
-                      {i.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {rForm.item_type === 'category' ? (
+                <Select
+                  required
+                  value={rForm.item_id}
+                  onValueChange={(v) => setRForm({ ...rForm, item_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beleza">Beleza</SelectItem>
+                    <SelectItem value="bebidas">Bebidas</SelectItem>
+                    <SelectItem value="acessorios">Acessórios</SelectItem>
+                    <SelectItem value="outros">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select
+                  required
+                  value={rForm.item_id}
+                  onValueChange={(v) => setRForm({ ...rForm, item_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o item..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(rForm.item_type === 'service'
+                      ? services
+                      : rForm.item_type === 'product'
+                        ? products
+                        : packages
+                    ).map((i) => (
+                      <SelectItem key={i.id} value={i.id}>
+                        {i.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

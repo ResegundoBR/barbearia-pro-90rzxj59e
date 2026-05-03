@@ -8,14 +8,9 @@ import {
   CalendarDays,
   AlertTriangle,
   PackageSearch,
+  Hourglass,
 } from 'lucide-react'
-import {
-  getAppointments,
-  getClients,
-  getClientPackages,
-  getBarbers,
-  getServices,
-} from '@/services/api'
+import { getAppointments, getClients, getClientPackages, getBarbers } from '@/services/api'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format, startOfWeek, startOfMonth, startOfYear, addDays, differenceInDays } from 'date-fns'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -55,29 +50,40 @@ export default function Index() {
     loadData()
   }, [period])
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd')
   const tomorrowStr = format(addDays(new Date(), 1), 'yyyy-MM-dd')
 
-  const aptsToday = appointments.filter((a) => a.date && a.date.startsWith(todayStr))
-  const completedToday = aptsToday.filter((a) => a.status === 'Concluído')
-  const todayRevenue = completedToday.reduce(
+  const completedPeriod = appointments.filter((a) => a.status === 'Concluído')
+  const periodRevenue = completedPeriod.reduce(
     (acc, curr) => acc + (curr.price || curr.expand?.service_id?.price || 0),
     0,
   )
 
-  const uniqueClientsToday = new Set(completedToday.map((a) => a.client_id)).size
-  const avgTicket = uniqueClientsToday > 0 ? todayRevenue / uniqueClientsToday : 0
+  const uniqueClientsPeriod = new Set(completedPeriod.map((a) => a.client_id)).size
+  const avgTicket = uniqueClientsPeriod > 0 ? periodRevenue / uniqueClientsPeriod : 0
 
-  const totalMinutesAvailable = barbers.length * 12 * 60
-  const totalBookedMinutesToday = aptsToday.length * 30
+  const daysInPeriod =
+    period === 'today'
+      ? 1
+      : period === 'week'
+        ? 7
+        : period === 'month'
+          ? 30
+          : period === 'year'
+            ? 365
+            : 30
+  const totalMinutesAvailable = barbers.length * 12 * 60 * daysInPeriod
+  const totalBookedMinutes = appointments.reduce(
+    (acc, a) => acc + (a.expand?.service_id?.duration_minutes || 30),
+    0,
+  )
   const occupancyRate =
     totalMinutesAvailable > 0
-      ? Math.min((totalBookedMinutesToday / totalMinutesAvailable) * 100, 100)
+      ? Math.min((totalBookedMinutes / totalMinutesAvailable) * 100, 100)
       : 0
 
   const rankings = barbers
     .map((b) => {
-      const bApts = appointments.filter((a) => a.barber_id === b.id && a.status === 'Concluído')
+      const bApts = completedPeriod.filter((a) => a.barber_id === b.id)
       const rev = bApts.reduce(
         (acc, curr) => acc + (curr.price || curr.expand?.service_id?.price || 0),
         0,
@@ -125,6 +131,44 @@ export default function Index() {
     return counts
   }, [appointments])
 
+  const idleReport = useMemo(() => {
+    let maxIdleOverall = 0
+    let mostIdleBarber = '-'
+
+    barbers.forEach((b) => {
+      const bApts = appointments
+        .filter((a) => a.barber_id === b.id && a.time)
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+      let maxIdle = 0
+      for (let i = 0; i < bApts.length - 1; i++) {
+        if (bApts[i].date === bApts[i + 1].date) {
+          const end1 = bApts[i].end_time || bApts[i].time
+          const start2 = bApts[i + 1].time
+          const e1 = new Date(`1970-01-01T${end1}:00Z`).getTime()
+          const s2 = new Date(`1970-01-01T${start2}:00Z`).getTime()
+          const gap = (s2 - e1) / 60000
+          if (gap > maxIdle) maxIdle = gap
+        }
+      }
+      if (maxIdle > maxIdleOverall) {
+        maxIdleOverall = maxIdle
+        mostIdleBarber = b.name
+      }
+    })
+    return { mostIdleBarber, maxIdleOverall }
+  }, [appointments, barbers])
+
+  const periodLabel =
+    period === 'today'
+      ? 'HOJE'
+      : period === 'week'
+        ? 'ESTA SEMANA'
+        : period === 'month'
+          ? 'ESTE MÊS'
+          : period === 'year'
+            ? 'ESTE ANO'
+            : 'SEMPRE'
+
   return (
     <div className="space-y-6 pb-20 md:pb-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-end">
@@ -143,7 +187,7 @@ export default function Index() {
         </Tabs>
       </div>
 
-      <h3 className="text-lg font-semibold -mb-2">HOJE</h3>
+      <h3 className="text-lg font-semibold -mb-2">{periodLabel}</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <Card className="bg-glass border-none">
           <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
@@ -151,7 +195,7 @@ export default function Index() {
             <BadgeDollarSign className="size-4 text-emerald-500" />
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold">R$ {todayRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">R$ {periodRevenue.toFixed(2)}</div>
           </CardContent>
         </Card>
         <Card className="bg-glass border-none">
@@ -160,7 +204,7 @@ export default function Index() {
             <Users className="size-4 text-blue-500" />
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold">{uniqueClientsToday}</div>
+            <div className="text-2xl font-bold">{uniqueClientsPeriod}</div>
           </CardContent>
         </Card>
         <Card className="bg-glass border-none">
@@ -214,6 +258,17 @@ export default function Index() {
               <div>
                 <p className="font-semibold text-sm">{aptsTomorrow} agendamentos amanhã</p>
                 <p className="text-xs opacity-80">Previsão para o próximo dia</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 bg-slate-500/10 text-slate-500 p-2 rounded-md">
+              <Hourglass className="size-5 shrink-0" />
+              <div>
+                <p className="font-semibold text-sm">Maior ociosidade</p>
+                <p className="text-xs opacity-80">
+                  {idleReport.maxIdleOverall > 0
+                    ? `${idleReport.mostIdleBarber} (${Math.floor(idleReport.maxIdleOverall / 60)}h ${idleReport.maxIdleOverall % 60}m)`
+                    : 'Nenhuma ociosidade registrada'}
+                </p>
               </div>
             </div>
           </CardContent>

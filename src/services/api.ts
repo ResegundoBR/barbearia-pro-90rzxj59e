@@ -5,6 +5,9 @@ export const getClients = (filter?: string) =>
 export const createClient = (data: any) => pb.collection('clients').create(data)
 export const updateClient = (id: string, data: any) => pb.collection('clients').update(id, data)
 
+export const getBusinessHours = () =>
+  pb.collection('business_hours').getFullList({ sort: 'day_of_week' })
+
 export const getClientPackages = (filter?: string) =>
   pb
     .collection('client_packages')

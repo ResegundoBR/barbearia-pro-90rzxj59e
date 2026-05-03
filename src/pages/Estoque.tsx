@@ -59,6 +59,15 @@ export default function Estoque() {
     price: 0,
     is_active: true,
   })
+  const [prodForm, setProdForm] = useState<any>({
+    name: '',
+    price: 0,
+    category: '',
+    is_active: true,
+  })
+  const [products, setProducts] = useState<any[]>([])
+  const [prodDialog, setProdDialog] = useState(false)
+  const [editingProdId, setEditingProdId] = useState<string | null>(null)
 
   const { toast } = useToast()
 
@@ -67,6 +76,7 @@ export default function Estoque() {
     setPackages(await getPackages())
     setAppointments(await getAppointments())
     setClientPacks(await getClientPackages())
+    setProducts(await pb.collection('products').getFullList({ sort: '-created' }))
   }
 
   useEffect(() => {
@@ -76,6 +86,7 @@ export default function Estoque() {
   useRealtime('packages', loadData)
   useRealtime('appointments', loadData)
   useRealtime('client_packages', loadData)
+  useRealtime('products', loadData)
 
   const handleServiceSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,10 +112,29 @@ export default function Estoque() {
     }
   }
 
+  const handleProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      if (editingProdId) await pb.collection('products').update(editingProdId, prodForm)
+      else await pb.collection('products').create(prodForm)
+      toast({ title: 'Produto salvo!' })
+      setProdDialog(false)
+      loadData()
+    } catch {
+      toast({ title: 'Erro', variant: 'destructive' })
+    }
+  }
+
   const openService = (s?: any) => {
-    setSForm(s ? { ...s } : { name: '', price: 0, is_active: true })
+    setSForm(s ? { ...s } : { name: '', price: 0, duration_minutes: 30, is_active: true })
     setEditingSId(s ? s.id : null)
     setSDialog(true)
+  }
+
+  const openProduct = (p?: any) => {
+    setProdForm(p ? { ...p } : { name: '', price: 0, category: '', is_active: true })
+    setEditingProdId(p ? p.id : null)
+    setProdDialog(true)
   }
 
   const openPackage = (p?: any) => {
@@ -123,9 +153,10 @@ export default function Estoque() {
       </div>
 
       <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
           <TabsTrigger value="services">Serviços</TabsTrigger>
           <TabsTrigger value="packages">Pacotes</TabsTrigger>
+          <TabsTrigger value="products">Produtos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="services" className="mt-4 space-y-4">
@@ -140,6 +171,7 @@ export default function Estoque() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Duração</TableHead>
                     <TableHead>Preço Base</TableHead>
                     <TableHead>Total Rendido</TableHead>
                     <TableHead>Ativo</TableHead>
@@ -154,6 +186,7 @@ export default function Estoque() {
                     return (
                       <TableRow key={s.id} className={s.is_active === false ? 'opacity-50' : ''}>
                         <TableCell className="font-medium">{s.name}</TableCell>
+                        <TableCell>{s.duration_minutes || 30} min</TableCell>
                         <TableCell>R$ {s.price.toFixed(2)}</TableCell>
                         <TableCell className="font-bold text-green-600">
                           R$ {revenue.toFixed(2)}
@@ -172,6 +205,51 @@ export default function Estoque() {
                       </TableRow>
                     )
                   })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="products" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => openProduct()}>
+              <Plus className="size-4 mr-2" /> Novo Produto
+            </Button>
+          </div>
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Preço</TableHead>
+                    <TableHead>Ativo</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {products.map((p) => (
+                    <TableRow key={p.id} className={p.is_active === false ? 'opacity-50' : ''}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell className="capitalize">{p.category || '-'}</TableCell>
+                      <TableCell>R$ {p.price.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={p.is_active !== false}
+                          onCheckedChange={(v) =>
+                            pb.collection('products').update(p.id, { is_active: v })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openProduct(p)}>
+                          <Edit className="size-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -246,15 +324,26 @@ export default function Estoque() {
                 onChange={(e) => setSForm({ ...sForm, name: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Preço Base (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                required
-                value={sForm.price}
-                onChange={(e) => setSForm({ ...sForm, price: Number(e.target.value) })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Preço Base (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={sForm.price}
+                  onChange={(e) => setSForm({ ...sForm, price: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Duração (min)</Label>
+                <Input
+                  type="number"
+                  required
+                  value={sForm.duration_minutes || 30}
+                  onChange={(e) => setSForm({ ...sForm, duration_minutes: Number(e.target.value) })}
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button type="submit">Salvar</Button>
@@ -315,6 +404,54 @@ export default function Estoque() {
                   onChange={(e) => setPForm({ ...pForm, price: Number(e.target.value) })}
                 />
               </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">Salvar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={prodDialog} onOpenChange={setProdDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingProdId ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleProductSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input
+                required
+                value={prodForm.name}
+                onChange={(e) => setProdForm({ ...prodForm, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select
+                value={prodForm.category}
+                onValueChange={(v) => setProdForm({ ...prodForm, category: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione ou deixe em branco..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="beleza">Beleza</SelectItem>
+                  <SelectItem value="bebidas">Bebidas</SelectItem>
+                  <SelectItem value="acessorios">Acessórios</SelectItem>
+                  <SelectItem value="outros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Preço (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                required
+                value={prodForm.price}
+                onChange={(e) => setProdForm({ ...prodForm, price: Number(e.target.value) })}
+              />
             </div>
             <DialogFooter>
               <Button type="submit">Salvar</Button>
