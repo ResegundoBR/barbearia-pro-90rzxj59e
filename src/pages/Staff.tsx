@@ -116,6 +116,7 @@ export default function Staff() {
             packageUsed: !!a.client_package_id,
             price: a.price || a.expand?.service_id?.price || 0,
             commission: c?.amount || 0,
+            status: c?.status || 'paid',
           }
         }),
         ...prods.map((p) => {
@@ -134,6 +135,7 @@ export default function Staff() {
             packageUsed: false,
             price: p.price_at_sale || 0,
             commission: c?.amount || 0,
+            status: c?.status || 'paid',
           }
         }),
         ...packs.map((pk) => {
@@ -152,6 +154,7 @@ export default function Staff() {
             packageUsed: false,
             price: pk.expand?.package_id?.price || 0,
             commission: c?.amount || 0,
+            status: c?.status || 'paid',
           }
         }),
       ].sort((a, b) => b.date.getTime() - a.date.getTime())
@@ -266,7 +269,8 @@ export default function Staff() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Comissão Padrão</TableHead>
                     <TableHead>Pagos (Total)</TableHead>
-                    <TableHead>A Receber</TableHead>
+                    <TableHead>Comissão Disponível</TableHead>
+                    <TableHead>Comissão a Vencer</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -276,8 +280,11 @@ export default function Staff() {
                     const paid = bComms
                       .filter((c) => c.status === 'paid')
                       .reduce((acc, c) => acc + (c.amount || 0), 0)
+                    const available = bComms
+                      .filter((c) => c.status === 'available')
+                      .reduce((acc, c) => acc + (c.amount || 0), 0)
                     const pending = bComms
-                      .filter((c) => c.status === 'pending' || c.status === 'available')
+                      .filter((c) => c.status === 'pending')
                       .reduce((acc, c) => acc + (c.amount || 0), 0)
                     return (
                       <TableRow key={b.id}>
@@ -288,7 +295,12 @@ export default function Staff() {
                             : `R$ ${b.commission_value}`}
                         </TableCell>
                         <TableCell>R$ {paid.toFixed(2)}</TableCell>
-                        <TableCell>R$ {pending.toFixed(2)}</TableCell>
+                        <TableCell className="text-emerald-600 font-medium">
+                          R$ {available.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-amber-500 font-medium">
+                          R$ {pending.toFixed(2)}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
@@ -393,6 +405,7 @@ export default function Staff() {
                     <TableHead>Item</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Pacote?</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Valor Venda</TableHead>
                     <TableHead className="text-right">Comissão</TableHead>
                   </TableRow>
@@ -409,6 +422,23 @@ export default function Staff() {
                       <TableCell>{item.item}</TableCell>
                       <TableCell>{item.client}</TableCell>
                       <TableCell>{item.packageUsed ? 'Sim' : '-'}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            item.status === 'paid'
+                              ? 'default'
+                              : item.status === 'available'
+                                ? 'outline'
+                                : 'secondary'
+                          }
+                        >
+                          {item.status === 'paid'
+                            ? 'Pago'
+                            : item.status === 'available'
+                              ? 'Disponível'
+                              : 'A Vencer'}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-semibold text-emerald-600">
                         R$ {item.commission.toFixed(2)}
@@ -417,7 +447,7 @@ export default function Staff() {
                   ))}
                   {reportItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Nenhum registro de atividade encontrado.
                       </TableCell>
                     </TableRow>
@@ -425,11 +455,33 @@ export default function Staff() {
                 </TableBody>
               </Table>
               {reportItems.length > 0 && (
-                <div className="summary">
-                  <span>Total de Comissões no Período:</span>
-                  <span className="text-emerald-600">
-                    R$ {reportItems.reduce((acc, curr) => acc + curr.commission, 0).toFixed(2)}
-                  </span>
+                <div className="summary flex flex-col gap-2 mt-6">
+                  <div className="flex justify-between items-center text-lg">
+                    <span>Total de Comissões no Período:</span>
+                    <span className="text-primary font-bold">
+                      R$ {reportItems.reduce((acc, curr) => acc + curr.commission, 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Comissão Disponível:</span>
+                    <span className="text-emerald-600 font-semibold">
+                      R${' '}
+                      {reportItems
+                        .filter((i) => i.status === 'available')
+                        .reduce((acc, curr) => acc + curr.commission, 0)
+                        .toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Comissão a Vencer:</span>
+                    <span className="text-amber-500 font-semibold">
+                      R${' '}
+                      {reportItems
+                        .filter((i) => i.status === 'pending')
+                        .reduce((acc, curr) => acc + curr.commission, 0)
+                        .toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

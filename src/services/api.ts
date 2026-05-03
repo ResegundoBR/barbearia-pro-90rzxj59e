@@ -27,7 +27,11 @@ export const deleteCommissionRule = (id: string) => pb.collection('commission_ru
 export const getAppointments = (filter?: string) =>
   pb
     .collection('appointments')
-    .getFullList({ expand: 'service_id,barber_id,client_id', sort: '-date', filter })
+    .getFullList({
+      expand: 'service_id,barber_id,client_id,client_package_id.package_id',
+      sort: '-date',
+      filter,
+    })
 export const getAppointmentsByClient = (clientId: string) =>
   pb.collection('appointments').getFullList({
     filter: `client_id='${clientId}'`,
@@ -53,13 +57,11 @@ export const getProducts = () => pb.collection('products').getFullList({ sort: '
 export const createProduct = (data: any) => pb.collection('products').create(data)
 export const updateProduct = (id: string, data: any) => pb.collection('products').update(id, data)
 export const getProductPurchasesByClient = (clientId: string) =>
-  pb
-    .collection('product_purchases')
-    .getFullList({
-      filter: `client_id='${clientId}'`,
-      expand: 'product_id,barber_id',
-      sort: '-date',
-    })
+  pb.collection('product_purchases').getFullList({
+    filter: `client_id='${clientId}'`,
+    expand: 'product_id,barber_id',
+    sort: '-date',
+  })
 export const getProductPurchases = (filter?: string) =>
   pb
     .collection('product_purchases')

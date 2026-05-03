@@ -249,7 +249,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     if (method === 'debito') return 'Débito'
     if (method === 'pix') return 'Pix'
     if (method === 'card') return 'Cartão'
-    return '-'
+    return method
   }
 
   return (

@@ -215,7 +215,7 @@ export default function Index() {
     m === 'cash'
       ? 'Dinheiro'
       : m === 'pix'
-        ? 'PIX'
+        ? 'Pix'
         : m === 'debito'
           ? 'Débito'
           : m === 'credito'

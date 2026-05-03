@@ -24,6 +24,7 @@ import {
   createClientPackage,
   createCommission,
   updateAppointment,
+  consumePackage,
 } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
 import { addDays, format } from 'date-fns'
@@ -163,6 +164,13 @@ export default function Checkout() {
 
       await updateAppointment(apt.id, { status: 'Concluído', price: finalServicePrice })
 
+      if (apt.client_package_id && apt.expand?.client_package_id) {
+        const currentUses = apt.expand.client_package_id.remaining_uses || 0
+        await consumePackage(apt.client_package_id, {
+          remaining_uses: Math.max(0, currentUses - 1),
+        })
+      }
+
       const barber = barbers.find((b) => b.id === apt.barber_id)
       const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
       const isCredit = svcForm.payment_method === 'credito'
@@ -262,10 +270,19 @@ export default function Checkout() {
 
   const handleAppointmentChange = (val: string) => {
     const apt = appointments.find((a) => a.id === val)
+    let price = apt?.price?.toString() || apt?.expand?.service_id?.price?.toString() || '0'
+
+    if (apt?.expand?.client_package_id?.expand?.package_id) {
+      const pkg = apt.expand.client_package_id.expand.package_id
+      if (pkg.quantity > 0) {
+        price = (pkg.price / pkg.quantity).toFixed(2)
+      }
+    }
+
     setSvcForm({
       ...svcForm,
       appointment_id: val,
-      service_price: apt?.price?.toString() || apt?.expand?.service_id?.price?.toString() || '0',
+      service_price: price,
     })
   }
 
@@ -477,7 +494,7 @@ export default function Checkout() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="cash">Dinheiro</SelectItem>
-                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="pix">Pix</SelectItem>
                         <SelectItem value="debito">Débito</SelectItem>
                         <SelectItem value="credito">Crédito</SelectItem>
                       </SelectContent>
@@ -583,7 +600,7 @@ export default function Checkout() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="cash">Dinheiro</SelectItem>
-                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="pix">Pix</SelectItem>
                         <SelectItem value="debito">Débito</SelectItem>
                         <SelectItem value="credito">Crédito</SelectItem>
                       </SelectContent>
