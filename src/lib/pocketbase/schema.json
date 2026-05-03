@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T18:13:18.991Z",
+  "generatedAt": "2026-05-03T18:31:32.870Z",
   "collections": [
     {
       "name": "users",
@@ -426,7 +426,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["cash", "pix", "card"]
+          "selectValues": ["cash", "pix", "debito", "credito"]
         },
         {
           "name": "status",

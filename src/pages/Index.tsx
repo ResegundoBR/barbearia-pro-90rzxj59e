@@ -41,6 +41,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 export default function Index() {
   const { user } = useAuth()
@@ -55,13 +63,16 @@ export default function Index() {
   const [commissions, setCommissions] = useState<any[]>([])
   const [productPurchases, setProductPurchases] = useState<any[]>([])
 
-  const [period, setPeriod] = useState('today')
+  const [period, setPeriod] = useState('month')
   const [barberFilter, setBarberFilter] = useState('all')
   const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'packages'>('overview')
 
   const [alertModal, setAlertModal] = useState<'risk' | 'packages' | 'stock' | 'tomorrow' | null>(
     null,
   )
+  const [dashboardModal, setDashboardModal] = useState<
+    'revenue' | 'clients' | 'new_clients' | null
+  >(null)
 
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false)
   const [advanceBarber, setAdvanceBarber] = useState('')
@@ -71,15 +82,11 @@ export default function Index() {
     let dateFilter = ''
     const now = new Date()
 
-    if (period === 'today') {
-      dateFilter = format(now, 'yyyy-MM-dd')
-    } else if (period === 'week') {
+    if (period === 'today') dateFilter = format(now, 'yyyy-MM-dd')
+    else if (period === 'week')
       dateFilter = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    } else if (period === 'month') {
-      dateFilter = format(startOfMonth(now), 'yyyy-MM-dd')
-    } else if (period === 'year') {
-      dateFilter = format(startOfYear(now), 'yyyy-MM-dd')
-    }
+    else if (period === 'month') dateFilter = format(startOfMonth(now), 'yyyy-MM-dd')
+    else if (period === 'year') dateFilter = format(startOfYear(now), 'yyyy-MM-dd')
 
     const filterStr = dateFilter ? `date >= "${dateFilter} 00:00:00"` : ''
     const createdFilterStr = dateFilter ? `created >= "${dateFilter} 00:00:00"` : ''
@@ -100,40 +107,27 @@ export default function Index() {
   const loggedInBarber = barbers.find((b) => b.name === user?.name)
   const effectiveBarberFilter = isAdmin ? barberFilter : loggedInBarber?.id || 'all'
 
-  const filteredAppointments = useMemo(() => {
-    return appointments.filter(
-      (a) => effectiveBarberFilter === 'all' || a.barber_id === effectiveBarberFilter,
-    )
-  }, [appointments, effectiveBarberFilter])
-
-  const filteredCommissions = useMemo(() => {
-    return commissions.filter(
-      (c) => effectiveBarberFilter === 'all' || c.barber_id === effectiveBarberFilter,
-    )
-  }, [commissions, effectiveBarberFilter])
-
-  const filteredPackages = useMemo(() => {
-    return packages.filter(
-      (p) => effectiveBarberFilter === 'all' || p.barber_id === effectiveBarberFilter,
-    )
-  }, [packages, effectiveBarberFilter])
-
-  const handleCreateAdvance = async () => {
-    if (!advanceBarber || !advanceAmount) return
-    await createCommission({
-      barber_id: advanceBarber,
-      amount: parseFloat(advanceAmount),
-      type: 'advance',
-      is_advance: true,
-      payment_method: 'cash',
-      status: 'paid',
-      date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
-    })
-    setAdvanceModalOpen(false)
-    setAdvanceBarber('')
-    setAdvanceAmount('')
-    loadData()
-  }
+  const filteredAppointments = useMemo(
+    () =>
+      appointments.filter(
+        (a) => effectiveBarberFilter === 'all' || a.barber_id === effectiveBarberFilter,
+      ),
+    [appointments, effectiveBarberFilter],
+  )
+  const filteredCommissions = useMemo(
+    () =>
+      commissions.filter(
+        (c) => effectiveBarberFilter === 'all' || c.barber_id === effectiveBarberFilter,
+      ),
+    [commissions, effectiveBarberFilter],
+  )
+  const filteredPackages = useMemo(
+    () =>
+      packages.filter(
+        (p) => effectiveBarberFilter === 'all' || p.barber_id === effectiveBarberFilter,
+      ),
+    [packages, effectiveBarberFilter],
+  )
 
   const validAppointments = filteredAppointments.filter((a) => a.status !== 'Cancelado')
   const completedPeriod = validAppointments.filter(
@@ -143,13 +137,15 @@ export default function Index() {
     (acc, curr) => acc + (curr.price || curr.expand?.service_id?.price || 0),
     0,
   )
-  const uniqueClientsPeriod = new Set(completedPeriod.map((a) => a.client_id)).size
-  const avgTicket = completedPeriod.length > 0 ? periodRevenue / completedPeriod.length : 0
 
   const productRevenue = productPurchases.reduce(
     (acc, curr) => acc + (curr.price_at_sale || curr.expand?.product_id?.price || 0),
     0,
   )
+  const totalRevenue = periodRevenue + productRevenue
+
+  const uniqueClientsPeriod = new Set(completedPeriod.map((a) => a.client_id)).size
+  const avgTicket = completedPeriod.length > 0 ? periodRevenue / completedPeriod.length : 0
   const avgProductTicket =
     productPurchases.length > 0 ? productRevenue / productPurchases.length : 0
 
@@ -204,6 +200,28 @@ export default function Index() {
     return counts
   }, [validAppointments])
 
+  const clientsServed = useMemo(() => {
+    return Array.from(new Set(completedPeriod.map((a) => a.client_id))).map((id) => {
+      const apts = completedPeriod.filter((a) => a.client_id === id)
+      const client = apts[0]?.expand?.client_id
+      const barbers = Array.from(new Set(apts.map((a) => a.expand?.barber_id?.name)))
+        .filter(Boolean)
+        .join(', ')
+      return { client, barbers }
+    })
+  }, [completedPeriod])
+
+  const translateMethod = (m: string) =>
+    m === 'cash'
+      ? 'Dinheiro'
+      : m === 'pix'
+        ? 'PIX'
+        : m === 'debito'
+          ? 'Débito'
+          : m === 'credito'
+            ? 'Crédito'
+            : m
+
   return (
     <div className="space-y-6 pb-20 md:pb-6 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between gap-4 md:items-end">
@@ -243,19 +261,19 @@ export default function Index() {
           <TabsList className="bg-transparent w-full justify-start rounded-none px-0 h-auto gap-4">
             <TabsTrigger
               value="overview"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-2 py-2"
+              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-2"
             >
               Visão Geral
             </TabsTrigger>
             <TabsTrigger
               value="financial"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-2 py-2"
+              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-2"
             >
               Financeiro
             </TabsTrigger>
             <TabsTrigger
               value="packages"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-2 py-2"
+              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-2"
             >
               Pacotes Ativos
             </TabsTrigger>
@@ -266,7 +284,10 @@ export default function Index() {
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fade-in">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-            <Card className="bg-glass border-none">
+            <Card
+              className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
+              onClick={() => setDashboardModal('revenue')}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
                 <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
                   Faturamento
@@ -274,10 +295,13 @@ export default function Index() {
                 <BadgeDollarSign className="size-4 text-emerald-500 shrink-0" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <div className="text-2xl font-bold">R$ {periodRevenue.toFixed(2)}</div>
+                <div className="text-2xl font-bold">R$ {totalRevenue.toFixed(2)}</div>
               </CardContent>
             </Card>
-            <Card className="bg-glass border-none">
+            <Card
+              className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
+              onClick={() => setDashboardModal('clients')}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
                 <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
                   Clientes Atendidos
@@ -288,7 +312,10 @@ export default function Index() {
                 <div className="text-2xl font-bold">{uniqueClientsPeriod}</div>
               </CardContent>
             </Card>
-            <Card className="bg-glass border-none">
+            <Card
+              className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
+              onClick={() => setDashboardModal('new_clients')}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
                 <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
                   Novos Clientes
@@ -301,10 +328,7 @@ export default function Index() {
             </Card>
             <Card className="bg-glass border-none">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle
-                  className="text-xs font-medium text-muted-foreground truncate mr-2"
-                  title="Ticket Médio - Serviços"
-                >
+                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
                   Ticket Médio - Serv.
                 </CardTitle>
                 <BadgeDollarSign className="size-4 text-amber-500 shrink-0" />
@@ -315,10 +339,7 @@ export default function Index() {
             </Card>
             <Card className="bg-glass border-none">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle
-                  className="text-xs font-medium text-muted-foreground truncate mr-2"
-                  title="Ticket Médio - Produtos"
-                >
+                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
                   Ticket Médio - Prod.
                 </CardTitle>
                 <BadgeDollarSign className="size-4 text-orange-500 shrink-0" />
@@ -446,118 +467,139 @@ export default function Index() {
       )}
       {activeTab === 'packages' && <PackagesView packages={filteredPackages} />}
 
-      <Dialog open={advanceModalOpen} onOpenChange={setAdvanceModalOpen}>
-        <DialogContent>
+      <Dialog open={!!dashboardModal} onOpenChange={(v) => !v && setDashboardModal(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Registrar Adiantamento (Vale)</DialogTitle>
+            <DialogTitle>
+              {dashboardModal === 'revenue' && 'Detalhamento de Faturamento'}
+              {dashboardModal === 'clients' && 'Clientes Atendidos'}
+              {dashboardModal === 'new_clients' && 'Novos Clientes'}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label>Profissional</Label>
-              <Select value={advanceBarber} onValueChange={setAdvanceBarber}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o profissional" />
-                </SelectTrigger>
-                <SelectContent>
-                  {barbers.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
+          <ScrollArea className="flex-1 mt-4">
+            {dashboardModal === 'revenue' && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead>Método de Pagamento</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {completedPeriod.map((a) => {
+                    const comm = commissions.find(
+                      (c) =>
+                        c.barber_id === a.barber_id &&
+                        c.type === 'service' &&
+                        Math.abs(new Date(c.created).getTime() - new Date(a.updated).getTime()) <
+                          15000,
+                    )
+                    return (
+                      <TableRow key={a.id}>
+                        <TableCell>
+                          {a.date ? format(new Date(a.date), 'dd/MM/yyyy') : ''}
+                        </TableCell>
+                        <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
+                        <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
+                        <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
+                        <TableCell className="text-right">
+                          R$ {(a.price || a.expand?.service_id?.price || 0).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {productPurchases.map((p) => {
+                    const comm = commissions.find(
+                      (c) =>
+                        c.type === 'product' &&
+                        Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) <
+                          15000,
+                    )
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          {p.date ? format(new Date(p.date), 'dd/MM/yyyy') : ''}
+                        </TableCell>
+                        <TableCell>{p.expand?.client_id?.name || 'Avulso'}</TableCell>
+                        <TableCell>{p.expand?.barber_id?.name || '-'}</TableCell>
+                        <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
+                        <TableCell className="text-right">
+                          R$ {(p.price_at_sale || 0).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {completedPeriod.length === 0 && productPurchases.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                        Nenhuma venda no período.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+            {dashboardModal === 'clients' && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Profissional(is)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clientsServed.map((data, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        {data.client?.name} {data.client?.surname}
+                      </TableCell>
+                      <TableCell>{data.barbers}</TableCell>
+                    </TableRow>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Valor (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={advanceAmount}
-                onChange={(e) => setAdvanceAmount(e.target.value)}
-              />
-            </div>
-            <Button
-              className="w-full"
-              onClick={handleCreateAdvance}
-              disabled={!advanceBarber || !advanceAmount}
-            >
-              Confirmar Vale
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={alertModal !== null} onOpenChange={(open) => !open && setAlertModal(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Lista de Alertas</DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-[400px] pr-4 mt-2">
-            {alertModal === 'risk' &&
-              atRiskClientsList.map((c) => {
-                const days = c.last_visit ? differenceInDays(new Date(), new Date(c.last_visit)) : 0
-                const freq = (c.name.length % 15) + 15
-                const action = ['Oferecer desconto', 'Enviar mensagem', 'Ligar para o cliente'][
-                  c.name.length % 3
-                ]
-                return (
-                  <div key={c.id} className="py-4 border-b border-border/50 flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-base flex items-center gap-2">
-                        <span>❌</span> {c.name} {c.surname}{' '}
-                        {c.last_visit
-                          ? `(Sem voltar há ${days} dias)`
-                          : '(Sem visitas registradas)'}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground flex flex-col gap-1">
-                      {c.last_visit && (
-                        <span>
-                          <strong className="text-foreground">Último atendimento:</strong>{' '}
-                          {format(new Date(c.last_visit), 'dd/MM/yyyy')}
-                        </span>
-                      )}
-                      <span>
-                        <strong className="text-foreground">Frequência anterior:</strong> A cada{' '}
-                        {freq} dias
-                      </span>
-                      <span>
-                        <strong className="text-foreground">Ação sugerida:</strong> {action}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            {alertModal === 'packages' &&
-              expiringPackagesList.map((p) => (
-                <div key={p.id} className="py-2 border-b flex justify-between text-sm">
-                  <span>
-                    {p.expand?.client_id?.name} ({p.expand?.package_id?.name})
-                  </span>
-                  <span className="text-amber-500">Restam {p.remaining_uses}</span>
-                </div>
-              ))}
-            {alertModal === 'tomorrow' &&
-              aptsTomorrowList.map((a) => (
-                <div key={a.id} className="py-2 border-b flex justify-between text-sm">
-                  <span>{a.expand?.client_id?.name}</span>
-                  <span className="text-blue-500">
-                    {a.time} - {a.expand?.barber_id?.name}
-                  </span>
-                </div>
-              ))}
-            {alertModal === 'stock' && (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">Lista a comprar:</p>
-                {lowStockProductsList.map((p) => (
-                  <div key={p.id} className="py-2 border-b flex justify-between text-sm">
-                    <span>{p.name}</span>
-                    <span className="text-orange-500 font-medium">
-                      Estoque: {p.stock_quantity || 0}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  {clientsServed.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={2} className="text-center py-6 text-muted-foreground">
+                        Nenhum cliente no período.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+            {dashboardModal === 'new_clients' && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Data Cadastro</TableHead>
+                    <TableHead>Atendido por</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clientsCreatedInPeriod.map((c) => {
+                    const firstApt = appointments.find((a) => a.client_id === c.id)
+                    return (
+                      <TableRow key={c.id}>
+                        <TableCell>
+                          {c.name} {c.surname}
+                        </TableCell>
+                        <TableCell>{format(new Date(c.created), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell>{firstApt?.expand?.barber_id?.name || '-'}</TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {clientsCreatedInPeriod.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                        Nenhum novo cliente no período.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             )}
           </ScrollArea>
         </DialogContent>

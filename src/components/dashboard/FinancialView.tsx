@@ -245,8 +245,10 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
   const translatePayment = (method: string) => {
     if (method === 'cash') return 'Dinheiro'
-    if (method === 'card') return 'Cartão'
+    if (method === 'credito') return 'Crédito'
+    if (method === 'debito') return 'Débito'
     if (method === 'pix') return 'Pix'
+    if (method === 'card') return 'Cartão'
     return '-'
   }
 

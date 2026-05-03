@@ -69,7 +69,7 @@ export default function ClienteDetail() {
         id: a.id,
         type: 'service',
         date: new Date(a.date),
-        title: a.expand?.service_id?.name || 'Serviço',
+        title: `${a.expand?.service_id?.name || 'Serviço'} (${a.expand?.barber_id?.name || 'Sem profissional'})`,
         val: a.price || a.expand?.service_id?.price,
       }),
     )
@@ -78,7 +78,7 @@ export default function ClienteDetail() {
         id: p.id,
         type: 'product',
         date: new Date(p.date),
-        title: p.expand?.product_id?.name || 'Produto',
+        title: `${p.expand?.product_id?.name || 'Produto'} (${p.expand?.barber_id?.name || 'Sem profissional'})`,
         val: p.price_at_sale,
       }),
     )

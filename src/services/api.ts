@@ -55,7 +55,11 @@ export const updateProduct = (id: string, data: any) => pb.collection('products'
 export const getProductPurchasesByClient = (clientId: string) =>
   pb
     .collection('product_purchases')
-    .getFullList({ filter: `client_id='${clientId}'`, expand: 'product_id', sort: '-date' })
+    .getFullList({
+      filter: `client_id='${clientId}'`,
+      expand: 'product_id,barber_id',
+      sort: '-date',
+    })
 export const getProductPurchases = (filter?: string) =>
   pb
     .collection('product_purchases')

@@ -121,9 +121,9 @@ export default function Checkout() {
       }
 
       if (commAmount > 0) {
-        const isCard = pkgForm.payment_method === 'card'
-        const status = isCard ? 'pending' : 'available'
-        const due_date = isCard ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
+        const isCredit = pkgForm.payment_method === 'credito'
+        const status = isCredit ? 'pending' : 'available'
+        const due_date = isCredit ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
 
         await createCommission({
           barber_id: barber.id,
@@ -165,9 +165,9 @@ export default function Checkout() {
 
       const barber = barbers.find((b) => b.id === apt.barber_id)
       const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-      const isCard = svcForm.payment_method === 'card'
-      const status = isCard ? 'pending' : 'available'
-      const due_date = isCard ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
+      const isCredit = svcForm.payment_method === 'credito'
+      const status = isCredit ? 'pending' : 'available'
+      const due_date = isCredit ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
 
       if (barber && finalServicePrice > 0) {
         let commAmount = 0
@@ -478,7 +478,8 @@ export default function Checkout() {
                       <SelectContent>
                         <SelectItem value="cash">Dinheiro</SelectItem>
                         <SelectItem value="pix">PIX</SelectItem>
-                        <SelectItem value="card">Cartão</SelectItem>
+                        <SelectItem value="debito">Débito</SelectItem>
+                        <SelectItem value="credito">Crédito</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -583,7 +584,8 @@ export default function Checkout() {
                       <SelectContent>
                         <SelectItem value="cash">Dinheiro</SelectItem>
                         <SelectItem value="pix">PIX</SelectItem>
-                        <SelectItem value="card">Cartão</SelectItem>
+                        <SelectItem value="debito">Débito</SelectItem>
+                        <SelectItem value="credito">Crédito</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
