@@ -112,6 +112,12 @@ export default function Agenda() {
   }
 
   const handleBooking = async () => {
+    if (!form.client_id) return toast({ title: 'Selecione um cliente', variant: 'destructive' })
+    if (!form.item_id)
+      return toast({ title: 'Selecione um serviço ou pacote', variant: 'destructive' })
+    if (!form.barber_id)
+      return toast({ title: 'Selecione um profissional', variant: 'destructive' })
+
     try {
       const isPkg = form.item_id.startsWith('pkg_')
       const id = form.item_id.replace('pkg_', '').replace('svc_', '')

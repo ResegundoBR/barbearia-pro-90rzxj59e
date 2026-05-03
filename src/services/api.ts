@@ -59,8 +59,3 @@ export const getProductPurchasesByClient = (clientId: string) =>
 
 export const createClientPackage = (data: any) => pb.collection('client_packages').create(data)
 export const createCommission = (data: any) => pb.collection('commissions').create(data)
-pb.collection('product_purchases').getFullList({
-  filter: `client_id='${clientId}'`,
-  expand: 'product_id',
-  sort: '-date',
-})
