@@ -1,12 +1,7 @@
-import { useState, useMemo, useEffect } from 'react'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -14,247 +9,166 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
+import {
+  getBarbers,
+  getClients,
+  getPackages,
+  getCommissionRules,
+  createClientPackage,
+  createCommission,
+} from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
-import { PlusCircle, Trash2, CheckCircle2 } from 'lucide-react'
-import { getAppointments, getProducts, updateAppointment, updateProduct } from '@/services/api'
-import { format } from 'date-fns'
+import { addDays, format } from 'date-fns'
 
 export default function Checkout() {
+  const [barbers, setBarbers] = useState<any[]>([])
+  const [clients, setClients] = useState<any[]>([])
+  const [packages, setPackages] = useState<any[]>([])
+  const [rules, setRules] = useState<any[]>([])
+
+  const [form, setForm] = useState({ barber_id: '', client_id: '', package_id: '' })
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
-  const [appointments, setAppointments] = useState<any[]>([])
-  const [products, setProducts] = useState<any[]>([])
-
-  const [selectedAptId, setSelectedAptId] = useState<string>('')
-  const [upsellItems, setUpsellItems] = useState<{ id: string; qty: number }[]>([])
-  const [paymentMethod, setPaymentMethod] = useState<'Pix' | 'Cartão' | 'Dinheiro'>('Pix')
-
-  const loadData = async () => {
-    const today = format(new Date(), 'yyyy-MM-dd')
-    const apts = await getAppointments(
-      `date >= "${today} 00:00:00" && date <= "${today} 23:59:59" && (status = 'Pendente' || status = 'Confirmado')`,
-    )
-    setAppointments(apts)
-    setProducts(await getProducts())
-  }
-
   useEffect(() => {
-    loadData()
+    Promise.all([getBarbers(), getClients(), getPackages(), getCommissionRules()]).then(
+      ([b, c, p, r]) => {
+        setBarbers(b)
+        setClients(c)
+        setPackages(p)
+        setRules(r)
+      },
+    )
   }, [])
 
-  const pendingApts = appointments
-
-  const selectedApt = appointments.find((a) => a.id === selectedAptId)
-  const customer = selectedApt?.expand?.client_id
-
-  const addProduct = (productId: string) => {
-    setUpsellItems((prev) => {
-      const existing = prev.find((i) => i.id === productId)
-      if (existing) return prev.map((i) => (i.id === productId ? { ...i, qty: i.qty + 1 } : i))
-      return [...prev, { id: productId, qty: 1 }]
-    })
-  }
-
-  const removeProduct = (productId: string) => {
-    setUpsellItems((prev) => prev.filter((i) => i.id !== productId))
-  }
-
-  const totals = useMemo(() => {
-    const serviceTotal = selectedApt?.price || selectedApt?.expand?.service_id?.price || 0
-    const productsTotal = upsellItems.reduce((acc, item) => {
-      const p = products.find((prod) => prod.id === item.id)
-      return acc + (p?.price || 0) * item.qty
-    }, 0)
-    return { serviceTotal, productsTotal, grandTotal: serviceTotal + productsTotal }
-  }, [selectedApt, upsellItems, products])
-
-  const handleCheckout = async () => {
-    if (!selectedApt) return
-
+  const handleSellPackage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
     try {
-      await updateAppointment(selectedApt.id, { status: 'Concluído' })
+      const pkg = packages.find((p) => p.id === form.package_id)
+      const barber = barbers.find((b) => b.id === form.barber_id)
+      if (!pkg || !barber) throw new Error('Dados inválidos')
 
-      for (const item of upsellItems) {
-        const p = products.find((x) => x.id === item.id)
-        if (p) {
-          await updateProduct(p.id, { stock: Math.max(0, (p.stock || 0) - item.qty) })
-        }
-      }
-
-      toast({
-        title: 'Venda Concluída com Sucesso',
-        description: `Total: R$ ${totals.grandTotal.toFixed(2)} via ${paymentMethod}`,
-        action: <CheckCircle2 className="text-emerald-500" />,
+      const expiresAt = addDays(new Date(), 90)
+      await createClientPackage({
+        client_id: form.client_id,
+        package_id: pkg.id,
+        remaining_uses: pkg.quantity,
+        expires_at: format(expiresAt, 'yyyy-MM-dd 23:59:59'),
       })
 
-      setSelectedAptId('')
-      setUpsellItems([])
-      loadData()
-    } catch (e) {
-      toast({ title: 'Erro ao concluir', variant: 'destructive' })
+      let commAmount = 0
+      const rule = rules.find(
+        (r) => r.barber_id === barber.id && r.item_id === pkg.id && r.item_type === 'package',
+      )
+      if (rule) {
+        commAmount = rule.type === 'percentage' ? pkg.price * (rule.value / 100) : rule.value
+      } else {
+        commAmount =
+          barber.commission_type === 'percentage'
+            ? pkg.price * ((barber.commission_value || 0) / 100)
+            : barber.commission_value || 0
+      }
+
+      await createCommission({
+        barber_id: barber.id,
+        amount: commAmount,
+        type: 'package_sale',
+        date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
+        is_advance: false,
+      })
+
+      toast({ title: 'Pacote vendido com sucesso!' })
+      setForm({ barber_id: '', client_id: '', package_id: '' })
+    } catch (err: any) {
+      toast({ title: 'Erro ao vender pacote', variant: 'destructive' })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-2xl mx-auto pb-10">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Checkout / POS</h2>
-        <p className="text-muted-foreground">
-          Finalize atendimentos e adicione produtos adicionais.
-        </p>
+        <h2 className="text-2xl font-bold tracking-tight">Checkout Expresso</h2>
+        <p className="text-muted-foreground">Venda rápida de pacotes e geração de comissões.</p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 items-start">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Selecionar Atendimento</CardTitle>
-              <CardDescription>Agendamentos pendentes de hoje.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedAptId} onValueChange={setSelectedAptId}>
-                <SelectTrigger className="min-h-[48px] bg-background">
-                  <SelectValue placeholder="Selecione um agendamento" />
+      <Card>
+        <CardHeader>
+          <CardTitle>Vender Pacote</CardTitle>
+          <CardDescription>
+            Selecione o profissional vendedor, o cliente e o pacote desejado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSellPackage} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Profissional (Vendedor)</Label>
+              <Select
+                required
+                value={form.barber_id}
+                onValueChange={(v) => setForm({ ...form, barber_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione quem está vendendo..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {pendingApts.length === 0 && (
-                    <SelectItem value="none" disabled>
-                      Nenhum agendamento pendente
+                  {barbers.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
                     </SelectItem>
-                  )}
-                  {pendingApts.map((apt) => {
-                    const c = apt.expand?.client_id
-                    const s = apt.expand?.service_id
-                    return (
-                      <SelectItem key={apt.id} value={apt.id}>
-                        {apt.time} - {c?.name} ({s?.name || 'Serviço'})
-                      </SelectItem>
-                    )
-                  })}
+                  ))}
                 </SelectContent>
               </Select>
-            </CardContent>
-          </Card>
-
-          <Card className={!selectedAptId ? 'opacity-50 pointer-events-none' : ''}>
-            <CardHeader>
-              <CardTitle>Adicionar Produtos (Upsell)</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {products.map((p) => (
-                <div
-                  key={p.id}
-                  className="border rounded-md p-3 text-center cursor-pointer hover:border-primary transition-colors bg-background"
-                  onClick={() => addProduct(p.id)}
-                >
-                  <div className="text-xs font-semibold mb-1 truncate" title={p.name}>
-                    {p.name}
-                  </div>
-                  <div className="text-xs text-muted-foreground mb-2">R$ {p.price.toFixed(2)}</div>
-                  <Button variant="secondary" size="sm" className="w-full h-9 text-xs min-h-[44px]">
-                    <PlusCircle className="size-3 mr-1" /> Add
-                  </Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="sticky top-6 border-primary/50 shadow-lg shadow-primary/5">
-          <CardHeader className="bg-muted/30 pb-4 border-b">
-            <CardTitle>Resumo da Venda</CardTitle>
-            {customer && <CardDescription>Cliente: {customer.name}</CardDescription>}
-          </CardHeader>
-          <CardContent className="pt-6 space-y-4 min-h-[200px]">
-            {!selectedAptId ? (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                Selecione um atendimento primeiro
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between items-center">
-                  <div className="font-medium">
-                    {selectedApt?.expand?.service_id?.name || 'Serviço'}
-                  </div>
-                  <div className="font-mono">R$ {totals.serviceTotal.toFixed(2)}</div>
-                </div>
-
-                {upsellItems.length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-3">
-                      <div className="text-sm font-semibold text-muted-foreground">
-                        Produtos Adicionais
-                      </div>
-                      {upsellItems.map((item) => {
-                        const p = products.find((x) => x.id === item.id)!
-                        return (
-                          <div key={item.id} className="flex justify-between items-center text-sm">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary">{item.qty}x</Badge>
-                              <span>{p.name}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="font-mono">
-                                R$ {(p.price * item.qty).toFixed(2)}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-destructive"
-                                onClick={() => removeProduct(item.id)}
-                              >
-                                <Trash2 className="size-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-          </CardContent>
-
-          <div className="p-6 bg-muted/20 border-t space-y-4">
-            <div className="flex justify-between items-end">
-              <div className="text-lg font-semibold">Total a Pagar</div>
-              <div className="text-3xl font-bold text-primary">
-                R$ {totals.grandTotal.toFixed(2)}
-              </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {['Pix', 'Cartão', 'Dinheiro'].map((method) => (
-                <Button
-                  key={method}
-                  variant={paymentMethod === method ? 'default' : 'outline'}
-                  onClick={() => setPaymentMethod(method as any)}
-                  className={`min-h-[48px] ${paymentMethod === method ? 'shadow-md' : 'bg-background'}`}
-                  disabled={!selectedAptId}
-                >
-                  {method}
-                </Button>
-              ))}
+            <div className="space-y-2">
+              <Label>Cliente</Label>
+              <Select
+                required
+                value={form.client_id}
+                onValueChange={(v) => setForm({ ...form, client_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} {c.surname || ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
 
-          <CardFooter className="pt-4 pb-6 px-6">
-            <Button
-              size="lg"
-              className="w-full font-bold text-lg min-h-[56px]"
-              disabled={!selectedAptId}
-              onClick={handleCheckout}
-            >
-              Finalizar Venda
+            <div className="space-y-2">
+              <Label>Pacote</Label>
+              <Select
+                required
+                value={form.package_id}
+                onValueChange={(v) => setForm({ ...form, package_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o pacote..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {packages.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} - R$ {p.price.toFixed(2)} ({p.quantity}x)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Processando...' : 'Confirmar Venda'}
             </Button>
-          </CardFooter>
-        </Card>
-      </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

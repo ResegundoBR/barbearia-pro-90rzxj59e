@@ -57,6 +57,7 @@ export default function Staff() {
     name: '',
     commission_type: 'percentage',
     commission_value: 0,
+    color: '#3b82f6',
   })
   const [rForm, setRForm] = useState<any>({
     barber_id: '',
@@ -65,6 +66,8 @@ export default function Staff() {
     value: 0,
     type: 'percentage',
   })
+
+  const [colorForm, setColorForm] = useState<any>({ color: '#3b82f6' })
 
   const { toast } = useToast()
 
@@ -82,7 +85,11 @@ export default function Staff() {
   }, [])
 
   const openBarber = (b?: any) => {
-    setForm(b ? { ...b } : { name: '', commission_type: 'percentage', commission_value: 0 })
+    setForm(
+      b
+        ? { ...b }
+        : { name: '', commission_type: 'percentage', commission_value: 0, color: '#3b82f6' },
+    )
     setEditingId(b ? b.id : null)
     setBDialog(true)
   }
@@ -103,6 +110,10 @@ export default function Staff() {
   const handleRuleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      if (!rForm.item_id) {
+        toast({ title: 'Selecione um item/categoria', variant: 'destructive' })
+        return
+      }
       await createCommissionRule(rForm)
       toast({ title: 'Regra criada!' })
       setRDialog(false)
@@ -264,6 +275,21 @@ export default function Staff() {
                 value={form.commission_value}
                 onChange={(e) => setForm({ ...form, commission_value: Number(e.target.value) })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Cor de Exibição na Agenda</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="color"
+                  className="w-12 h-10 p-1"
+                  value={form.color || '#3b82f6'}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                />
+                <Input
+                  value={form.color || '#3b82f6'}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button type="submit">Salvar</Button>

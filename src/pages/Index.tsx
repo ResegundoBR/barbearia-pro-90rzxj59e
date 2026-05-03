@@ -10,7 +10,13 @@ import {
   PackageSearch,
   Hourglass,
 } from 'lucide-react'
-import { getAppointments, getClients, getClientPackages, getBarbers } from '@/services/api'
+import {
+  getAppointments,
+  getClients,
+  getClientPackages,
+  getBarbers,
+  getProducts,
+} from '@/services/api'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format, startOfWeek, startOfMonth, startOfYear, addDays, differenceInDays } from 'date-fns'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -22,6 +28,7 @@ export default function Index() {
   const [clients, setClients] = useState<any[]>([])
   const [packages, setPackages] = useState<any[]>([])
   const [barbers, setBarbers] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
   const [period, setPeriod] = useState('today')
   const [isPeakModalOpen, setIsPeakModalOpen] = useState(false)
 
@@ -44,6 +51,7 @@ export default function Index() {
     setClients(await getClients())
     setPackages(await getClientPackages())
     setBarbers(await getBarbers())
+    setProducts(await getProducts())
   }
 
   useEffect(() => {
@@ -103,6 +111,12 @@ export default function Index() {
       differenceInDays(new Date(p.expires_at), new Date()) >= 0,
   ).length
   const aptsTomorrow = appointments.filter((a) => a.date && a.date.startsWith(tomorrowStr)).length
+
+  const stockAlerts = products.filter(
+    (p) =>
+      (p.stock_quantity ?? 0) <= (p.reorder_point ?? 5) ||
+      (p.stock_quantity ?? 0) <= (p.min_stock ?? 2),
+  )
 
   const serviceCounts = appointments.reduce(
     (acc, a) => {
@@ -253,6 +267,15 @@ export default function Index() {
                 <p className="text-xs opacity-80">Próximos 7 dias</p>
               </div>
             </div>
+            {stockAlerts.length > 0 && (
+              <div className="flex items-center gap-3 bg-orange-500/10 text-orange-500 p-2 rounded-md">
+                <PackageSearch className="size-5 shrink-0" />
+                <div>
+                  <p className="font-semibold text-sm">{stockAlerts.length} produtos em baixa</p>
+                  <p className="text-xs opacity-80">Reabastecimento necessário</p>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-3 bg-blue-500/10 text-blue-500 p-2 rounded-md">
               <CalendarDays className="size-5 shrink-0" />
               <div>

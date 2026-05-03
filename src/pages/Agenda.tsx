@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -13,13 +13,24 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Plus, CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Input } from '@/components/ui/input'
+import { Plus, CalendarIcon, ChevronLeft, ChevronRight, Check, ChevronsUpDown } from 'lucide-react'
 import {
   getBarbers,
   getAppointments,
@@ -28,7 +39,7 @@ import {
   createAppointment,
   getClientPackages,
   consumePackage,
-  getBusinessHours,
+  createClient,
 } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -36,95 +47,98 @@ import { format, addMinutes, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
-import { extractFieldErrors } from '@/lib/pocketbase/errors'
 
-const SLOT_HEIGHT = 56
-const GAP = 4
-
-const generateTimeSlots = (start = 8, end = 20) => {
-  const slots = []
-  for (let h = start; h <= end; h++) {
-    const hr = h.toString().padStart(2, '0')
-    slots.push(`${hr}:00`)
-    if (h !== end) {
-      slots.push(`${hr}:15`)
-      slots.push(`${hr}:30`)
-      slots.push(`${hr}:45`)
-    }
-  }
-  return slots
-}
+const SLOT_HEIGHT = 48
 
 export default function Agenda() {
   const { user } = useAuth()
-  const [barbers, setBarbers] = useState<any[]>([])
-  const [appointments, setAppointments] = useState<any[]>([])
-  const [clients, setClients] = useState<any[]>([])
-  const [services, setServices] = useState<any[]>([])
-  const [packages, setPackages] = useState<any[]>([])
-  const [businessHours, setBusinessHours] = useState<any[]>([])
+  const { toast } = useToast()
+  const [data, setData] = useState({
+    barbers: [] as any[],
+    apts: [] as any[],
+    clients: [] as any[],
+    services: [] as any[],
+    packages: [] as any[],
+  })
   const [isOpen, setIsOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const { toast } = useToast()
-
-  const [form, setForm] = useState({ barber_id: '', client_id: '', service_id: '', time: '09:00' })
+  const [form, setForm] = useState({ barber_id: '', client_id: '', item_id: '', time: '09:00' })
+  const [clientSearchOpen, setClientSearchOpen] = useState(false)
+  const [newClient, setNewClient] = useState({ name: '', phone: '' })
+  const [isNewClient, setIsNewClient] = useState(false)
 
   const loadData = async () => {
     const dayStr = format(selectedDate, 'yyyy-MM-dd')
     const apts = await getAppointments(
       `date >= "${dayStr} 00:00:00" && date <= "${dayStr} 23:59:59"`,
     )
-    setAppointments(apts)
-    setBarbers(await getBarbers())
-    setClients(await getClients())
-    setServices(await getServices())
-    setPackages(await getClientPackages())
-    setBusinessHours(await getBusinessHours())
+    setData({
+      barbers: await getBarbers(),
+      apts,
+      clients: await getClients(),
+      services: await getServices(),
+      packages: await getClientPackages(),
+    })
   }
 
   useEffect(() => {
     loadData()
   }, [selectedDate])
-
   useRealtime('appointments', loadData)
 
-  const handleSlotClick = (time: string, barberId: string) => {
-    setForm({ ...form, time, barber_id: barberId })
+  const isAdmin = user?.access_level === 'Admin'
+  const visibleBarbers = useMemo(
+    () => (isAdmin ? data.barbers : data.barbers.filter((b) => b.name === user?.name)),
+    [isAdmin, data.barbers, user],
+  )
+
+  const handleOpen = (time = '09:00', barberId = '') => {
+    const defaultBarber = barberId || (isAdmin ? '' : visibleBarbers[0]?.id || '')
+    setForm({ barber_id: defaultBarber, client_id: '', item_id: '', time })
     setIsOpen(true)
+  }
+
+  const handleClientCreate = async () => {
+    try {
+      const c = await createClient({ ...newClient, location_type: 'nearby', is_active: true })
+      setData((prev) => ({ ...prev, clients: [c, ...prev.clients] }))
+      setForm((f) => ({ ...f, client_id: c.id }))
+      setIsNewClient(false)
+      setClientSearchOpen(false)
+      toast({ title: 'Cliente criado!' })
+    } catch {
+      toast({ title: 'Erro ao criar cliente', variant: 'destructive' })
+    }
   }
 
   const handleBooking = async () => {
     try {
-      const activePackage = packages.find(
-        (p) =>
-          p.client_id === form.client_id &&
-          p.expand?.package_id?.service_id === form.service_id &&
-          p.remaining_uses > 0,
-      )
+      const isPkg = form.item_id.startsWith('pkg_')
+      const id = form.item_id.replace('pkg_', '').replace('svc_', '')
+      const activePackage = isPkg ? data.packages.find((p) => p.id === id) : null
+      const svc = isPkg
+        ? activePackage?.expand?.package_id?.expand?.service_id
+        : data.services.find((s) => s.id === id)
 
-      const svc = services.find((s) => s.id === form.service_id)
       const duration =
         activePackage?.expand?.package_id?.duration_minutes || svc?.duration_minutes || 30
-
-      const startParts = form.time.split(':')
+      const [h, m] = form.time.split(':').map(Number)
       const startDate = new Date()
-      startDate.setHours(parseInt(startParts[0]), parseInt(startParts[1]), 0, 0)
-      const endDate = addMinutes(startDate, duration)
-      const end_time = format(endDate, 'HH:mm')
+      startDate.setHours(h, m, 0, 0)
+      const end_time = format(addMinutes(startDate, duration), 'HH:mm')
 
-      const newApt = {
+      await createAppointment({
         barber_id: form.barber_id,
         client_id: form.client_id,
-        service_id: form.service_id,
+        service_id: svc?.id || form.item_id.replace('svc_', ''),
         time: form.time,
-        end_time: end_time,
+        end_time,
         date: format(selectedDate, 'yyyy-MM-dd 12:00:00'),
         status: 'Confirmado',
-        price: activePackage ? 0 : svc?.price || 0,
-      }
+        price: isPkg ? 0 : svc?.price || 0,
+      })
 
-      await createAppointment(newApt)
-      if (activePackage) {
+      if (isPkg && activePackage) {
         await consumePackage(activePackage.id, { remaining_uses: activePackage.remaining_uses - 1 })
         toast({ title: 'Agendamento salvo. Usado 1 crédito.' })
       } else {
@@ -133,35 +147,23 @@ export default function Agenda() {
       setIsOpen(false)
       loadData()
     } catch (err: any) {
-      const errors = extractFieldErrors(err)
-      const msg = Object.values(errors).join(', ')
-      toast({ title: 'Erro ao agendar', description: msg, variant: 'destructive' })
+      toast({ title: 'Erro ao agendar', variant: 'destructive' })
     }
   }
 
-  const isAdmin = user?.access_level === 'Admin'
-  const visibleBarbers = isAdmin ? barbers : barbers.filter((b) => b.name === user?.name)
+  const timeSlots = Array.from({ length: 13 * 4 }, (_, i) => {
+    const h = Math.floor(i / 4) + 8
+    const m = (i % 4) * 15
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+  })
 
-  const todayDayOfWeek = selectedDate.getDay().toString()
-  const todayBH = businessHours.find((bh) => bh.day_of_week === todayDayOfWeek && bh.is_active)
-
-  const startHour = todayBH ? parseInt(todayBH.open_time.split(':')[0]) : 8
-  const endHour = todayBH ? parseInt(todayBH.close_time.split(':')[0]) : 20
-
-  const timeSlots = generateTimeSlots(startHour, endHour)
-
-  const isSlotFree = (barberId: string, time: string) => {
-    return !appointments.some((a) => {
-      if (a.barber_id !== barberId || a.status === 'Cancelado') return false
-      const s = a.time || '00:00'
-      const e = a.end_time || a.time || '00:00'
-      return time >= s && time < e
-    })
-  }
+  const clientPkgs = data.packages.filter(
+    (p) => p.client_id === form.client_id && p.remaining_uses > 0,
+  )
 
   return (
     <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-8rem)] flex flex-col space-y-4">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center shrink-0 gap-4">
+      <div className="flex justify-between items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Agenda Diária</h2>
           <div className="flex items-center gap-2 mt-1">
@@ -175,15 +177,12 @@ export default function Agenda() {
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-7 text-xs font-medium min-w-[140px] justify-center"
-                >
+                <Button variant="outline" className="h-7 text-xs min-w-[140px]">
                   <CalendarIcon className="mr-2 size-3" />
                   {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
@@ -202,13 +201,7 @@ export default function Agenda() {
             </Button>
           </div>
         </div>
-        <Button
-          onClick={() => {
-            setForm({ ...form, time: `${startHour.toString().padStart(2, '0')}:00` })
-            setIsOpen(true)
-          }}
-          className="gap-2"
-        >
+        <Button onClick={() => handleOpen()} className="gap-2">
           <Plus className="size-4" /> Agendamento
         </Button>
       </div>
@@ -216,131 +209,71 @@ export default function Agenda() {
       <ScrollArea className="flex-1 rounded-xl border bg-card/30 shadow-inner">
         <div className="flex gap-2 sm:gap-4 p-2 sm:p-4 min-w-max">
           <div className="w-12 shrink-0 flex flex-col gap-1 mt-[56px] relative">
-            {timeSlots.map((time) => (
-              <div
-                key={time}
-                className="h-14 flex items-start justify-end pr-2 pt-1 text-[10px] text-muted-foreground font-medium"
-              >
-                {time.endsWith(':00') ? time : time.split(':')[1]}
-              </div>
-            ))}
+            {timeSlots
+              .filter((t) => t.endsWith(':00'))
+              .map((t) => (
+                <div key={t} className="h-[192px] text-[10px] text-muted-foreground pt-1">
+                  {t}
+                </div>
+              ))}
           </div>
 
           {visibleBarbers.map((barber) => (
             <div key={barber.id} className="w-[200px] sm:w-[240px] shrink-0 flex flex-col relative">
-              <div className="sticky top-0 z-20 flex items-center justify-center gap-2 py-2 px-3 bg-card/95 backdrop-blur rounded-md border shadow-sm mb-1 h-[48px]">
+              <div
+                className="sticky top-0 z-20 flex items-center justify-center gap-2 py-2 px-3 bg-card/95 backdrop-blur rounded-md border shadow-sm mb-1 h-[48px]"
+                style={{
+                  borderBottomColor: barber.color || 'hsl(var(--primary))',
+                  borderBottomWidth: 3,
+                }}
+              >
                 <Avatar className="size-6">
                   <AvatarFallback>{barber.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="font-semibold text-xs truncate">{barber.name}</div>
               </div>
-
-              <div
-                className="relative mt-1"
-                style={{ height: timeSlots.length * (SLOT_HEIGHT + GAP) }}
-              >
-                {timeSlots.map((time, idx) => (
+              <div className="relative mt-1" style={{ height: timeSlots.length * SLOT_HEIGHT }}>
+                {timeSlots.map((t, idx) => (
                   <div
-                    key={`bg-${time}`}
-                    onClick={() => isSlotFree(barber.id, time) && handleSlotClick(time, barber.id)}
-                    className={cn(
-                      'absolute w-full border border-dashed rounded-md flex items-center justify-center group cursor-pointer transition-colors',
-                      isSlotFree(barber.id, time)
-                        ? 'hover:border-primary/50 hover:bg-muted/10'
-                        : 'opacity-0 pointer-events-none',
-                    )}
-                    style={{ top: idx * (SLOT_HEIGHT + GAP), height: SLOT_HEIGHT }}
-                  >
-                    <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 absolute top-1 right-1">
-                      {time}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[10px] border border-primary/20 text-primary opacity-0 group-hover:opacity-100 pointer-events-none"
-                    >
-                      Agendar
-                    </Button>
-                  </div>
+                    key={`bg-${t}`}
+                    onClick={() => handleOpen(t, barber.id)}
+                    className="absolute w-full border-b border-dashed border-border/50 hover:bg-muted/20 cursor-pointer"
+                    style={{ top: idx * SLOT_HEIGHT, height: SLOT_HEIGHT }}
+                  />
                 ))}
 
-                {appointments
+                {data.apts
                   .filter((a) => a.barber_id === barber.id && a.status !== 'Cancelado')
                   .map((apt) => {
-                    const startIdx = timeSlots.indexOf(apt.time || '00:00')
-                    if (startIdx === -1) return null
-
-                    const getDurationInMinutes = (start: string, end: string) => {
-                      if (!start || !end) return 30
-                      const [sH, sM] = start.split(':').map(Number)
-                      const [eH, eM] = end.split(':').map(Number)
-                      return eH * 60 + eM - (sH * 60 + sM)
-                    }
-
-                    const duration =
-                      getDurationInMinutes(apt.time, apt.end_time) ||
-                      apt.expand?.service_id?.duration_minutes ||
-                      30
-                    const slotsSpanned = Math.max(1, Math.ceil(duration / 15))
-
-                    const top = startIdx * (SLOT_HEIGHT + GAP)
-                    const height = slotsSpanned * SLOT_HEIGHT + (slotsSpanned - 1) * GAP
-                    const isCompleted = apt.status === 'Concluído'
-                    const isPending = apt.status === 'Pendente' || apt.status === 'Confirmado'
-
+                    const sIdx = timeSlots.indexOf(apt.time || '00:00')
+                    if (sIdx === -1) return null
+                    const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
+                    const [eH, eM] = (apt.end_time || apt.time || '00:00').split(':').map(Number)
+                    const slots = Math.max(1, Math.ceil((eH * 60 + eM - (sH * 60 + sM)) / 15))
+                    const top = sIdx * SLOT_HEIGHT
+                    const height = slots * SLOT_HEIGHT
                     return (
                       <div
                         key={apt.id}
-                        className={cn(
-                          'absolute w-full rounded-md p-2 flex flex-col justify-between border shadow-sm z-10 overflow-hidden',
-                          isCompleted
-                            ? 'bg-muted/90 border-border text-muted-foreground'
-                            : 'bg-card border-l-4 border-l-primary hover:bg-muted/50',
-                        )}
-                        style={{ top, height }}
+                        className="absolute w-full rounded-md p-2 flex flex-col justify-between shadow-sm z-10 overflow-hidden text-white"
+                        style={{
+                          top,
+                          height,
+                          backgroundColor: barber.color || 'hsl(var(--primary))',
+                        }}
                       >
-                        <div>
-                          <div className="flex justify-between items-start">
-                            <div
-                              className="font-semibold text-xs truncate"
-                              title={apt.expand?.client_id?.name}
-                            >
-                              {apt.expand?.client_id?.name || 'Cliente Oculto'}
-                            </div>
-                            <span className="text-[10px] opacity-70 shrink-0 font-medium">
-                              {apt.time} - {apt.end_time || ''}
-                            </span>
-                          </div>
-                          <div className="text-[10px] opacity-80 truncate mt-0.5">
-                            {apt.expand?.service_id?.name || 'Serviço'}
-                          </div>
+                        <div className="font-semibold text-xs truncate drop-shadow-md">
+                          {apt.expand?.client_id?.name}
                         </div>
-                        <div className="flex justify-end">
-                          <span
-                            className={cn(
-                              'text-[9px] px-1.5 py-0.5 rounded-full',
-                              isCompleted
-                                ? 'bg-secondary text-secondary-foreground'
-                                : isPending
-                                  ? 'bg-amber-500/20 text-amber-500'
-                                  : 'bg-primary/20 text-primary',
-                            )}
-                          >
-                            {apt.status}
-                          </span>
-                        </div>
+                        <span className="text-[10px] opacity-90 drop-shadow-md">
+                          {apt.time} - {apt.end_time}
+                        </span>
                       </div>
                     )
                   })}
               </div>
             </div>
           ))}
-
-          {visibleBarbers.length === 0 && (
-            <div className="flex items-center justify-center w-full text-muted-foreground text-sm">
-              Nenhum profissional disponível para visualização.
-            </div>
-          )}
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
@@ -352,73 +285,143 @@ export default function Agenda() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Horário Inicial</Label>
-              <Select value={form.time} onValueChange={(v) => setForm({ ...form, time: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {timeSlots.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Profissional</Label>
-              <Select
-                value={form.barber_id}
-                onValueChange={(v) => setForm({ ...form, barber_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {visibleBarbers.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label>Cliente</Label>
-              <Select
-                value={form.client_id}
-                onValueChange={(v) => setForm({ ...form, client_id: v })}
-              >
-                <SelectTrigger>
+              <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between">
+                    {form.client_id
+                      ? data.clients.find((c) => c.id === form.client_id)?.name
+                      : 'Buscar cliente...'}
+                    <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" style={{ zIndex: 9999 }}>
+                  <Command>
+                    <CommandInput placeholder="Buscar nome ou telefone..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {data.clients.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={`${c.name} ${c.phone}`}
+                            onSelect={() => {
+                              setForm({ ...form, client_id: c.id })
+                              setClientSearchOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 size-4',
+                                form.client_id === c.id ? 'opacity-100' : 'opacity-0',
+                              )}
+                            />
+                            {c.name} {c.surname || ''} ({c.phone})
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                    <div className="p-2 border-t">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setIsNewClient(true)}
+                      >
+                        <Plus className="size-4 mr-2" /> Novo Cliente
+                      </Button>
+                    </div>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {isNewClient && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    placeholder="Nome"
+                    value={newClient.name}
+                    onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Celular"
+                    value={newClient.phone}
+                    onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                  />
+                  <Button onClick={handleClientCreate}>Salvar</Button>
+                </div>
+              )}
+            </div>
+
+            {clientPkgs.length > 0 && (
+              <div className="text-xs bg-amber-500/10 text-amber-600 p-2 rounded flex items-center font-medium">
+                <Check className="size-3 mr-1" /> Pacote Ativo Encontrado! Use-o abaixo.
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Serviço ou Pacote</Label>
+              <Select value={form.item_id} onValueChange={(v) => setForm({ ...form, item_id: v })}>
+                <SelectTrigger className={clientPkgs.length > 0 ? 'border-amber-400' : ''}>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} {c.surname || ''}
-                    </SelectItem>
-                  ))}
+                  {clientPkgs.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="text-amber-500 font-bold">
+                        Pacotes do Cliente
+                      </SelectLabel>
+                      {clientPkgs.map((p) => (
+                        <SelectItem key={`pkg_${p.id}`} value={`pkg_${p.id}`}>
+                          {p.expand?.package_id?.name} (Restam: {p.remaining_uses})
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  <SelectGroup>
+                    <SelectLabel>Serviços Avulsos</SelectLabel>
+                    {data.services.map((s) => (
+                      <SelectItem key={`svc_${s.id}`} value={`svc_${s.id}`}>
+                        {s.name} - R${s.price}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Serviço</Label>
-              <Select
-                value={form.service_id}
-                onValueChange={(v) => setForm({ ...form, service_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name} ({s.duration_minutes || 30} min)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Horário</Label>
+                <Select value={form.time} onValueChange={(v) => setForm({ ...form, time: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {timeSlots.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Profissional</Label>
+                <Select
+                  value={form.barber_id}
+                  onValueChange={(v) => setForm({ ...form, barber_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {visibleBarbers.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>

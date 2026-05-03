@@ -79,7 +79,15 @@ export default function Estoque() {
     price: 0,
     category: '',
     is_active: true,
+    stock_initial: 0,
+    stock_quantity: 0,
+    reorder_point: 5,
+    min_stock: 2,
+    last_purchase_price: 0,
   })
+
+  const [purchaseForm, setPurchaseForm] = useState({ product_id: '', quantity: 1, price: 0 })
+  const [purchaseDialog, setPurchaseDialog] = useState(false)
 
   const [sErrors, setSErrors] = useState<FieldErrors>({})
   const [pErrors, setPErrors] = useState<FieldErrors>({})
@@ -156,10 +164,41 @@ export default function Estoque() {
   }
 
   const openProduct = (p?: any) => {
-    setProdForm(p ? { ...p } : { name: '', price: 0, category: 'none', is_active: true })
+    setProdForm(
+      p
+        ? { ...p }
+        : {
+            name: '',
+            price: 0,
+            category: 'none',
+            is_active: true,
+            stock_initial: 0,
+            stock_quantity: 0,
+            reorder_point: 5,
+            min_stock: 2,
+            last_purchase_price: 0,
+          },
+    )
     setEditingProdId(p ? p.id : null)
     setProdErrors({})
     setProdDialog(true)
+  }
+
+  const handlePurchaseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const prod = products.find((p) => p.id === purchaseForm.product_id)
+      if (prod) {
+        await updateProduct(prod.id, {
+          stock_quantity: (prod.stock_quantity || 0) + purchaseForm.quantity,
+          last_purchase_price: purchaseForm.price,
+        })
+        toast({ title: 'Compra registrada e estoque atualizado!' })
+        setPurchaseDialog(false)
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro ao registrar compra', variant: 'destructive' })
+    }
   }
 
   const openPackage = (p?: any) => {
@@ -262,29 +301,50 @@ export default function Estoque() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Categoria</TableHead>
                     <TableHead>Preço</TableHead>
+                    <TableHead>Estoque</TableHead>
                     <TableHead>Ativo</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((p) => (
-                    <TableRow key={p.id} className={p.is_active === false ? 'opacity-50' : ''}>
-                      <TableCell className="font-medium">{p.name}</TableCell>
-                      <TableCell className="capitalize">{p.category || '-'}</TableCell>
-                      <TableCell>R$ {p.price.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={p.is_active !== false}
-                          onCheckedChange={(v) => updateProduct(p.id, { is_active: v })}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => openProduct(p)}>
-                          <Edit className="size-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {products.map((p) => {
+                    const isLow = (p.stock_quantity || 0) <= (p.reorder_point || 5)
+                    return (
+                      <TableRow key={p.id} className={p.is_active === false ? 'opacity-50' : ''}>
+                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell className="capitalize">{p.category || '-'}</TableCell>
+                        <TableCell>R$ {p.price.toFixed(2)}</TableCell>
+                        <TableCell className={isLow ? 'text-red-500 font-bold' : ''}>
+                          {p.stock_quantity || 0} un.
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={p.is_active !== false}
+                            onCheckedChange={(v) => updateProduct(p.id, { is_active: v })}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setPurchaseForm({
+                                product_id: p.id,
+                                quantity: 1,
+                                price: p.last_purchase_price || 0,
+                              })
+                              setPurchaseDialog(true)
+                            }}
+                          >
+                            Comprar +
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openProduct(p)}>
+                            <Edit className="size-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -504,19 +564,91 @@ export default function Estoque() {
               </Select>
               {prodErrors.category && <p className="text-sm text-red-500">{prodErrors.category}</p>}
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Preço (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={prodForm.price}
+                  onChange={(e) => setProdForm({ ...prodForm, price: Number(e.target.value) })}
+                />
+                {prodErrors.price && <p className="text-sm text-red-500">{prodErrors.price}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Estoque Inicial</Label>
+                <Input
+                  type="number"
+                  value={prodForm.stock_initial || 0}
+                  onChange={(e) =>
+                    setProdForm({
+                      ...prodForm,
+                      stock_initial: Number(e.target.value),
+                      stock_quantity: Number(e.target.value),
+                    })
+                  }
+                  disabled={!!editingProdId}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Ponto de Pedido</Label>
+                <Input
+                  type="number"
+                  value={prodForm.reorder_point || 5}
+                  onChange={(e) =>
+                    setProdForm({ ...prodForm, reorder_point: Number(e.target.value) })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Estoque Mínimo</Label>
+                <Input
+                  type="number"
+                  value={prodForm.min_stock || 2}
+                  onChange={(e) => setProdForm({ ...prodForm, min_stock: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">Salvar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={purchaseDialog} onOpenChange={setPurchaseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Compra de Produto</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handlePurchaseSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>Preço (R$)</Label>
+              <Label>Quantidade Comprada</Label>
+              <Input
+                type="number"
+                required
+                min={1}
+                value={purchaseForm.quantity}
+                onChange={(e) =>
+                  setPurchaseForm({ ...purchaseForm, quantity: Number(e.target.value) })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Preço de Custo (Unidade)</Label>
               <Input
                 type="number"
                 step="0.01"
                 required
-                value={prodForm.price}
-                onChange={(e) => setProdForm({ ...prodForm, price: Number(e.target.value) })}
+                value={purchaseForm.price}
+                onChange={(e) =>
+                  setPurchaseForm({ ...purchaseForm, price: Number(e.target.value) })
+                }
               />
-              {prodErrors.price && <p className="text-sm text-red-500">{prodErrors.price}</p>}
             </div>
             <DialogFooter>
-              <Button type="submit">Salvar</Button>
+              <Button type="submit">Confirmar Estoque</Button>
             </DialogFooter>
           </form>
         </DialogContent>

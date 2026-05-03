@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T15:27:37.970Z",
+  "generatedAt": "2026-05-03T15:51:06.877Z",
   "collections": [
     {
       "name": "users",
@@ -123,6 +123,12 @@
         {
           "name": "commission_value",
           "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "color",
+          "type": "text",
           "required": false,
           "system": false
         }
@@ -576,6 +582,36 @@
         {
           "name": "category",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "stock_initial",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reorder_point",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "min_stock",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "last_purchase_price",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "stock_quantity",
+          "type": "number",
           "required": false,
           "system": false
         }
