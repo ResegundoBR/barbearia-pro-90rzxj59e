@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Dialog,
   DialogContent,
@@ -31,6 +30,7 @@ import {
 } from '@/components/ui/command'
 import { Input } from '@/components/ui/input'
 import { Plus, CalendarIcon, ChevronLeft, ChevronRight, Check, ChevronsUpDown } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   getBarbers,
   getAppointments,
@@ -43,12 +43,28 @@ import {
 } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
-import { format, addMinutes, addDays, subDays } from 'date-fns'
+import {
+  format,
+  addMinutes,
+  addDays,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  isSameDay,
+  isSameMonth,
+  eachDayOfInterval,
+  addWeeks,
+  subWeeks,
+  addMonths,
+  subMonths,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 
-const SLOT_HEIGHT = 48
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 8) // 08:00 to 20:00
 
 export default function Agenda() {
   const { user } = useAuth()
@@ -61,7 +77,9 @@ export default function Agenda() {
     packages: [] as any[],
   })
   const [isOpen, setIsOpen] = useState(false)
+  const [view, setView] = useState<'day' | 'week' | 'month'>('week')
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+
   const [form, setForm] = useState({
     barber_id: '',
     client_id: '',
@@ -74,13 +92,24 @@ export default function Agenda() {
   const [newClientDialogOpen, setNewClientDialogOpen] = useState(false)
 
   const loadData = async () => {
-    const dayStr = format(selectedDate, 'yyyy-MM-dd')
-    const apts = await getAppointments(
-      `date >= "${dayStr} 00:00:00" && date <= "${dayStr} 23:59:59"`,
-    )
+    let start, end
+    if (view === 'day') {
+      start = selectedDate
+      end = selectedDate
+    } else if (view === 'week') {
+      start = startOfWeek(selectedDate, { weekStartsOn: 0 })
+      end = endOfWeek(selectedDate, { weekStartsOn: 0 })
+    } else {
+      start = startOfWeek(startOfMonth(selectedDate), { weekStartsOn: 0 })
+      end = endOfWeek(endOfMonth(selectedDate), { weekStartsOn: 0 })
+    }
+
+    const startStr = format(start, 'yyyy-MM-dd 00:00:00')
+    const endStr = format(end, 'yyyy-MM-dd 23:59:59')
+
     setData({
       barbers: await getBarbers(),
-      apts,
+      apts: await getAppointments(`date >= "${startStr}" && date <= "${endStr}"`),
       clients: await getClients(),
       services: await getServices(),
       packages: await getClientPackages(),
@@ -89,7 +118,7 @@ export default function Agenda() {
 
   useEffect(() => {
     loadData()
-  }, [selectedDate])
+  }, [selectedDate, view])
   useRealtime('appointments', loadData)
 
   const isAdmin = user?.access_level === 'Admin'
@@ -98,13 +127,24 @@ export default function Agenda() {
     [isAdmin, data.barbers, user],
   )
 
-  const handleOpen = (time = '09:00', barberId = '') => {
-    const defaultBarber = barberId || (isAdmin ? '' : visibleBarbers[0]?.id || '')
-    setForm({ barber_id: defaultBarber, client_id: '', item_id: '', time, date: selectedDate })
+  const handleOpen = (timeStr = '09:00', day: Date = new Date()) => {
+    const defaultBarber = isAdmin ? '' : visibleBarbers[0]?.id || ''
+    setForm({ barber_id: defaultBarber, client_id: '', item_id: '', time: timeStr, date: day })
     setNewClient({ name: '', phone: '' })
     setNewClientDialogOpen(false)
     setClientSearchOpen(false)
     setIsOpen(true)
+  }
+
+  const navigatePrev = () => {
+    if (view === 'day') setSelectedDate(subDays(selectedDate, 1))
+    if (view === 'week') setSelectedDate(subWeeks(selectedDate, 1))
+    if (view === 'month') setSelectedDate(subMonths(selectedDate, 1))
+  }
+  const navigateNext = () => {
+    if (view === 'day') setSelectedDate(addDays(selectedDate, 1))
+    if (view === 'week') setSelectedDate(addWeeks(selectedDate, 1))
+    if (view === 'month') setSelectedDate(addMonths(selectedDate, 1))
   }
 
   const handleClientCreate = async () => {
@@ -189,125 +229,220 @@ export default function Agenda() {
     (p) => p.client_id === form.client_id && p.remaining_uses > 0,
   )
 
-  return (
-    <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-8rem)] flex flex-col space-y-4">
-      <div className="flex justify-between items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Agenda Diária</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-7"
-              onClick={() => setSelectedDate(subDays(selectedDate, 1))}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-7 text-xs min-w-[140px]">
-                  <CalendarIcon className="mr-2 size-3" />
-                  {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(d) => d && setSelectedDate(d)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-7"
-              onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
-        <Button onClick={() => handleOpen()} className="gap-2">
-          <Plus className="size-4" /> Agendamento
-        </Button>
-      </div>
+  const getEventsForDay = (day: Date) => {
+    return data.apts.filter(
+      (a) => a.date && a.date.startsWith(format(day, 'yyyy-MM-dd')) && a.status !== 'Cancelado',
+    )
+  }
 
-      <ScrollArea className="flex-1 rounded-xl border bg-card/30 shadow-inner">
-        <div className="flex gap-2 sm:gap-4 p-2 sm:p-4 min-w-max">
-          <div className="w-12 shrink-0 flex flex-col gap-1 mt-[56px] relative">
-            {timeSlots
-              .filter((t) => t.endsWith(':00'))
-              .map((t) => (
-                <div key={t} className="h-[192px] text-[10px] text-muted-foreground pt-1">
-                  {t}
-                </div>
-              ))}
+  const renderDayColumn = (day: Date) => {
+    const events = getEventsForDay(day)
+    return (
+      <div key={day.toISOString()} className="flex-1 border-r min-w-[120px] relative">
+        {view === 'week' && (
+          <div className="h-12 border-b flex flex-col items-center justify-center bg-muted/20 sticky top-0 z-20">
+            <span className="text-xs uppercase font-medium">
+              {format(day, 'EEE', { locale: ptBR })}
+            </span>
+            <span
+              className={cn(
+                'text-sm font-semibold rounded-full w-6 h-6 flex items-center justify-center',
+                isSameDay(day, new Date()) ? 'bg-primary text-primary-foreground' : '',
+              )}
+            >
+              {format(day, 'dd')}
+            </span>
           </div>
+        )}
+        <div className="relative" style={{ height: HOURS.length * 60 }}>
+          {HOURS.map((h) => (
+            <div
+              key={h}
+              className="h-[60px] border-b border-border/50 hover:bg-muted/10 cursor-pointer"
+              onClick={() => handleOpen(`${h.toString().padStart(2, '0')}:00`, day)}
+            />
+          ))}
+          {events.map((apt) => {
+            const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
+            const [eH, eM] = (apt.end_time || apt.time || '00:00').split(':').map(Number)
+            const top = (sH - 8 + sM / 60) * 60
+            const height = Math.max(15, (eH - sH + (eM - sM) / 60) * 60)
+            const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
 
-          {visibleBarbers.map((barber) => (
-            <div key={barber.id} className="w-[200px] sm:w-[240px] shrink-0 flex flex-col relative">
+            return (
               <div
-                className="sticky top-0 z-20 flex items-center justify-center gap-2 py-2 px-3 bg-card/95 backdrop-blur rounded-md border shadow-sm mb-1 h-[48px]"
-                style={{
-                  borderBottomColor: barber.color || 'hsl(var(--primary))',
-                  borderBottomWidth: 3,
-                }}
+                key={apt.id}
+                className="absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] cursor-pointer"
+                style={{ top, height, backgroundColor: barberColor }}
               >
-                <Avatar className="size-6">
-                  <AvatarFallback>{barber.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="font-semibold text-xs truncate">{barber.name}</div>
+                <div className="text-xs font-semibold leading-tight drop-shadow-sm">
+                  {apt.expand?.client_id?.name}
+                </div>
+                <div className="text-[10px] opacity-90 drop-shadow-sm leading-tight mt-0.5">
+                  {apt.time} - {apt.expand?.barber_id?.name || 'Profissional'}
+                </div>
               </div>
-              <div className="relative mt-1" style={{ height: timeSlots.length * SLOT_HEIGHT }}>
-                {timeSlots.map((t, idx) => (
-                  <div
-                    key={`bg-${t}`}
-                    onClick={() => handleOpen(t, barber.id)}
-                    className="absolute w-full border-b border-dashed border-border/50 hover:bg-muted/20 cursor-pointer"
-                    style={{ top: idx * SLOT_HEIGHT, height: SLOT_HEIGHT }}
-                  />
-                ))}
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
-                {data.apts
-                  .filter((a) => a.barber_id === barber.id && a.status !== 'Cancelado')
-                  .map((apt) => {
-                    const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
-                    const startMinutes = (sH - 8) * 60 + sM
-                    if (startMinutes < 0 || startMinutes >= 13 * 60) return null
+  const renderMonthView = () => {
+    const days = eachDayOfInterval({
+      start: startOfWeek(startOfMonth(selectedDate), { weekStartsOn: 0 }),
+      end: endOfWeek(endOfMonth(selectedDate), { weekStartsOn: 0 }),
+    })
 
-                    const [eH, eM] = (apt.end_time || apt.time || '00:00').split(':').map(Number)
-                    const slots = Math.max(1, Math.ceil((eH * 60 + eM - (sH * 60 + sM)) / 15))
-
-                    const top = (startMinutes / 15) * SLOT_HEIGHT
-                    const height = slots * SLOT_HEIGHT
-
-                    return (
-                      <div
-                        key={apt.id}
-                        className="absolute w-full rounded-md p-2 flex flex-col justify-between shadow-sm z-10 overflow-hidden text-white"
-                        style={{
-                          top,
-                          height,
-                          backgroundColor: barber.color || 'hsl(var(--primary))',
-                        }}
-                      >
-                        <div className="font-semibold text-xs truncate drop-shadow-md">
-                          {apt.expand?.client_id?.name}
-                        </div>
-                        <span className="text-[10px] opacity-90 drop-shadow-md">
-                          {apt.time} - {apt.end_time}
-                        </span>
-                      </div>
-                    )
-                  })}
-              </div>
+    return (
+      <div className="flex-1 flex flex-col min-h-0 bg-card rounded-md border overflow-hidden">
+        <div className="grid grid-cols-7 border-b bg-muted/20">
+          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
+            <div key={d} className="p-2 text-center text-xs font-semibold uppercase">
+              {d}
             </div>
           ))}
         </div>
+        <div className="grid grid-cols-7 flex-1 auto-rows-fr">
+          {days.map((day) => {
+            const events = getEventsForDay(day)
+            const isToday = isSameDay(day, new Date())
+            return (
+              <div
+                key={day.toISOString()}
+                className={cn(
+                  'border-b border-r p-1 overflow-hidden hover:bg-muted/10 cursor-pointer flex flex-col',
+                  !isSameMonth(day, selectedDate) && 'opacity-40',
+                )}
+                onClick={() => {
+                  setSelectedDate(day)
+                  setView('day')
+                }}
+              >
+                <div className="text-right mb-1">
+                  <span
+                    className={cn(
+                      'inline-flex items-center justify-center text-xs w-6 h-6 rounded-full',
+                      isToday
+                        ? 'bg-primary text-primary-foreground font-bold'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {format(day, 'd')}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 flex-1 overflow-hidden">
+                  {events.slice(0, 4).map((apt) => (
+                    <div
+                      key={apt.id}
+                      className="text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm"
+                      style={{
+                        backgroundColor: apt.expand?.barber_id?.color || 'hsl(var(--primary))',
+                      }}
+                    >
+                      {apt.time} {apt.expand?.client_id?.name}
+                    </div>
+                  ))}
+                  {events.length > 4 && (
+                    <div className="text-[10px] text-muted-foreground font-medium pl-1">
+                      +{events.length - 4} mais
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  const renderGrid = () => {
+    let daysToRender: Date[] = []
+    if (view === 'day') daysToRender = [selectedDate]
+    if (view === 'week') {
+      daysToRender = eachDayOfInterval({
+        start: startOfWeek(selectedDate, { weekStartsOn: 0 }),
+        end: endOfWeek(selectedDate, { weekStartsOn: 0 }),
+      })
+    }
+
+    return (
+      <ScrollArea className="flex-1 rounded-xl border bg-card/50 shadow-inner">
+        <div className="flex min-w-[600px] h-full">
+          {/* Time axis */}
+          <div className="w-16 border-r flex flex-col bg-background/50 sticky left-0 z-30">
+            {view === 'week' && <div className="h-12 border-b bg-muted/20" />}
+            <div className="relative" style={{ height: HOURS.length * 60 }}>
+              {HOURS.map((h) => (
+                <div
+                  key={h}
+                  className="absolute w-full text-[10px] text-right pr-2 text-muted-foreground"
+                  style={{ top: (h - 8) * 60 - 6 }}
+                >
+                  {h.toString().padStart(2, '0')}:00
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Day columns */}
+          <div className="flex-1 flex">{daysToRender.map(renderDayColumn)}</div>
+        </div>
         <ScrollBar orientation="horizontal" />
+        <ScrollBar orientation="vertical" />
       </ScrollArea>
+    )
+  }
+
+  const headerLabel =
+    view === 'day'
+      ? format(selectedDate, "dd 'de' MMMM, yyyy", { locale: ptBR })
+      : view === 'week'
+        ? `${format(startOfWeek(selectedDate, { weekStartsOn: 0 }), 'dd MMM', { locale: ptBR })} - ${format(endOfWeek(selectedDate, { weekStartsOn: 0 }), 'dd MMM, yyyy', { locale: ptBR })}`
+        : format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR })
+
+  return (
+    <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-8rem)] flex flex-col space-y-4 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold tracking-tight hidden md:block">Agenda</h2>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date())}>
+              Hoje
+            </Button>
+            <div className="flex items-center">
+              <Button variant="ghost" size="icon" className="size-8" onClick={navigatePrev}>
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-8" onClick={navigateNext}>
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+            <span className="text-base font-medium capitalize ml-2">{headerLabel}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0">
+          <Tabs
+            value={view}
+            onValueChange={(v) => setView(v as any)}
+            className="w-[200px] shrink-0"
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="day">Dia</TabsTrigger>
+              <TabsTrigger value="week">Sem</TabsTrigger>
+              <TabsTrigger value="month">Mês</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Button onClick={() => handleOpen()} className="gap-2 shrink-0">
+            <Plus className="size-4" /> <span className="hidden sm:inline">Agendar</span>
+          </Button>
+        </div>
+      </div>
+
+      {view === 'month' ? renderMonthView() : renderGrid()}
 
       <Dialog open={newClientDialogOpen} onOpenChange={setNewClientDialogOpen}>
         <DialogContent className="max-w-sm" style={{ zIndex: 10000 }}>

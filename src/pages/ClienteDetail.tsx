@@ -58,7 +58,7 @@ export default function ClienteDetail() {
       if (sName) sCounts[sName] = (sCounts[sName] || 0) + 1
     })
     const mostUsedEntry = Object.entries(sCounts).sort((a, b) => b[1] - a[1])[0]
-    const mostUsed = mostUsedEntry ? `${mostUsedEntry[0]} - ${mostUsedEntry[1]} vezes` : 'Nenhum'
+    const mostUsed = mostUsedEntry ? `${mostUsedEntry[0]} (${mostUsedEntry[1]})` : 'Nenhum'
 
     return { visits: completedApts.length, totalServices, totalProducts, mostUsed }
   }, [appointments, purchases])

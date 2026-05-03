@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T19:28:04.952Z",
+  "generatedAt": "2026-05-03T19:40:39.554Z",
   "collections": [
     {
       "name": "users",
@@ -214,6 +214,26 @@
           "type": "bool",
           "required": false,
           "system": false
+        },
+        {
+          "name": "phone_secondary",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created_by_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "barbers"
+        },
+        {
+          "name": "preferred_barber_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "barbers"
         }
       ],
       "indexes": []

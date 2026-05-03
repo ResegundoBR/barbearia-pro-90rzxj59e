@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -21,37 +21,69 @@ import {
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { UserPlus, Edit, Eye } from 'lucide-react'
-import { getClients, createClient, updateClient } from '@/services/api'
+import { getClients, createClient, updateClient, getBarbers } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
-import { phoneMask } from '@/lib/utils'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useAuth } from '@/hooks/use-auth'
+
+const applyPhoneMask = (v: string) => {
+  if (!v) return ''
+  let val = v.replace(/\D/g, '')
+  if (val.length > 11) val = val.slice(0, 11)
+  if (val.length > 10) return val.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3')
+  if (val.length > 5) return val.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3')
+  if (val.length > 2) return val.replace(/^(\d{2})(\d{0,5})/, '($1) $2')
+  return val
+}
 
 const defForm = {
   name: '',
   surname: '',
   phone: '',
+  phone_secondary: '',
   email: '',
   birthday: '',
   location_type: 'nearby',
   is_active: true,
+  preferred_barber_id: '',
 }
 
 export default function Clientes() {
+  const { user } = useAuth()
   const [clients, setClients] = useState<any[]>([])
+  const [barbers, setBarbers] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [formData, setFormData] = useState<any>(defForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const { toast } = useToast()
 
-  const loadData = async () => setClients(await getClients())
+  const loadData = async () => {
+    setClients(await getClients())
+    setBarbers(await getBarbers())
+  }
+
   useEffect(() => {
     loadData()
   }, [])
   useRealtime('clients', loadData)
 
+  const loggedInBarber = barbers.find((b) => b.name === user?.name)
+
   const openEdit = (c: any) => {
-    setFormData({ ...c, is_active: c.is_active ?? true })
+    setFormData({
+      ...c,
+      is_active: c.is_active ?? true,
+      phone_secondary: c.phone_secondary || '',
+      preferred_barber_id: c.preferred_barber_id || '',
+    })
     setEditingId(c.id)
     setIsOpen(true)
   }
@@ -65,8 +97,17 @@ export default function Clientes() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      if (editingId) await updateClient(editingId, formData)
-      else await createClient(formData)
+      const payload = { ...formData }
+      if (!editingId && loggedInBarber) {
+        payload.created_by_id = loggedInBarber.id
+      }
+
+      if (!payload.preferred_barber_id || payload.preferred_barber_id === 'none') {
+        payload.preferred_barber_id = ''
+      }
+
+      if (editingId) await updateClient(editingId, payload)
+      else await createClient(payload)
       toast({ title: editingId ? 'Cliente atualizado!' : 'Cliente cadastrado com sucesso!' })
       setIsOpen(false)
     } catch (err) {
@@ -91,12 +132,12 @@ export default function Clientes() {
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Cliente' : 'Cadastrar Cliente'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nome</Label>
                 <Input
@@ -113,16 +154,32 @@ export default function Clientes() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Celular</Label>
+                <Label>Celular Principal</Label>
                 <Input
                   required
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: phoneMask(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: applyPhoneMask(e.target.value) })
+                  }
                   placeholder="(00) 00000-0000"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Celular Secundário</Label>
+                <Input
+                  value={formData.phone_secondary}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone_secondary: applyPhoneMask(e.target.value) })
+                  }
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nascimento</Label>
                 <Input
@@ -131,13 +188,33 @@ export default function Clientes() {
                   onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Profissional Preferido</Label>
+                <Select
+                  value={formData.preferred_barber_id || 'none'}
+                  onValueChange={(v) => setFormData({ ...formData, preferred_barber_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {barbers.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
             <div className="space-y-2">
               <Label>Localização</Label>
               <RadioGroup
                 value={formData.location_type}
                 onValueChange={(v) => setFormData({ ...formData, location_type: v })}
-                className="grid grid-cols-2 gap-2 mt-2"
+                className="flex flex-wrap gap-4 mt-2"
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="passage" id="r1" />
@@ -167,12 +244,12 @@ export default function Clientes() {
       </Dialog>
 
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Celular</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Contatos</TableHead>
                 <TableHead className="text-center">Ativo</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -180,10 +257,35 @@ export default function Clientes() {
             <TableBody>
               {clients.map((c) => (
                 <TableRow key={c.id} className={c.is_active === false ? 'opacity-50' : ''}>
-                  <TableCell className="font-medium">
-                    {c.name} {c.surname}
+                  <TableCell>
+                    <div className="font-medium text-base">
+                      {c.name} {c.surname}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                      {c.expand?.created_by_id && (
+                        <div>
+                          Cadastrado por:{' '}
+                          <span className="font-medium">{c.expand.created_by_id.name}</span>
+                        </div>
+                      )}
+                      {c.expand?.preferred_barber_id && (
+                        <div>
+                          Atendido por:{' '}
+                          <span className="font-medium">{c.expand.preferred_barber_id.name}</span>
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell>{c.phone}</TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div>{c.phone}</div>
+                      {c.phone_secondary && (
+                        <div className="text-sm text-muted-foreground">
+                          {c.phone_secondary} (Sec)
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-center">
                     <Switch
                       checked={c.is_active !== false}
@@ -202,6 +304,13 @@ export default function Clientes() {
                   </TableCell>
                 </TableRow>
               ))}
+              {clients.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                    Nenhum cliente cadastrado.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

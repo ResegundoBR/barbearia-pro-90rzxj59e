@@ -506,6 +506,47 @@ export default function Index() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={alertModal === 'tomorrow'} onOpenChange={(v) => !v && setAlertModal(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Agendamentos para Amanhã</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Horário</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Profissional</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {aptsTomorrowList.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell>{a.time}</TableCell>
+                    <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
+                    <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
+                    <TableCell>{a.expand?.service_id?.name || '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{a.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {aptsTomorrowList.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                      Nenhum agendamento para amanhã.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!dashboardModal} onOpenChange={(v) => !v && setDashboardModal(null)}>
         <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
           <DialogHeader>
