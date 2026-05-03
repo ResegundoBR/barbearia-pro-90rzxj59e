@@ -48,6 +48,7 @@ import pb from '@/lib/pocketbase/client'
 import { useToast } from '@/hooks/use-toast'
 import { addDays, format } from 'date-fns'
 import { Separator } from '@/components/ui/separator'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 export default function Checkout() {
   const [barbers, setBarbers] = useState<any[]>([])
@@ -171,7 +172,8 @@ export default function Checkout() {
       setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
       setSuccessState({ type: 'package', message: 'Pacote vendido com sucesso!' })
     } catch (err: any) {
-      toast({ title: 'Erro ao vender pacote', variant: 'destructive' })
+      const msg = err instanceof Error ? err.message : getErrorMessage(err)
+      toast({ title: msg || 'Erro ao vender pacote', variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
     }
@@ -195,18 +197,24 @@ export default function Checkout() {
       let barberId = ''
 
       if (isManual) {
-        if (!manualForm.client_id || !manualForm.barber_id || !manualForm.service_id) {
-          throw new Error('Preencha todos os campos do atendimento avulso.')
+        if (!manualForm.client_id || !manualForm.barber_id) {
+          throw new Error('Preencha o cliente e o profissional para atendimento avulso.')
         }
-        apt = await pb.collection('appointments').create({
-          client_id: manualForm.client_id,
-          barber_id: manualForm.barber_id,
-          service_id: manualForm.service_id,
-          status: 'Concluído',
-          date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
-          time: format(new Date(), 'HH:mm'),
-          price: finalServicePrice,
-        })
+        if (!manualForm.service_id && selectedProducts.length === 0) {
+          throw new Error('Selecione um serviço ou adicione produtos.')
+        }
+
+        if (manualForm.service_id) {
+          apt = await pb.collection('appointments').create({
+            client_id: manualForm.client_id,
+            barber_id: manualForm.barber_id,
+            service_id: manualForm.service_id,
+            status: 'Concluído',
+            date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
+            time: format(new Date(), 'HH:mm'),
+            price: finalServicePrice,
+          })
+        }
         clientId = manualForm.client_id
         barberId = manualForm.barber_id
       } else {
@@ -230,11 +238,13 @@ export default function Checkout() {
           })
         }
 
-        await updateAppointment(apt.id, {
+        const updatePayload: any = {
           status: 'Concluído',
           price: finalServicePrice,
-          client_package_id: finalPackageId || undefined,
-        })
+        }
+        if (finalPackageId) updatePayload.client_package_id = finalPackageId
+
+        await updateAppointment(apt.id, updatePayload)
       }
 
       const barber = barbers.find((b) => b.id === barberId)
@@ -341,7 +351,8 @@ export default function Checkout() {
       loadData()
       setSuccessState({ type: 'service', message: 'Venda finalizada com sucesso!' })
     } catch (err: any) {
-      toast({ title: err.message || 'Erro ao finalizar checkout', variant: 'destructive' })
+      const msg = err instanceof Error ? err.message : getErrorMessage(err)
+      toast({ title: msg || 'Erro ao finalizar checkout', variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
     }

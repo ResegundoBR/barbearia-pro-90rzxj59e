@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
@@ -29,7 +30,19 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Input } from '@/components/ui/input'
-import { Plus, CalendarIcon, ChevronLeft, ChevronRight, Check, ChevronsUpDown } from 'lucide-react'
+import {
+  Plus,
+  CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  ChevronsUpDown,
+  Edit2,
+  Clock,
+  User,
+  Scissors,
+  CalendarDays,
+} from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   getBarbers,
@@ -40,9 +53,11 @@ import {
   getClientPackages,
   consumePackage,
   createClient,
+  updateAppointment,
 } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 import {
   format,
   addMinutes,
@@ -90,6 +105,19 @@ export default function Agenda() {
   const [clientSearchOpen, setClientSearchOpen] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', phone: '' })
   const [newClientDialogOpen, setNewClientDialogOpen] = useState(false)
+
+  // Edit/View Dialog State
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [selectedApt, setSelectedApt] = useState<any>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editForm, setEditForm] = useState({
+    barber_id: '',
+    service_id: '',
+    date: new Date(),
+    time: '',
+    end_time: '',
+    status: '',
+  })
 
   const loadData = async () => {
     let start, end
@@ -157,8 +185,8 @@ export default function Agenda() {
       setForm((f) => ({ ...f, client_id: c.id }))
       setNewClientDialogOpen(false)
       toast({ title: 'Cliente criado!' })
-    } catch {
-      toast({ title: 'Erro ao criar cliente', variant: 'destructive' })
+    } catch (err) {
+      toast({ title: getErrorMessage(err) || 'Erro ao criar cliente', variant: 'destructive' })
     }
   }
 
@@ -215,7 +243,43 @@ export default function Agenda() {
       setIsOpen(false)
       loadData()
     } catch (err: any) {
-      toast({ title: 'Erro ao agendar', variant: 'destructive' })
+      toast({ title: getErrorMessage(err) || 'Erro ao agendar', variant: 'destructive' })
+    }
+  }
+
+  const handleOpenDetail = (apt: any) => {
+    setSelectedApt(apt)
+    setEditForm({
+      barber_id: apt.barber_id || '',
+      service_id: apt.service_id || '',
+      date: new Date(apt.date),
+      time: apt.time || '',
+      end_time: apt.end_time || '',
+      status: apt.status || 'Confirmado',
+    })
+    setIsEditMode(false)
+    setDetailOpen(true)
+  }
+
+  const handleUpdateBooking = async () => {
+    if (!editForm.barber_id || !editForm.service_id || !editForm.date || !editForm.time) {
+      return toast({ title: 'Preencha os campos obrigatórios.', variant: 'destructive' })
+    }
+    try {
+      const payload = {
+        barber_id: editForm.barber_id,
+        service_id: editForm.service_id,
+        time: editForm.time,
+        end_time: editForm.end_time,
+        date: format(editForm.date, 'yyyy-MM-dd 12:00:00'),
+        status: editForm.status,
+      }
+      await updateAppointment(selectedApt.id, payload)
+      toast({ title: 'Agendamento atualizado com sucesso!' })
+      setDetailOpen(false)
+      loadData()
+    } catch (err) {
+      toast({ title: getErrorMessage(err) || 'Erro ao atualizar', variant: 'destructive' })
     }
   }
 
@@ -230,9 +294,7 @@ export default function Agenda() {
   )
 
   const getEventsForDay = (day: Date) => {
-    return data.apts.filter(
-      (a) => a.date && a.date.startsWith(format(day, 'yyyy-MM-dd')) && a.status !== 'Cancelado',
-    )
+    return data.apts.filter((a) => a.date && a.date.startsWith(format(day, 'yyyy-MM-dd')))
   }
 
   const renderDayColumn = (day: Date) => {
@@ -268,12 +330,20 @@ export default function Agenda() {
             const top = (sH - 8 + sM / 60) * 60
             const height = Math.max(15, (eH - sH + (eM - sM) / 60) * 60)
             const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
+            const isCanceled = apt.status === 'Cancelado'
 
             return (
               <div
                 key={apt.id}
-                className="absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] cursor-pointer"
+                className={cn(
+                  'absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] cursor-pointer',
+                  isCanceled && 'opacity-50 grayscale',
+                )}
                 style={{ top, height, backgroundColor: barberColor }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleOpenDetail(apt)
+                }}
               >
                 <div className="text-xs font-semibold leading-tight drop-shadow-sm">
                   {apt.expand?.client_id?.name}
@@ -337,9 +407,16 @@ export default function Agenda() {
                   {events.slice(0, 4).map((apt) => (
                     <div
                       key={apt.id}
-                      className="text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm"
+                      className={cn(
+                        'text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm',
+                        apt.status === 'Cancelado' && 'opacity-50 grayscale',
+                      )}
                       style={{
                         backgroundColor: apt.expand?.barber_id?.color || 'hsl(var(--primary))',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleOpenDetail(apt)
                       }}
                     >
                       {apt.time} - {apt.expand?.barber_id?.name?.split(' ')[0]} -{' '}
@@ -373,7 +450,6 @@ export default function Agenda() {
     return (
       <ScrollArea className="flex-1 rounded-xl border bg-card/50 shadow-inner">
         <div className="flex min-w-[600px] h-full">
-          {/* Time axis */}
           <div className="w-16 border-r flex flex-col bg-background/50 sticky left-0 z-30">
             {view === 'week' && <div className="h-12 border-b bg-muted/20" />}
             <div className="relative" style={{ height: HOURS.length * 60 }}>
@@ -388,8 +464,6 @@ export default function Agenda() {
               ))}
             </div>
           </div>
-
-          {/* Day columns */}
           <div className="flex-1 flex">{daysToRender.map(renderDayColumn)}</div>
         </div>
         <ScrollBar orientation="horizontal" />
@@ -406,7 +480,7 @@ export default function Agenda() {
         : format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR })
 
   return (
-    <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-8rem)] flex flex-col space-y-4 max-w-7xl mx-auto">
+    <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-8rem)] flex flex-col space-y-4 max-w-7xl mx-auto animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <h2 className="text-2xl font-bold tracking-tight hidden md:block">Agenda</h2>
@@ -446,37 +520,7 @@ export default function Agenda() {
 
       {view === 'month' ? renderMonthView() : renderGrid()}
 
-      <Dialog open={newClientDialogOpen} onOpenChange={setNewClientDialogOpen}>
-        <DialogContent className="max-w-sm" style={{ zIndex: 10000 }}>
-          <DialogHeader>
-            <DialogTitle>Novo Cliente</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome</Label>
-              <Input
-                placeholder="Nome do cliente"
-                value={newClient.name}
-                onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Celular</Label>
-              <Input
-                placeholder="(00) 00000-0000"
-                value={newClient.phone}
-                onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleClientCreate} className="w-full">
-              Salvar Cliente
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      {/* CREATE APPOINTMENT DIALOG */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -648,6 +692,259 @@ export default function Agenda() {
             <Button onClick={handleBooking} className="w-full">
               Confirmar Agendamento
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* NEW CLIENT DIALOG */}
+      <Dialog open={newClientDialogOpen} onOpenChange={setNewClientDialogOpen}>
+        <DialogContent className="max-w-sm" style={{ zIndex: 10000 }}>
+          <DialogHeader>
+            <DialogTitle>Novo Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input
+                placeholder="Nome do cliente"
+                value={newClient.name}
+                onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Celular</Label>
+              <Input
+                placeholder="(00) 00000-0000"
+                value={newClient.phone}
+                onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleClientCreate} className="w-full">
+              Salvar Cliente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* VIEW/EDIT APPOINTMENT DIALOG */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{isEditMode ? 'Editar Agendamento' : 'Detalhes do Agendamento'}</span>
+              {!isEditMode && (
+                <Button variant="ghost" size="icon" onClick={() => setIsEditMode(true)}>
+                  <Edit2 className="size-4" />
+                </Button>
+              )}
+            </DialogTitle>
+            {!isEditMode && selectedApt && (
+              <DialogDescription>Informações do atendimento agendado.</DialogDescription>
+            )}
+          </DialogHeader>
+
+          {selectedApt && (
+            <div className="py-4">
+              {!isEditMode ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <User className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Cliente</p>
+                      <p className="font-medium text-lg">{selectedApt.expand?.client_id?.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Scissors className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Serviço / Profissional</p>
+                      <p className="font-medium">
+                        {selectedApt.expand?.service_id?.name} com{' '}
+                        {selectedApt.expand?.barber_id?.name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <CalendarDays className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Data e Hora</p>
+                      <p className="font-medium">
+                        {selectedApt.date ? format(new Date(selectedApt.date), 'dd/MM/yyyy') : ''} •{' '}
+                        {selectedApt.time} às {selectedApt.end_time || '--:--'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <Clock className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Status</p>
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                          selectedApt.status === 'Concluído'
+                            ? 'bg-green-100 text-green-800'
+                            : selectedApt.status === 'Cancelado'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800',
+                        )}
+                      >
+                        {selectedApt.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Profissional</Label>
+                    <Select
+                      value={editForm.barber_id}
+                      onValueChange={(v) => setEditForm({ ...editForm, barber_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o profissional" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.barbers.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Serviço</Label>
+                    <Select
+                      value={editForm.service_id}
+                      onValueChange={(v) => setEditForm({ ...editForm, service_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o serviço" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.services.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 flex flex-col">
+                      <Label>Data</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'w-full justify-start text-left font-normal',
+                              !editForm.date && 'text-muted-foreground',
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 size-4" />
+                            {editForm.date ? (
+                              format(editForm.date, 'dd/MM/yyyy', { locale: ptBR })
+                            ) : (
+                              <span>Selecione</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" style={{ zIndex: 9999 }}>
+                          <Calendar
+                            mode="single"
+                            selected={editForm.date}
+                            onSelect={(d) => d && setEditForm({ ...editForm, date: d })}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Início</Label>
+                      <Select
+                        value={editForm.time}
+                        onValueChange={(v) => setEditForm({ ...editForm, time: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[200px]">
+                          {timeSlots.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Fim</Label>
+                      <Select
+                        value={editForm.end_time}
+                        onValueChange={(v) => setEditForm({ ...editForm, end_time: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[200px]">
+                          {timeSlots.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select
+                        value={editForm.status}
+                        onValueChange={(v) => setEditForm({ ...editForm, status: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pendente">Pendente</SelectItem>
+                          <SelectItem value="Confirmado">Confirmado</SelectItem>
+                          <SelectItem value="Concluído">Concluído</SelectItem>
+                          <SelectItem value="Cancelado">Cancelado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="sm:justify-end gap-2">
+            {isEditMode ? (
+              <>
+                <Button variant="outline" onClick={() => setIsEditMode(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleUpdateBooking}>Salvar Alterações</Button>
+              </>
+            ) : (
+              <Button variant="outline" onClick={() => setDetailOpen(false)}>
+                Fechar
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
