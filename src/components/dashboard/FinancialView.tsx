@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import pb from '@/lib/pocketbase/client'
 
 interface FinancialViewProps {
   commissions: any[]
@@ -18,7 +21,27 @@ interface FinancialViewProps {
   onOpenAdvanceModal: () => void
 }
 
+interface TransactionGroup {
+  id: string
+  date: string
+  created: string
+  barber: any
+  client: any
+  type: string
+  payment_method: string
+  status: string
+  grossAmount: number
+  serviceAmount: number
+  productAmount: number
+  commissionAmount: number
+  items: string[]
+  commissions: any[]
+}
+
 export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: FinancialViewProps) {
+  const [transactions, setTransactions] = useState<TransactionGroup[]>([])
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
+
   const totalAvailable = commissions
     .filter((c) => !c.is_advance && c.status === 'available')
     .reduce((acc, c) => acc + c.amount, 0)
@@ -64,6 +87,168 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     },
     {} as Record<string, any>,
   )
+
+  const toggleRow = (id: string) => {
+    setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const filterStr = `updated >= "${thirtyDaysAgo.toISOString()}"`
+        const filterStrCreated = `created >= "${thirtyDaysAgo.toISOString()}"`
+
+        const [aptsRes, prodsRes, pkgsRes] = await Promise.all([
+          pb.collection('appointments').getFullList({
+            filter: `status = 'Concluído' && ${filterStr}`,
+            expand: 'client_id,service_id,barber_id',
+          }),
+          pb.collection('product_purchases').getFullList({
+            filter: filterStrCreated,
+            expand: 'client_id,product_id,barber_id',
+          }),
+          pb.collection('client_packages').getFullList({
+            filter: filterStrCreated,
+            expand: 'client_id,package_id,barber_id',
+          }),
+        ])
+
+        const groups: TransactionGroup[] = []
+        const usedComms = new Set()
+
+        for (const apt of aptsRes) {
+          const aptTime = new Date(apt.updated).getTime()
+          const prods = prodsRes.filter(
+            (p) =>
+              p.client_id === apt.client_id &&
+              Math.abs(new Date(p.created).getTime() - aptTime) < 15000,
+          )
+          const comms = commissions.filter(
+            (c) =>
+              c.barber_id === apt.barber_id &&
+              !c.is_advance &&
+              Math.abs(new Date(c.created).getTime() - aptTime) < 15000,
+          )
+
+          comms.forEach((c) => usedComms.add(c.id))
+
+          if (comms.length === 0 && aptTime < thirtyDaysAgo.getTime()) continue
+
+          const serviceAmount = apt.price || 0
+          const productAmount = prods.reduce((acc, p) => acc + (p.price_at_sale || 0), 0)
+          const commissionAmount = comms.reduce((acc, c) => acc + (c.amount || 0), 0)
+          const grossAmount = serviceAmount + productAmount
+
+          const payment_method = comms[0]?.payment_method || '-'
+          const status = comms[0]?.status || 'paid'
+
+          const items = [apt.expand?.service_id?.name || 'Serviço']
+          prods.forEach((p) => items.push(p.expand?.product_id?.name || 'Produto'))
+
+          groups.push({
+            id: apt.id,
+            date: apt.updated,
+            created: apt.updated,
+            barber: apt.expand?.barber_id,
+            client: apt.expand?.client_id,
+            type: 'service_checkout',
+            payment_method,
+            status,
+            grossAmount,
+            serviceAmount,
+            productAmount,
+            commissionAmount,
+            items,
+            commissions: comms,
+          })
+        }
+
+        for (const pkg of pkgsRes) {
+          const pkgTime = new Date(pkg.created).getTime()
+          const comms = commissions.filter(
+            (c) =>
+              c.barber_id === pkg.barber_id &&
+              !c.is_advance &&
+              Math.abs(new Date(c.created).getTime() - pkgTime) < 15000,
+          )
+
+          comms.forEach((c) => usedComms.add(c.id))
+
+          if (comms.length === 0 && pkgTime < thirtyDaysAgo.getTime()) continue
+
+          const serviceAmount = pkg.expand?.package_id?.price || 0
+          const commissionAmount = comms.reduce((acc, c) => acc + (c.amount || 0), 0)
+
+          const payment_method = comms[0]?.payment_method || '-'
+          const status = comms[0]?.status || 'paid'
+
+          groups.push({
+            id: pkg.id,
+            date: pkg.created,
+            created: pkg.created,
+            barber: pkg.expand?.barber_id,
+            client: pkg.expand?.client_id,
+            type: 'package_sale',
+            payment_method,
+            status,
+            grossAmount: serviceAmount,
+            serviceAmount,
+            productAmount: 0,
+            commissionAmount,
+            items: [pkg.expand?.package_id?.name || 'Pacote'],
+            commissions: comms,
+          })
+        }
+
+        for (const comm of commissions) {
+          if (usedComms.has(comm.id)) continue
+
+          groups.push({
+            id: comm.id,
+            date: comm.date || comm.created,
+            created: comm.created,
+            barber: comm.expand?.barber_id,
+            client: null,
+            type: comm.is_advance ? 'advance' : 'commission_only',
+            payment_method: comm.payment_method,
+            status: comm.status,
+            grossAmount: comm.is_advance ? -comm.amount : comm.amount,
+            serviceAmount: 0,
+            productAmount: 0,
+            commissionAmount: comm.is_advance ? 0 : comm.amount,
+            items: [
+              comm.is_advance
+                ? 'Adiantamento/Vale'
+                : comm.type === 'service'
+                  ? 'Serviço'
+                  : comm.type === 'product'
+                    ? 'Produto'
+                    : 'Comissão',
+            ],
+            commissions: [comm],
+          })
+        }
+
+        const sorted = groups.sort(
+          (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime(),
+        )
+        setTransactions(sorted.slice(0, 100))
+      } catch (err) {
+        console.error('Error loading transactions', err)
+      }
+    }
+
+    loadTransactions()
+  }, [commissions])
+
+  const translatePayment = (method: string) => {
+    if (method === 'cash') return 'Dinheiro'
+    if (method === 'card') return 'Cartão'
+    if (method === 'pix') return 'Pix'
+    return '-'
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -117,54 +302,107 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10"></TableHead>
                 <TableHead>Data</TableHead>
-                <TableHead>Profissional</TableHead>
-                <TableHead>Tipo</TableHead>
+                <TableHead>Cliente / Profissional</TableHead>
+                <TableHead>Itens</TableHead>
                 <TableHead>Método</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="text-right">Valores</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {commissions.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>{format(new Date(c.date || c.created), 'dd/MM/yyyy')}</TableCell>
-                  <TableCell>{c.expand?.barber_id?.name || '-'}</TableCell>
-                  <TableCell>
-                    {c.is_advance ? 'Adiantamento' : c.type === 'service' ? 'Serviço' : 'Pacote'}
-                  </TableCell>
-                  <TableCell className="capitalize">
-                    {c.payment_method === 'cash'
-                      ? 'Dinheiro'
-                      : c.payment_method === 'card'
-                        ? 'Cartão'
-                        : c.payment_method === 'pix'
-                          ? 'Pix'
-                          : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        c.status === 'paid' || c.status === 'available' ? 'default' : 'secondary'
-                      }
-                    >
-                      {c.status === 'available'
-                        ? 'Disponível'
-                        : c.status === 'pending'
-                          ? 'Pendente'
-                          : 'Pago'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    <span className={c.is_advance ? 'text-red-500' : 'text-emerald-500'}>
-                      {c.is_advance ? '-' : '+'} R$ {c.amount.toFixed(2)}
-                    </span>
-                  </TableCell>
-                </TableRow>
+              {transactions.map((t) => (
+                <React.Fragment key={t.id}>
+                  <TableRow
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => toggleRow(t.id)}
+                  >
+                    <TableCell className="w-10">
+                      {t.type !== 'advance' && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                          {expandedRows[t.id] ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell>{format(new Date(t.date), 'dd/MM/yyyy HH:mm')}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{t.client?.name || 'Avulso'}</div>
+                      <div className="text-xs text-muted-foreground">{t.barber?.name || '-'}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm truncate max-w-[150px]">{t.items.join(', ')}</div>
+                    </TableCell>
+                    <TableCell className="capitalize">
+                      {translatePayment(t.payment_method)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          t.status === 'paid' || t.status === 'available' ? 'default' : 'secondary'
+                        }
+                      >
+                        {t.status === 'available'
+                          ? 'Disponível'
+                          : t.status === 'pending'
+                            ? 'Pendente'
+                            : 'Pago'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {t.type === 'advance' ? (
+                        <span className="text-red-500 font-medium">
+                          - R$ {Math.abs(t.grossAmount).toFixed(2)}
+                        </span>
+                      ) : (
+                        <div className="flex flex-col items-end">
+                          <span className="text-emerald-500 font-bold">
+                            R$ {t.grossAmount.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            Comissão: R$ {t.commissionAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  {expandedRows[t.id] && t.type !== 'advance' && (
+                    <TableRow className="bg-muted/30">
+                      <TableCell colSpan={7} className="p-0 border-b">
+                        <div className="flex flex-wrap items-center justify-between p-4 text-sm gap-4">
+                          <div className="flex flex-col">
+                            <span className="text-muted-foreground text-xs">Serviços/Pacotes</span>
+                            <span className="font-medium">R$ {t.serviceAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-muted-foreground text-xs">Produtos</span>
+                            <span className="font-medium">R$ {t.productAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-muted-foreground text-xs">
+                              Comissão Profissional
+                            </span>
+                            <span className="font-medium">R$ {t.commissionAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-muted-foreground text-xs">Total da Venda</span>
+                            <span className="font-bold text-emerald-500">
+                              R$ {t.grossAmount.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
               ))}
-              {commissions.length === 0 && (
+              {transactions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                     Nenhuma transação encontrada no período.
                   </TableCell>
                 </TableRow>

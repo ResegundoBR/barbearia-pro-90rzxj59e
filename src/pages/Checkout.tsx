@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Check } from 'lucide-react'
 import {
   getBarbers,
   getClients,
@@ -53,6 +53,10 @@ export default function Checkout() {
   const [productToAdd, setProductToAdd] = useState('')
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [successState, setSuccessState] = useState<{
+    type: 'service' | 'package'
+    message: string
+  } | null>(null)
   const { toast } = useToast()
 
   const loadData = () => {
@@ -125,7 +129,7 @@ export default function Checkout() {
           barber_id: barber.id,
           amount: commAmount,
           type: 'package_sale',
-          date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
+          date: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
           is_advance: false,
           payment_method: pkgForm.payment_method,
           status,
@@ -135,6 +139,7 @@ export default function Checkout() {
 
       toast({ title: 'Pacote vendido com sucesso!' })
       setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
+      setSuccessState({ type: 'package', message: 'Pacote vendido com sucesso!' })
     } catch (err: any) {
       toast({ title: 'Erro ao vender pacote', variant: 'destructive' })
     } finally {
@@ -159,7 +164,7 @@ export default function Checkout() {
       await updateAppointment(apt.id, { status: 'Concluído', price: finalServicePrice })
 
       const barber = barbers.find((b) => b.id === apt.barber_id)
-      const now = format(new Date(), 'yyyy-MM-dd 12:00:00')
+      const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
       const isCard = svcForm.payment_method === 'card'
       const status = isCard ? 'pending' : 'available'
       const due_date = isCard ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
@@ -247,6 +252,7 @@ export default function Checkout() {
       setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
       setSelectedProducts([])
       loadData()
+      setSuccessState({ type: 'service', message: 'Serviço e produtos finalizados com sucesso!' })
     } catch (err: any) {
       toast({ title: err.message || 'Erro ao finalizar serviço', variant: 'destructive' })
     } finally {
@@ -312,265 +318,285 @@ export default function Checkout() {
         <p className="text-muted-foreground">Finalize serviços ou venda novos pacotes.</p>
       </div>
 
-      <Tabs
-        defaultValue="service"
-        className="w-full"
-        onValueChange={() => {
-          setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
-          setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
-          setSelectedProducts([])
-        }}
-      >
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="service">Fechar Serviço</TabsTrigger>
-          <TabsTrigger value="package">Vender Pacote</TabsTrigger>
-        </TabsList>
+      {successState ? (
+        <Card className="animate-fade-in mt-6">
+          <CardContent className="flex flex-col items-center justify-center space-y-4 py-16">
+            <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+              <Check className="h-8 w-8" />
+            </div>
+            <h2 className="text-2xl font-bold">{successState.message}</h2>
+            <p className="text-muted-foreground text-center">
+              A transação foi registrada no financeiro.
+              <br />
+              O estado do checkout foi reiniciado.
+            </p>
+            <Button onClick={() => setSuccessState(null)} size="lg" className="mt-4">
+              Novo Atendimento
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Tabs
+          defaultValue="service"
+          className="w-full"
+          onValueChange={() => {
+            setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
+            setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
+            setSelectedProducts([])
+          }}
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="service">Fechar Serviço</TabsTrigger>
+            <TabsTrigger value="package">Vender Pacote</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="service">
-          <Card>
-            <CardHeader>
-              <CardTitle>Finalizar Serviço & Produtos</CardTitle>
-              <CardDescription>
-                Selecione o agendamento concluído e adicione produtos se houver.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCloseService} className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Agendamento Pendente</Label>
-                  <Select
-                    required
-                    value={svcForm.appointment_id}
-                    onValueChange={handleAppointmentChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o agendamento..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {appointments.length === 0 && (
-                        <SelectItem value="empty" disabled>
-                          Nenhum agendamento pendente
-                        </SelectItem>
-                      )}
-                      {appointments.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.date ? a.date.substring(0, 10).split('-').reverse().join('/') : ''} às{' '}
-                          {a.time} - {a.expand?.client_id?.name} ({a.expand?.service_id?.name})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Valor do Serviço (R$)</Label>
-                  <Input
-                    required
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={svcForm.service_price}
-                    onChange={(e) => setSvcForm({ ...svcForm, service_price: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-4 border rounded-md p-4 bg-muted/20">
-                  <div>
-                    <Label className="text-base font-semibold">Produtos Adicionais</Label>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Vendeu algum produto durante o serviço? Adicione aqui.
-                    </p>
-                    <div className="flex gap-2">
-                      <Select value={productToAdd} onValueChange={setProductToAdd}>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Buscar produto..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.name} - R$ {p.price.toFixed(2)} (Estoque: {p.stock_quantity || 0})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button type="button" variant="secondary" onClick={handleAddProduct}>
-                        <Plus className="size-4" />
-                      </Button>
-                    </div>
+          <TabsContent value="service">
+            <Card>
+              <CardHeader>
+                <CardTitle>Finalizar Serviço & Produtos</CardTitle>
+                <CardDescription>
+                  Selecione o agendamento concluído e adicione produtos se houver.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCloseService} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Agendamento Pendente</Label>
+                    <Select
+                      required
+                      value={svcForm.appointment_id}
+                      onValueChange={handleAppointmentChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o agendamento..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {appointments.length === 0 && (
+                          <SelectItem value="empty" disabled>
+                            Nenhum agendamento pendente
+                          </SelectItem>
+                        )}
+                        {appointments.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.date ? a.date.substring(0, 10).split('-').reverse().join('/') : ''}{' '}
+                            às {a.time} - {a.expand?.client_id?.name} ({a.expand?.service_id?.name})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  {selectedProducts.length > 0 && (
-                    <div className="space-y-2">
-                      {selectedProducts.map((sp) => (
-                        <div
-                          key={sp.product_id}
-                          className="flex items-center justify-between gap-4 text-sm bg-background p-2 rounded border"
-                        >
-                          <div className="flex-1 font-medium truncate">{sp.product.name}</div>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              className="w-16 h-8 text-center"
-                              min={1}
-                              value={sp.quantity}
-                              onChange={(e) =>
-                                updateProductQuantity(sp.product_id, parseInt(e.target.value))
-                              }
-                            />
-                            <div className="w-20 text-right text-muted-foreground">
-                              R$ {(sp.product.price * sp.quantity).toFixed(2)}
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => removeProduct(sp.product_id)}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      <div className="text-right text-sm font-medium pt-2 border-t">
-                        Total Produtos: R$ {productsTotal.toFixed(2)}
+                  <div className="space-y-2">
+                    <Label>Valor do Serviço (R$)</Label>
+                    <Input
+                      required
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={svcForm.service_price}
+                      onChange={(e) => setSvcForm({ ...svcForm, service_price: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-4 border rounded-md p-4 bg-muted/20">
+                    <div>
+                      <Label className="text-base font-semibold">Produtos Adicionais</Label>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Vendeu algum produto durante o serviço? Adicione aqui.
+                      </p>
+                      <div className="flex gap-2">
+                        <Select value={productToAdd} onValueChange={setProductToAdd}>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Buscar produto..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {products.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name} - R$ {p.price.toFixed(2)} (Estoque: {p.stock_quantity || 0}
+                                )
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="secondary" onClick={handleAddProduct}>
+                          <Plus className="size-4" />
+                        </Button>
                       </div>
                     </div>
-                  )}
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Método de Pagamento</Label>
-                  <Select
-                    required
-                    value={svcForm.payment_method}
-                    onValueChange={(v) => setSvcForm({ ...svcForm, payment_method: v })}
+                    {selectedProducts.length > 0 && (
+                      <div className="space-y-2">
+                        {selectedProducts.map((sp) => (
+                          <div
+                            key={sp.product_id}
+                            className="flex items-center justify-between gap-4 text-sm bg-background p-2 rounded border"
+                          >
+                            <div className="flex-1 font-medium truncate">{sp.product.name}</div>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                className="w-16 h-8 text-center"
+                                min={1}
+                                value={sp.quantity}
+                                onChange={(e) =>
+                                  updateProductQuantity(sp.product_id, parseInt(e.target.value))
+                                }
+                              />
+                              <div className="w-20 text-right text-muted-foreground">
+                                R$ {(sp.product.price * sp.quantity).toFixed(2)}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => removeProduct(sp.product_id)}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="text-right text-sm font-medium pt-2 border-t">
+                          Total Produtos: R$ {productsTotal.toFixed(2)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Método de Pagamento</Label>
+                    <Select
+                      required
+                      value={svcForm.payment_method}
+                      onValueChange={(v) => setSvcForm({ ...svcForm, payment_method: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o pagamento..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Dinheiro</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="card">Cartão</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="pt-4 border-t flex justify-between items-center font-bold text-lg">
+                    <span>Total Geral:</span>
+                    <span className="text-primary">R$ {grandTotal.toFixed(2)}</span>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting || !svcForm.appointment_id}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o pagamento..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Dinheiro</SelectItem>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="card">Cartão</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    {isSubmitting ? 'Processando...' : 'Concluir Venda'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                <div className="pt-4 border-t flex justify-between items-center font-bold text-lg">
-                  <span>Total Geral:</span>
-                  <span className="text-primary">R$ {grandTotal.toFixed(2)}</span>
-                </div>
+          <TabsContent value="package">
+            <Card>
+              <CardHeader>
+                <CardTitle>Vender Pacote</CardTitle>
+                <CardDescription>
+                  Selecione o profissional vendedor, o cliente e o pacote desejado.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSellPackage} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Profissional (Vendedor)</Label>
+                    <Select
+                      required
+                      value={pkgForm.barber_id}
+                      onValueChange={(v) => setPkgForm({ ...pkgForm, barber_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione quem está vendendo..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {barbers.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isSubmitting || !svcForm.appointment_id}
-                >
-                  {isSubmitting ? 'Processando...' : 'Concluir Venda'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  <div className="space-y-2">
+                    <Label>Cliente</Label>
+                    <Select
+                      required
+                      value={pkgForm.client_id}
+                      onValueChange={(v) => setPkgForm({ ...pkgForm, client_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o cliente..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name} {c.surname || ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-        <TabsContent value="package">
-          <Card>
-            <CardHeader>
-              <CardTitle>Vender Pacote</CardTitle>
-              <CardDescription>
-                Selecione o profissional vendedor, o cliente e o pacote desejado.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSellPackage} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Profissional (Vendedor)</Label>
-                  <Select
-                    required
-                    value={pkgForm.barber_id}
-                    onValueChange={(v) => setPkgForm({ ...pkgForm, barber_id: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione quem está vendendo..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {barbers.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div className="space-y-2">
+                    <Label>Pacote</Label>
+                    <Select
+                      required
+                      value={pkgForm.package_id}
+                      onValueChange={(v) => setPkgForm({ ...pkgForm, package_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o pacote..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {packages.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} - R$ {p.price.toFixed(2)} ({p.quantity}x)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Cliente</Label>
-                  <Select
-                    required
-                    value={pkgForm.client_id}
-                    onValueChange={(v) => setPkgForm({ ...pkgForm, client_id: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o cliente..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name} {c.surname || ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div className="space-y-2">
+                    <Label>Método de Pagamento</Label>
+                    <Select
+                      required
+                      value={pkgForm.payment_method}
+                      onValueChange={(v) => setPkgForm({ ...pkgForm, payment_method: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o pagamento..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Dinheiro</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="card">Cartão</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Pacote</Label>
-                  <Select
-                    required
-                    value={pkgForm.package_id}
-                    onValueChange={(v) => setPkgForm({ ...pkgForm, package_id: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o pacote..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {packages.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name} - R$ {p.price.toFixed(2)} ({p.quantity}x)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Método de Pagamento</Label>
-                  <Select
-                    required
-                    value={pkgForm.payment_method}
-                    onValueChange={(v) => setPkgForm({ ...pkgForm, payment_method: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o pagamento..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Dinheiro</SelectItem>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="card">Cartão</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? 'Processando...' : 'Confirmar Venda'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? 'Processando...' : 'Confirmar Venda'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   )
 }
