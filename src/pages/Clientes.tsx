@@ -55,10 +55,14 @@ export default function Clientes() {
       </div>
 
       {hasMore && (
-        <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
+        <Alert
+          variant="destructive"
+          className="bg-destructive/10 border-destructive/20 text-destructive"
+        >
           <AlertCircle className="size-4" />
           <AlertDescription>
-            Você atingiu o limite de {maxClients} clientes do plano {state.tier}. Atualize para ver todos os {state.customers.length} clientes.
+            Você atingiu o limite de {maxClients} clientes do plano {state.tier}. Atualize para ver
+            todos os {state.customers.length} clientes.
           </AlertDescription>
         </Alert>
       )}
@@ -76,10 +80,9 @@ export default function Clientes() {
             <Input
               placeholder="Buscar por nome ou celular..."
               className="pl-9 bg-background min-h-[44px]"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
@@ -119,50 +122,50 @@ export default function Clientes() {
 
           {/* Desktop Table View */}
           <div className="hidden sm:block">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Nome</TableHead>
-                <TableHead>Celular</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Total Gasto</TableHead>
-                <TableHead className="text-right">Última Visita</TableHead>
-                <TableHead className="w-[80px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCustomers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                    Nenhum cliente encontrado.
-                  </TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Celular</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Total Gasto</TableHead>
+                  <TableHead className="text-right">Última Visita</TableHead>
+                  <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
-              ) : (
-                filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id}>
-                    <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{customer.phone}</TableCell>
-                    <TableCell>
-                      <Badge variant={getLoyaltyVariant(customer.loyalty)}>
-                        {customer.loyalty}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      R$ {customer.totalSpent.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {new Date(customer.lastVisit).toLocaleDateString('pt-BR')}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" title="Ver Perfil">
-                        <FileText className="size-4" />
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {filteredCustomers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                      Nenhum cliente encontrado.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredCustomers.map((customer) => (
+                    <TableRow key={customer.id}>
+                      <TableCell className="font-medium">{customer.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{customer.phone}</TableCell>
+                      <TableCell>
+                        <Badge variant={getLoyaltyVariant(customer.loyalty)}>
+                          {customer.loyalty}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        R$ {customer.totalSpent.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {new Date(customer.lastVisit).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" title="Ver Perfil">
+                          <FileText className="size-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
