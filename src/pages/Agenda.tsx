@@ -62,7 +62,13 @@ export default function Agenda() {
   })
   const [isOpen, setIsOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [form, setForm] = useState({ barber_id: '', client_id: '', item_id: '', time: '09:00' })
+  const [form, setForm] = useState({
+    barber_id: '',
+    client_id: '',
+    item_id: '',
+    time: '09:00',
+    date: new Date(),
+  })
   const [clientSearchOpen, setClientSearchOpen] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', phone: '' })
   const [isNewClient, setIsNewClient] = useState(false)
@@ -94,11 +100,17 @@ export default function Agenda() {
 
   const handleOpen = (time = '09:00', barberId = '') => {
     const defaultBarber = barberId || (isAdmin ? '' : visibleBarbers[0]?.id || '')
-    setForm({ barber_id: defaultBarber, client_id: '', item_id: '', time })
+    setForm({ barber_id: defaultBarber, client_id: '', item_id: '', time, date: selectedDate })
+    setNewClient({ name: '', phone: '' })
+    setIsNewClient(false)
+    setClientSearchOpen(false)
     setIsOpen(true)
   }
 
   const handleClientCreate = async () => {
+    if (!newClient.name || !newClient.phone) {
+      return toast({ title: 'Preencha nome e celular', variant: 'destructive' })
+    }
     try {
       const c = await createClient({ ...newClient, location_type: 'nearby', is_active: true })
       setData((prev) => ({ ...prev, clients: [c, ...prev.clients] }))
@@ -117,6 +129,7 @@ export default function Agenda() {
       return toast({ title: 'Selecione um serviço ou pacote', variant: 'destructive' })
     if (!form.barber_id)
       return toast({ title: 'Selecione um profissional', variant: 'destructive' })
+    if (!form.date) return toast({ title: 'Selecione a data', variant: 'destructive' })
 
     try {
       const isPkg = form.item_id.startsWith('pkg_')
@@ -139,7 +152,7 @@ export default function Agenda() {
         service_id: svc?.id || form.item_id.replace('svc_', ''),
         time: form.time,
         end_time,
-        date: format(selectedDate, 'yyyy-MM-dd 12:00:00'),
+        date: format(form.date, 'yyyy-MM-dd 12:00:00'),
         status: 'Confirmado',
         price: isPkg ? 0 : svc?.price || 0,
       })
@@ -285,7 +298,7 @@ export default function Agenda() {
       </ScrollArea>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Novo Agendamento</DialogTitle>
           </DialogHeader>
@@ -301,7 +314,7 @@ export default function Agenda() {
                     <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0" style={{ zIndex: 9999 }}>
+                <PopoverContent className="w-[380px] p-0" style={{ zIndex: 9999 }}>
                   <Command>
                     <CommandInput placeholder="Buscar nome ou telefone..." />
                     <CommandList>
@@ -341,18 +354,22 @@ export default function Agenda() {
                 </PopoverContent>
               </Popover>
               {isNewClient && (
-                <div className="flex gap-2 mt-2">
-                  <Input
-                    placeholder="Nome"
-                    value={newClient.name}
-                    onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                  />
-                  <Input
-                    placeholder="Celular"
-                    value={newClient.phone}
-                    onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                  />
-                  <Button onClick={handleClientCreate}>Salvar</Button>
+                <div className="flex gap-2 mt-2 bg-muted/30 p-3 rounded-md border">
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      placeholder="Nome"
+                      value={newClient.name}
+                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Celular"
+                      value={newClient.phone}
+                      onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button onClick={handleClientCreate}>Salvar</Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -395,6 +412,36 @@ export default function Agenda() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 flex flex-col">
+                <Label>Data</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !form.date && 'text-muted-foreground',
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 size-4" />
+                      {form.date ? (
+                        format(form.date, 'dd/MM/yyyy', { locale: ptBR })
+                      ) : (
+                        <span>Selecione</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" style={{ zIndex: 9999 }}>
+                    <Calendar
+                      mode="single"
+                      selected={form.date}
+                      onSelect={(d: Date | undefined) => d && setForm({ ...form, date: d })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               <div className="space-y-2">
                 <Label>Horário</Label>
                 <Select value={form.time} onValueChange={(v) => setForm({ ...form, time: v })}>
@@ -410,24 +457,25 @@ export default function Agenda() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Profissional</Label>
-                <Select
-                  value={form.barber_id}
-                  onValueChange={(v) => setForm({ ...form, barber_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {data.barbers.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Profissional</Label>
+              <Select
+                value={form.barber_id}
+                onValueChange={(v) => setForm({ ...form, barber_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {data.barbers.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
