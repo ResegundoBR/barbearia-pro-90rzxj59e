@@ -11,7 +11,7 @@ export const getBusinessHours = () =>
 export const getClientPackages = (filter?: string) =>
   pb
     .collection('client_packages')
-    .getFullList({ expand: 'package_id,client_id', sort: '-created', filter })
+    .getFullList({ expand: 'package_id,client_id,barber_id', sort: '-created', filter })
 
 export const getBarbers = () => pb.collection('barbers').getFullList({ sort: '-created' })
 export const createBarber = (data: any) => pb.collection('barbers').create(data)
@@ -59,3 +59,6 @@ export const getProductPurchasesByClient = (clientId: string) =>
 
 export const createClientPackage = (data: any) => pb.collection('client_packages').create(data)
 export const createCommission = (data: any) => pb.collection('commissions').create(data)
+
+export const getCommissions = (filter?: string) =>
+  pb.collection('commissions').getFullList({ expand: 'barber_id', sort: '-created', filter })

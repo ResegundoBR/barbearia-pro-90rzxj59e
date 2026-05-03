@@ -31,8 +31,13 @@ export default function Checkout() {
   const [rules, setRules] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
 
-  const [pkgForm, setPkgForm] = useState({ barber_id: '', client_id: '', package_id: '' })
-  const [svcForm, setSvcForm] = useState({ appointment_id: '', price: '' })
+  const [pkgForm, setPkgForm] = useState({
+    barber_id: '',
+    client_id: '',
+    package_id: '',
+    payment_method: '',
+  })
+  const [svcForm, setSvcForm] = useState({ appointment_id: '', price: '', payment_method: '' })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
@@ -59,7 +64,12 @@ export default function Checkout() {
 
   const handleSellPackage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!pkgForm.barber_id || !pkgForm.client_id || !pkgForm.package_id) {
+    if (
+      !pkgForm.barber_id ||
+      !pkgForm.client_id ||
+      !pkgForm.package_id ||
+      !pkgForm.payment_method
+    ) {
       return toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' })
     }
 
@@ -73,6 +83,7 @@ export default function Checkout() {
       await createClientPackage({
         client_id: pkgForm.client_id,
         package_id: pkg.id,
+        barber_id: barber.id,
         remaining_uses: pkg.quantity,
         expires_at: format(expiresAt, 'yyyy-MM-dd 23:59:59'),
       })
@@ -90,16 +101,23 @@ export default function Checkout() {
             : barber.commission_value || 0
       }
 
+      const isCard = pkgForm.payment_method === 'card'
+      const status = isCard ? 'pending' : 'available'
+      const due_date = isCard ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
+
       await createCommission({
         barber_id: barber.id,
         amount: commAmount,
         type: 'package_sale',
         date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
         is_advance: false,
+        payment_method: pkgForm.payment_method,
+        status,
+        due_date: due_date || undefined,
       })
 
       toast({ title: 'Pacote vendido com sucesso!' })
-      setPkgForm({ barber_id: '', client_id: '', package_id: '' })
+      setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
     } catch (err: any) {
       toast({ title: 'Erro ao vender pacote', variant: 'destructive' })
     } finally {
@@ -109,7 +127,7 @@ export default function Checkout() {
 
   const handleCloseService = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!svcForm.appointment_id || !svcForm.price) {
+    if (!svcForm.appointment_id || !svcForm.price || !svcForm.payment_method) {
       return toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' })
     }
 
@@ -140,18 +158,25 @@ export default function Checkout() {
         }
 
         if (commAmount > 0) {
+          const isCard = svcForm.payment_method === 'card'
+          const status = isCard ? 'pending' : 'available'
+          const due_date = isCard ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
+
           await createCommission({
             barber_id: barber.id,
             amount: commAmount,
             type: 'service',
             date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
             is_advance: false,
+            payment_method: svcForm.payment_method,
+            status,
+            due_date: due_date || undefined,
           })
         }
       }
 
       toast({ title: 'Serviço finalizado com sucesso!' })
-      setSvcForm({ appointment_id: '', price: '' })
+      setSvcForm({ appointment_id: '', price: '', payment_method: '' })
       loadData()
     } catch (err: any) {
       toast({ title: 'Erro ao finalizar serviço', variant: 'destructive' })
@@ -176,8 +201,8 @@ export default function Checkout() {
         defaultValue="service"
         className="w-full"
         onValueChange={() => {
-          setPkgForm({ barber_id: '', client_id: '', package_id: '' })
-          setSvcForm({ appointment_id: '', price: '' })
+          setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
+          setSvcForm({ appointment_id: '', price: '', payment_method: '' })
         }}
       >
         <TabsList className="grid w-full grid-cols-2">
@@ -232,6 +257,24 @@ export default function Checkout() {
                     value={svcForm.price}
                     onChange={(e) => setSvcForm({ ...svcForm, price: e.target.value })}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Método de Pagamento</Label>
+                  <Select
+                    required
+                    value={svcForm.payment_method}
+                    onValueChange={(v) => setSvcForm({ ...svcForm, payment_method: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o pagamento..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Dinheiro</SelectItem>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="card">Cartão</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <Button
@@ -312,6 +355,24 @@ export default function Checkout() {
                           {p.name} - R$ {p.price.toFixed(2)} ({p.quantity}x)
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Método de Pagamento</Label>
+                  <Select
+                    required
+                    value={pkgForm.payment_method}
+                    onValueChange={(v) => setPkgForm({ ...pkgForm, payment_method: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o pagamento..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Dinheiro</SelectItem>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="card">Cartão</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
