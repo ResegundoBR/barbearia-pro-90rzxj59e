@@ -66,8 +66,15 @@ export default function Staff() {
     commission_value: 0,
     color: '#3b82f6',
     work_level: 'autonomo',
-    payment_schedule_config: { rules: [] },
   })
+
+  const getNextPayDate = (date: Date) => {
+    const day = date.getDay()
+    const daysToAdd = day >= 0 && day <= 3 ? 4 - day : 8 - day
+    const d = new Date(date)
+    d.setDate(d.getDate() + daysToAdd)
+    return d
+  }
 
   const { toast } = useToast()
 
@@ -138,7 +145,7 @@ export default function Staff() {
             packageUsed: !!a.client_package_id,
             price: a.price || a.expand?.service_id?.price || 0,
             commission: c?.amount || 0,
-            status: c ? c.status : 'none',
+            dueDate: c?.due_date ? new Date(c.due_date) : null,
             commDate: c?.date ? new Date(c.date) : new Date(a.updated),
           }
         }),
@@ -158,7 +165,7 @@ export default function Staff() {
             packageUsed: false,
             price: p.price_at_sale || 0,
             commission: c?.amount || 0,
-            status: c ? c.status : 'none',
+            dueDate: c?.due_date ? new Date(c.due_date) : null,
             commDate: c?.date ? new Date(c.date) : new Date(p.created),
           }
         }),
@@ -178,13 +185,13 @@ export default function Staff() {
             packageUsed: false,
             price: pk.expand?.package_id?.price || 0,
             commission: c?.amount || 0,
-            status: c ? c.status : 'none',
+            dueDate: c?.due_date ? new Date(c.due_date) : null,
             commDate: c?.date ? new Date(c.date) : new Date(pk.created),
           }
         }),
       ]
         .filter((i) => {
-          if (i.commission <= 0) return false
+          if (!i.commission || i.commission <= 0) return false
           const d = i.commDate
           return d >= range.from && d <= range.to
         })
@@ -242,7 +249,6 @@ export default function Staff() {
       commission_value: 0,
       color: '#3b82f6',
       work_level: 'autonomo',
-      payment_schedule_config: { rules: [] },
     })
     setBDialog(true)
   }
@@ -255,20 +261,9 @@ export default function Staff() {
       commission_value: b.commission_value || 0,
       color: b.color || '#3b82f6',
       work_level: b.work_level || 'autonomo',
-      payment_schedule_config: b.payment_schedule_config || { rules: [] },
     })
     setBDialog(true)
   }
-
-  const DAYS = [
-    { value: 0, label: 'Dom' },
-    { value: 1, label: 'Seg' },
-    { value: 2, label: 'Ter' },
-    { value: 3, label: 'Qua' },
-    { value: 4, label: 'Qui' },
-    { value: 5, label: 'Sex' },
-    { value: 6, label: 'Sáb' },
-  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -382,9 +377,7 @@ export default function Staff() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Nível</TableHead>
                 <TableHead>Pagos (Total)</TableHead>
-                <TableHead>Comissão Disponível</TableHead>
                 <TableHead>Comissão a Receber</TableHead>
-                <TableHead>Total a Receber</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -394,13 +387,9 @@ export default function Staff() {
                 const paid = bComms
                   .filter((c) => c.status === 'paid')
                   .reduce((acc, c) => acc + (c.amount || 0), 0)
-                const available = bComms
-                  .filter((c) => c.status === 'available')
+                const aReceber = bComms
+                  .filter((c) => c.status === 'available' || c.status === 'pending')
                   .reduce((acc, c) => acc + (c.amount || 0), 0)
-                const pending = bComms
-                  .filter((c) => c.status === 'pending')
-                  .reduce((acc, c) => acc + (c.amount || 0), 0)
-                const totalReceber = available + pending
                 return (
                   <TableRow key={b.id}>
                     <TableCell
@@ -416,14 +405,8 @@ export default function Staff() {
                       </Badge>
                     </TableCell>
                     <TableCell>R$ {paid.toFixed(2)}</TableCell>
-                    <TableCell className="text-emerald-600 font-medium">
-                      R$ {available.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-amber-500 font-medium">
-                      R$ {pending.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-primary font-bold">
-                      R$ {totalReceber.toFixed(2)}
+                    <TableCell className="text-amber-600 font-bold">
+                      R$ {aReceber.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -470,7 +453,7 @@ export default function Staff() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Item</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>A Pagar</TableHead>
                     <TableHead className="text-right">Valor Venda</TableHead>
                     <TableHead className="text-right">Comissão</TableHead>
                   </TableRow>
@@ -498,23 +481,15 @@ export default function Staff() {
                       <TableCell>{item.item}</TableCell>
                       <TableCell>{item.client}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            item.status === 'paid'
-                              ? 'default'
-                              : item.status === 'available'
-                                ? 'outline'
-                                : 'secondary'
-                          }
-                        >
-                          {item.status === 'paid'
-                            ? 'Pago'
-                            : item.status === 'available'
-                              ? 'Disponível'
-                              : item.status === 'pending'
-                                ? 'A Receber'
-                                : '-'}
-                        </Badge>
+                        {selectedBarberDetailed?.work_level === 'socio' ? (
+                          <Badge className="bg-emerald-500 hover:bg-emerald-600">Imediato</Badge>
+                        ) : (
+                          <span className="font-medium text-amber-600">
+                            {item.dueDate
+                              ? format(item.dueDate, 'dd/MM/yyyy')
+                              : format(getNextPayDate(item.commDate), 'dd/MM/yyyy')}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-semibold text-emerald-600">
@@ -537,26 +512,6 @@ export default function Staff() {
                     <span>Total de Comissões no Período:</span>
                     <span className="text-primary font-bold">
                       R$ {reportItems.reduce((acc, curr) => acc + curr.commission, 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Comissão Disponível:</span>
-                    <span className="text-emerald-600 font-semibold">
-                      R${' '}
-                      {reportItems
-                        .filter((i) => i.status === 'available')
-                        .reduce((acc, curr) => acc + curr.commission, 0)
-                        .toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Comissão a Receber:</span>
-                    <span className="text-amber-500 font-semibold">
-                      R${' '}
-                      {reportItems
-                        .filter((i) => i.status === 'pending')
-                        .reduce((acc, curr) => acc + curr.commission, 0)
-                        .toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -629,106 +584,7 @@ export default function Staff() {
               </>
             )}
 
-            <div className="space-y-2 pt-2 border-t">
-              <Label className="text-base font-semibold">Ciclos de Pagamento</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Configure regras específicas de dias da semana para o repasse.
-              </p>
-              {form.payment_schedule_config?.rules?.map((rule: any, i: number) => (
-                <div
-                  key={i}
-                  className="flex flex-col gap-3 p-3 border rounded-md bg-slate-50 dark:bg-slate-900"
-                >
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">
-                      Dias trabalhados (Vendas/Serviços):
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {DAYS.map((d) => (
-                        <label
-                          key={d.value}
-                          className="flex items-center gap-1 text-sm cursor-pointer select-none"
-                        >
-                          <input
-                            type="checkbox"
-                            className="rounded"
-                            checked={rule.days.includes(d.value)}
-                            onChange={(e) => {
-                              const newRules = [...form.payment_schedule_config.rules]
-                              if (e.target.checked) newRules[i].days.push(d.value)
-                              else
-                                newRules[i].days = newRules[i].days.filter(
-                                  (x: any) => x !== d.value,
-                                )
-                              setForm({ ...form, payment_schedule_config: { rules: newRules } })
-                            }}
-                          />
-                          {d.label}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 mt-1">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs font-medium">Pagar na:</Label>
-                      <Select
-                        value={rule.payDay.toString()}
-                        onValueChange={(v) => {
-                          const newRules = [...form.payment_schedule_config.rules]
-                          newRules[i].payDay = Number(v)
-                          setForm({ ...form, payment_schedule_config: { rules: newRules } })
-                        }}
-                      >
-                        <SelectTrigger className="w-[120px] h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DAYS.map((d) => (
-                            <SelectItem key={d.value} value={d.value.toString()}>
-                              {d.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        const newRules = form.payment_schedule_config.rules.filter(
-                          (_: any, idx: number) => idx !== i,
-                        )
-                        setForm({ ...form, payment_schedule_config: { rules: newRules } })
-                      }}
-                      title="Remover regra"
-                    >
-                      <Trash className="size-4 text-red-500" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full mt-2 border-dashed"
-                onClick={() => {
-                  setForm({
-                    ...form,
-                    payment_schedule_config: {
-                      ...form.payment_schedule_config,
-                      rules: [
-                        ...(form.payment_schedule_config?.rules || []),
-                        { days: [], payDay: 1 },
-                      ],
-                    },
-                  })
-                }}
-              >
-                <Plus className="size-4 mr-2" /> Adicionar Regra de Ciclo
-              </Button>
-            </div>
-            <DialogFooter>
+            <DialogFooter className="pt-4">
               <Button type="submit">Salvar</Button>
             </DialogFooter>
           </form>

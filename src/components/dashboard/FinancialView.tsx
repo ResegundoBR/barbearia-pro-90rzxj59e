@@ -69,20 +69,15 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     })
   }, [commissions, date, statusFilter])
 
-  const totalAvailable = filteredCommissions
-    .filter((c) => !c.is_advance && c.status === 'available')
-    .reduce((acc, c) => acc + c.amount, 0)
-
   const totalAdvances = filteredCommissions
     .filter((c) => c.is_advance)
     .reduce((acc, c) => acc + c.amount, 0)
 
   const totalReceivables = filteredCommissions
-    .filter((c) => !c.is_advance && c.status === 'pending')
+    .filter((c) => !c.is_advance && (c.status === 'pending' || c.status === 'available'))
     .reduce((acc, c) => acc + c.amount, 0)
 
-  const netAvailable =
-    totalAvailable - (statusFilter === 'all' || statusFilter === 'available' ? totalAdvances : 0)
+  const netPayable = Math.max(0, totalReceivables - totalAdvances)
 
   const barberStats = filteredCommissions.reduce(
     (acc, c) => {
@@ -350,23 +345,14 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
         <Card className="bg-glass border-none">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Disponível para Saque
+              Comissão a Receber
             </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-500">R$ {netAvailable.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Adiantamentos já descontados</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-glass border-none">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">A Receber</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-500">
               R$ {totalReceivables.toFixed(2)}
             </div>
-            <p className="text-xs text-muted-foreground">Cartões pendentes (A Vencer)</p>
+            <p className="text-xs text-muted-foreground">Total bruto a repassar</p>
           </CardContent>
         </Card>
         <Card className="bg-glass border-none">
@@ -377,7 +363,18 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-500">R$ {totalAdvances.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Vales registrados</p>
+            <p className="text-xs text-muted-foreground">Vales já pagos</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-glass border-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Líquido a Pagar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-500">R$ {netPayable.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">Valor final deduzido de vales</p>
           </CardContent>
         </Card>
       </div>

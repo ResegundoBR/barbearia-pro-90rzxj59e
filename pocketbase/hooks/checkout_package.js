@@ -46,14 +46,26 @@ routerAdd(
 
       if (commAmount > 0) {
         const now = new Date().toISOString().replace('T', ' ').substring(0, 19)
-        const isCredit = payment_method === 'credito'
-        const status = isCredit ? 'pending' : 'available'
+        const workLevel = barber.getString('work_level') || 'autonomo'
 
+        let status = 'pending'
         let due_date = ''
-        if (isCredit) {
-          const d2 = new Date()
-          d2.setDate(d2.getDate() + 30)
-          due_date = d2.toISOString().replace('T', ' ').substring(0, 19)
+
+        if (workLevel === 'socio') {
+          status = 'available'
+          due_date = now
+        } else {
+          const txDate = new Date()
+          const day = txDate.getDay()
+          let daysToAdd = 0
+          if (day >= 0 && day <= 3) {
+            daysToAdd = 4 - day
+          } else {
+            daysToAdd = 8 - day
+          }
+          const d = new Date(txDate)
+          d.setDate(d.getDate() + daysToAdd)
+          due_date = d.toISOString().replace('T', ' ').substring(0, 19)
         }
 
         const commCol = txApp.findCollectionByNameOrId('commissions')

@@ -56,39 +56,28 @@ routerAdd(
 
       // 2. Commissions & Products
       const now = new Date().toISOString().replace('T', ' ').substring(0, 19)
-      const isCredit = svcForm.payment_method === 'credito'
-      let status = isCredit ? 'pending' : 'available'
-      let due_date = ''
 
       const barber = txApp.findRecordById('barbers', barberId)
       const workLevel = barber.getString('work_level') || 'autonomo'
 
-      if (isCredit) {
-        const d = new Date()
-        d.setDate(d.getDate() + 30)
-        due_date = d.toISOString().replace('T', ' ').substring(0, 19)
+      let status = 'pending'
+      let due_date = ''
+
+      if (workLevel === 'socio') {
+        status = 'available'
+        due_date = now
       } else {
-        const scheduleStr = barber.getString('payment_schedule_config')
-        if (scheduleStr) {
-          try {
-            const schedule = JSON.parse(scheduleStr)
-            if (schedule && schedule.rules && Array.isArray(schedule.rules)) {
-              const today = new Date()
-              const currentDay = today.getDay()
-              for (const rule of schedule.rules) {
-                if (rule.days.includes(currentDay)) {
-                  let diff = rule.payDay - currentDay
-                  if (diff <= 0) diff += 7
-                  const payDate = new Date(today)
-                  payDate.setDate(payDate.getDate() + diff)
-                  due_date = payDate.toISOString().replace('T', ' ').substring(0, 19)
-                  status = 'pending'
-                  break
-                }
-              }
-            }
-          } catch (e) {}
+        const txDate = new Date()
+        const day = txDate.getDay()
+        let daysToAdd = 0
+        if (day >= 0 && day <= 3) {
+          daysToAdd = 4 - day
+        } else {
+          daysToAdd = 8 - day
         }
+        const d = new Date(txDate)
+        d.setDate(d.getDate() + daysToAdd)
+        due_date = d.toISOString().replace('T', ' ').substring(0, 19)
       }
 
       // Service Commission
