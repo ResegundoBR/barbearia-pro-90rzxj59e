@@ -277,7 +277,30 @@ export default function Layout() {
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-4">
                 <div className="space-y-4 max-h-[300px] overflow-y-auto">
-                  <h4 className="font-semibold text-sm">Notificações</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-sm">Notificações</h4>
+                    {notifications.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto p-1 text-xs text-muted-foreground"
+                        onClick={async () => {
+                          try {
+                            await Promise.all(
+                              notifications.map((n) =>
+                                pb.collection('notifications').update(n.id, { is_read: true }),
+                              ),
+                            )
+                            setNotifications([])
+                          } catch (err) {
+                            console.error(err)
+                          }
+                        }}
+                      >
+                        Marcar todas como lidas
+                      </Button>
+                    )}
+                  </div>
 
                   {notifications.map((n) => (
                     <div

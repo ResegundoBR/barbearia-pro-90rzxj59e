@@ -195,11 +195,21 @@ export default function Index() {
     [packages, effectiveBarberFilter],
   )
 
+  const filteredProductPurchases = useMemo(
+    () =>
+      productPurchases.filter(
+        (p) => effectiveBarberFilter === 'all' || p.barber_id === effectiveBarberFilter,
+      ),
+    [productPurchases, effectiveBarberFilter],
+  )
+
   const validAppointments = filteredAppointments.filter((a) => a.status !== 'Cancelado')
   const completedPeriod = validAppointments.filter(
     (a) => a.status === 'Concluído' && isInPeriod(a.date || a.updated),
   )
-  const productPurchasesPeriod = productPurchases.filter((p) => isInPeriod(p.date || p.created))
+  const productPurchasesPeriod = filteredProductPurchases.filter((p) =>
+    isInPeriod(p.date || p.created),
+  )
 
   const periodRevenue = completedPeriod.reduce(
     (acc, curr) => acc + (curr.price || curr.expand?.service_id?.price || 0),
@@ -808,6 +818,7 @@ export default function Index() {
           commissions={filteredCommissions}
           isAdmin={isAdmin}
           onOpenAdvanceModal={() => setAdvanceModalOpen(true)}
+          effectiveBarberFilter={effectiveBarberFilter}
         />
       )}
       {activeTab === 'packages' && <PackagesView packages={filteredPackages} />}

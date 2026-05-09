@@ -30,6 +30,7 @@ interface FinancialViewProps {
   isAdmin: boolean
   onOpenAdvanceModal: () => void
   hideForecast?: boolean
+  effectiveBarberFilter?: string
 }
 
 interface TransactionGroup {
@@ -54,6 +55,7 @@ export function FinancialView({
   isAdmin,
   onOpenAdvanceModal,
   hideForecast = false,
+  effectiveBarberFilter = 'all',
 }: FinancialViewProps) {
   const [transactions, setTransactions] = useState<TransactionGroup[]>([])
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
@@ -205,12 +207,18 @@ export function FinancialView({
         let prodFilter = ''
         let futureAptFilter = `status != 'Concluído' && status != 'Cancelado' && date > "${new Date().toISOString().substring(0, 10)} 23:59:59"`
 
+        if (effectiveBarberFilter !== 'all') {
+          aptFilter += ` && barber_id = '${effectiveBarberFilter}'`
+          prodFilter += `barber_id = '${effectiveBarberFilter}'`
+          futureAptFilter += ` && barber_id = '${effectiveBarberFilter}'`
+        }
+
         if (startStr && endStr) {
           aptFilter += ` && date >= "${startStr}" && date <= "${endStr}"`
-          prodFilter = `date >= "${startStr}" && date <= "${endStr}"`
+          prodFilter += (prodFilter ? ' && ' : '') + `date >= "${startStr}" && date <= "${endStr}"`
         } else if (startStr) {
           aptFilter += ` && date >= "${startStr}"`
-          prodFilter = `date >= "${startStr}"`
+          prodFilter += (prodFilter ? ' && ' : '') + `date >= "${startStr}"`
         }
 
         const [aptsRes, prodsRes, pkgsRes, futureAptsRes] = await Promise.all([

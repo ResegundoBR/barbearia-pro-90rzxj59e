@@ -23,7 +23,16 @@ const defaultPerms = {
     'dash_block_forecast',
     'dash_block_alerts',
   ],
-  Autonomo: ['agenda', 'dash_tab_overview', 'dash_block_revenue', 'dash_block_history'],
+  Autonomo: [
+    'agenda',
+    'dash_tab_overview',
+    'dash_tab_financial',
+    'dash_tab_packages',
+    'dash_block_revenue',
+    'dash_block_history',
+    'dash_block_peak',
+    'dash_block_forecast',
+  ],
 }
 
 export function usePermissions() {
