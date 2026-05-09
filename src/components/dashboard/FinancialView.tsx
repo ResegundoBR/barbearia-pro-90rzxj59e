@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +14,7 @@ import {
 import { ChevronDown, ChevronUp, CalendarIcon, X } from 'lucide-react'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -56,6 +56,12 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     to: new Date(),
   })
   const [statusFilter, setStatusFilter] = useState('all')
+
+  const [grossRevenue, setGrossRevenue] = useState(0)
+  const [futureRevenue, setFutureRevenue] = useState(0)
+  const [modalType, setModalType] = useState<'comissoes' | 'adiantamentos' | 'totalLiquido' | null>(
+    null,
+  )
 
   const filteredCommissions = useMemo(() => {
     return commissions.filter((c) => {
@@ -130,20 +136,22 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
   useEffect(() => {
     const loadTransactions = async () => {
       try {
-        const startStr = date?.from ? date.from.toISOString() : ''
-        const endStr = date?.to ? new Date(date.to.getTime() + 86400000).toISOString() : ''
+        const startStr = date?.from ? format(date.from, 'yyyy-MM-dd') + ' 00:00:00' : ''
+        const endStr = date?.to ? format(date.to, 'yyyy-MM-dd') + ' 23:59:59' : ''
 
         let aptFilter = `status = 'Concluído'`
         let prodFilter = ''
+        let futureAptFilter = `status != 'Concluído' && status != 'Cancelado' && date > "${new Date().toISOString().substring(0, 10)} 23:59:59"`
+
         if (startStr && endStr) {
-          aptFilter += ` && updated >= "${startStr}" && updated <= "${endStr}"`
-          prodFilter = `created >= "${startStr}" && created <= "${endStr}"`
+          aptFilter += ` && date >= "${startStr}" && date <= "${endStr}"`
+          prodFilter = `date >= "${startStr}" && date <= "${endStr}"`
         } else if (startStr) {
-          aptFilter += ` && updated >= "${startStr}"`
-          prodFilter = `created >= "${startStr}"`
+          aptFilter += ` && date >= "${startStr}"`
+          prodFilter = `date >= "${startStr}"`
         }
 
-        const [aptsRes, prodsRes, pkgsRes] = await Promise.all([
+        const [aptsRes, prodsRes, pkgsRes, futureAptsRes] = await Promise.all([
           pb
             .collection('appointments')
             .getFullList({ filter: aptFilter, expand: 'client_id,service_id,barber_id' }),
@@ -152,8 +160,23 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
             .getFullList({ filter: prodFilter, expand: 'client_id,product_id,barber_id' }),
           pb
             .collection('client_packages')
-            .getFullList({ filter: prodFilter, expand: 'client_id,package_id,barber_id' }),
+            .getFullList({
+              filter: prodFilter ? prodFilter.replace(/date/g, 'created') : '',
+              expand: 'client_id,package_id,barber_id',
+            }),
+          pb
+            .collection('appointments')
+            .getFullList({ filter: futureAptFilter, expand: 'service_id' }),
         ])
+
+        const totalGross = aptsRes.reduce((acc, a) => acc + (a.price || 0), 0)
+        setGrossRevenue(totalGross)
+
+        const totalFuture = futureAptsRes.reduce(
+          (acc, a) => acc + (a.price || a.expand?.service_id?.price || 0),
+          0,
+        )
+        setFutureRevenue(totalFuture)
 
         const groups: TransactionGroup[] = []
         const usedComms = new Set()
@@ -175,7 +198,6 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           comms.forEach((c) => usedComms.add(c.id))
 
           if (comms.length === 0 && statusFilter !== 'all') continue
-          // If no commission mapped and we aren't filtering by status, we still show the transaction
           if (comms.length === 0 && date?.from && aptTime < date.from.getTime()) continue
 
           const serviceAmount = apt.price || 0
@@ -299,6 +321,13 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     return method
   }
 
+  const resetDateFilter = () => {
+    setDate({
+      from: new Date(new Date().setDate(new Date().getDate() - 30)),
+      to: new Date(),
+    })
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row gap-4">
@@ -344,7 +373,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setDate(undefined)}
+              onClick={resetDateFilter}
               className="h-9 w-9 text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
@@ -365,8 +394,31 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="bg-glass border-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Recebimento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">R$ {grossRevenue.toFixed(2)}</div>
+            <p className="text-[10px] text-muted-foreground">Faturamento bruto no período</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-glass border-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Previsão de Recebimento
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-500">R$ {futureRevenue.toFixed(2)}</div>
+            <p className="text-[10px] text-muted-foreground">Projeção para atendimentos futuros</p>
+          </CardContent>
+        </Card>
+        <Card
+          className="bg-glass border-none cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => setModalType('comissoes')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Comissão a Receber
@@ -376,10 +428,15 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
             <div className="text-2xl font-bold text-amber-500">
               R$ {totalReceivables.toFixed(2)}
             </div>
-            <p className="text-xs text-muted-foreground">Total bruto a repassar</p>
+            <p className="text-[10px] text-muted-foreground">
+              Total bruto a repassar (Ver detalhes)
+            </p>
           </CardContent>
         </Card>
-        <Card className="bg-glass border-none">
+        <Card
+          className="bg-glass border-none cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => setModalType('adiantamentos')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Adiantamentos
@@ -387,10 +444,13 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-500">R$ {totalAdvances.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Vales já pagos</p>
+            <p className="text-[10px] text-muted-foreground">Vales já pagos (Ver detalhes)</p>
           </CardContent>
         </Card>
-        <Card className="bg-glass border-none">
+        <Card
+          className="bg-glass border-none cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => setModalType('totalLiquido')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total Líquido a Pagar
@@ -398,10 +458,144 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-500">R$ {netPayable.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Valor final deduzido de vales</p>
+            <p className="text-[10px] text-muted-foreground">
+              Valor final deduzido de vales (Ver repasses)
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!modalType} onOpenChange={(o) => !o && setModalType(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              {modalType === 'comissoes' && 'Comissões a Receber (Detalhado)'}
+              {modalType === 'adiantamentos' && 'Adiantamentos Registrados (Detalhado)'}
+              {modalType === 'totalLiquido' && 'Repasses Agendados por Profissional'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto mt-2">
+            {modalType === 'comissoes' && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCommissions
+                    .filter(
+                      (c) => !c.is_advance && (c.status === 'pending' || c.status === 'available'),
+                    )
+                    .map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell>{format(new Date(c.date || c.created), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="font-medium">
+                          {c.expand?.barber_id?.name || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={c.status === 'available' ? 'default' : 'secondary'}>
+                            {c.status === 'available' ? 'Disponível' : 'A Vencer'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-emerald-500 font-bold">
+                          R$ {c.amount.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {filteredCommissions.filter(
+                    (c) => !c.is_advance && (c.status === 'pending' || c.status === 'available'),
+                  ).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6">
+                        Nenhuma comissão a receber.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+            {modalType === 'adiantamentos' && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead className="text-right">Valor Deduzido</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCommissions
+                    .filter((c) => c.is_advance)
+                    .map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell>{format(new Date(c.date || c.created), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="font-medium">
+                          {c.expand?.barber_id?.name || '-'}
+                        </TableCell>
+                        <TableCell className="capitalize">
+                          {translatePayment(c.payment_method)}
+                        </TableCell>
+                        <TableCell className="text-right text-red-500 font-bold">
+                          - R$ {c.amount.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {filteredCommissions.filter((c) => c.is_advance).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6">
+                        Nenhum adiantamento registrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+            {modalType === 'totalLiquido' && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead className="text-right">Total Comissões</TableHead>
+                    <TableHead className="text-right">Total Adiantamentos (-)</TableHead>
+                    <TableHead className="text-right">Líquido a Pagar</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.values(barberStats)
+                    .filter((s: any) => s.total - s.advances > 0)
+                    .map((s: any) => (
+                      <TableRow key={s.name}>
+                        <TableCell className="font-medium">{s.name}</TableCell>
+                        <TableCell className="text-right text-emerald-500">
+                          R$ {s.total.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right text-red-500">
+                          - R$ {s.advances.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-primary">
+                          R$ {(s.total - s.advances).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {Object.values(barberStats).filter((s: any) => s.total - s.advances > 0)
+                    .length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6">
+                        Nenhum repasse agendado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex justify-between items-center mt-6">
         <h3 className="text-lg font-semibold">Histórico de Transações</h3>

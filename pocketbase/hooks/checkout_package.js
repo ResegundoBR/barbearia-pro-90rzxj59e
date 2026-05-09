@@ -48,13 +48,9 @@ routerAdd(
         const now = new Date().toISOString().replace('T', ' ').substring(0, 19)
         const workLevel = barber.getString('work_level') || 'autonomo'
 
-        let status = 'pending'
-        let due_date = ''
+        const commCol = txApp.findCollectionByNameOrId('commissions')
 
-        if (workLevel === 'socio') {
-          status = 'available'
-          due_date = now
-        } else {
+        if (workLevel === 'autonomo') {
           const txDate = new Date()
           const day = txDate.getDay()
           let daysToAdd = 0
@@ -65,20 +61,63 @@ routerAdd(
           }
           const d = new Date(txDate)
           d.setDate(d.getDate() + daysToAdd)
-          due_date = d.toISOString().replace('T', ' ').substring(0, 19)
-        }
+          const nextCycleStr = d.toISOString().replace('T', ' ').substring(0, 19)
 
-        const commCol = txApp.findCollectionByNameOrId('commissions')
-        const c = new Record(commCol)
-        c.set('barber_id', barber_id)
-        c.set('amount', commAmount)
-        c.set('type', 'package_sale')
-        c.set('date', now)
-        c.set('is_advance', false)
-        c.set('payment_method', payment_method)
-        c.set('status', status)
-        if (due_date) c.set('due_date', due_date)
-        txApp.save(c)
+          const futureD = new Date(d)
+          futureD.setDate(futureD.getDate() + 15)
+          const futureCycleStr = futureD.toISOString().replace('T', ' ').substring(0, 19)
+
+          const c1 = new Record(commCol)
+          c1.set('barber_id', barber_id)
+          c1.set('amount', commAmount * 0.5)
+          c1.set('type', 'package_sale')
+          c1.set('date', now)
+          c1.set('is_advance', false)
+          c1.set('payment_method', payment_method)
+          c1.set('status', 'pending')
+          c1.set('due_date', nextCycleStr)
+          txApp.save(c1)
+
+          const c2 = new Record(commCol)
+          c2.set('barber_id', barber_id)
+          c2.set('amount', commAmount * 0.5)
+          c2.set('type', 'package_sale')
+          c2.set('date', now)
+          c2.set('is_advance', false)
+          c2.set('payment_method', payment_method)
+          c2.set('status', 'pending')
+          c2.set('due_date', futureCycleStr)
+          txApp.save(c2)
+        } else {
+          let status = 'pending'
+          let due_date = ''
+          if (workLevel === 'socio') {
+            status = 'available'
+            due_date = now
+          } else {
+            const txDate = new Date()
+            const day = txDate.getDay()
+            let daysToAdd = 0
+            if (day >= 0 && day <= 3) {
+              daysToAdd = 4 - day
+            } else {
+              daysToAdd = 8 - day
+            }
+            const d = new Date(txDate)
+            d.setDate(d.getDate() + daysToAdd)
+            due_date = d.toISOString().replace('T', ' ').substring(0, 19)
+          }
+          const c = new Record(commCol)
+          c.set('barber_id', barber_id)
+          c.set('amount', commAmount)
+          c.set('type', 'package_sale')
+          c.set('date', now)
+          c.set('is_advance', false)
+          c.set('payment_method', payment_method)
+          c.set('status', status)
+          if (due_date) c.set('due_date', due_date)
+          txApp.save(c)
+        }
       }
     })
     return e.json(200, { success: true })

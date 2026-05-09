@@ -36,6 +36,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -46,11 +48,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import useMainStore from '@/stores/main'
-import { SubscriptionTier } from '@/lib/tiers'
-import { Link as RouterLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
+import { useState, useEffect } from 'react'
+import { useRealtime } from '@/hooks/use-realtime'
 
 const baseNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
@@ -65,8 +67,10 @@ const baseNavItems = [
 export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { state } = useMainStore()
   const { user, signOut } = useAuth()
+
+  const [expiringPackages, setExpiringPackages] = useState<any[]>([])
+  const [isPackagesModalOpen, setIsPackagesModalOpen] = useState(false)
 
   const canAccessSettings = user?.access_level === 'Admin' || user?.access_level === 'Staff'
 
@@ -87,14 +91,36 @@ export default function Layout() {
     navigate('/')
   }
 
+  const loadAlerts = async () => {
+    try {
+      const pkgs = await pb.collection('client_packages').getFullList({
+        filter: 'remaining_uses = 1',
+        expand: 'client_id,package_id',
+      })
+      setExpiringPackages(pkgs)
+    } catch (e) {
+      console.error('Failed to load alerts', e)
+    }
+  }
+
+  useEffect(() => {
+    if (user) {
+      loadAlerts()
+    }
+  }, [user])
+
+  useRealtime('client_packages', () => {
+    loadAlerts()
+  })
+
   return (
     <SidebarProvider>
       <Sidebar variant="inset" className="hidden md:flex">
         <SidebarHeader className="p-4 flex flex-row items-center gap-3">
           <img
-            src="https://img.usecurling.com/i?q=barber&shape=outline&color=gradient"
+            src="https://img.usecurling.com/i?q=barbershop+logo&shape=fill&color=gradient"
             alt="Barbearia Pro Logo"
-            className="h-8 object-contain"
+            className="h-10 object-contain drop-shadow-md"
           />
         </SidebarHeader>
         <SidebarContent>
@@ -138,9 +164,9 @@ export default function Layout() {
 
           <div className="md:hidden flex items-center gap-2 text-primary font-bold">
             <img
-              src="https://img.usecurling.com/i?q=barber&shape=outline&color=gradient"
+              src="https://img.usecurling.com/i?q=barbershop+logo&shape=fill&color=gradient"
               alt="Barbearia Pro Logo"
-              className="h-6 object-contain"
+              className="h-8 object-contain drop-shadow-md"
             />
             <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">
               {currentPlan}
@@ -169,14 +195,42 @@ export default function Layout() {
               </SelectContent>
             </Select>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative hidden sm:flex min-h-[44px] min-w-[44px]"
-            >
-              <Bell className="size-5" />
-              <span className="absolute top-2 right-2 size-2 bg-destructive rounded-full animate-pulse"></span>
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative hidden sm:flex min-h-[44px] min-w-[44px]"
+                >
+                  <Bell className="size-5" />
+                  {expiringPackages.length > 0 && (
+                    <span className="absolute top-2 right-2 size-2 bg-destructive rounded-full animate-pulse"></span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-4">
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-sm">Notificações do Sistema</h4>
+                  {expiringPackages.length > 0 ? (
+                    <div
+                      className="p-3 bg-amber-500/10 text-amber-600 rounded-md cursor-pointer hover:bg-amber-500/20 transition-colors"
+                      onClick={() => setIsPackagesModalOpen(true)}
+                    >
+                      <p className="text-sm font-bold flex items-center gap-2">
+                        <Package className="size-4" /> Pacotes Vencendo ({expiringPackages.length})
+                      </p>
+                      <p className="text-xs mt-1">
+                        Existem clientes com apenas 1 uso restante em seus pacotes. Clique para
+                        visualizar.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhuma notificação no momento.</p>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -206,6 +260,40 @@ export default function Layout() {
             </DropdownMenu>
           </div>
         </header>
+
+        <Dialog open={isPackagesModalOpen} onOpenChange={setIsPackagesModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Pacotes Quase no Fim</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto mt-2">
+              {expiringPackages.map((pkg) => (
+                <div
+                  key={pkg.id}
+                  className="flex justify-between items-center p-3 border rounded-lg bg-card shadow-sm"
+                >
+                  <div>
+                    <p className="font-bold text-sm text-primary">
+                      {pkg.expand?.client_id?.name || 'Cliente não informado'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {pkg.expand?.package_id?.name || 'Pacote sem nome'}
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold bg-amber-500/20 text-amber-600 px-2.5 py-1 rounded-full">
+                    1 uso restante
+                  </span>
+                </div>
+              ))}
+              {expiringPackages.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum pacote vencendo.
+                </p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 animate-fade-in">
           <Outlet />
         </main>
