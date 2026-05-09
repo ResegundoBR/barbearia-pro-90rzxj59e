@@ -33,20 +33,12 @@ import {
   getBarbers,
   getClients,
   getPackages,
-  getCommissionRules,
   getAppointments,
   getProducts,
-  updateProduct,
-  createProductPurchase,
-  createClientPackage,
-  createCommission,
-  updateAppointment,
-  consumePackage,
   getClientPackages,
 } from '@/services/api'
 import pb from '@/lib/pocketbase/client'
 import { useToast } from '@/hooks/use-toast'
-import { addDays, format } from 'date-fns'
 import { Separator } from '@/components/ui/separator'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
 
@@ -55,10 +47,10 @@ export default function Checkout() {
   const [clients, setClients] = useState<any[]>([])
   const [packages, setPackages] = useState<any[]>([])
   const [clientPackages, setClientPackages] = useState<any[]>([])
-  const [rules, setRules] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [services, setServices] = useState<any[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([])
 
   const [pkgForm, setPkgForm] = useState({
     barber_id: '',
@@ -69,7 +61,7 @@ export default function Checkout() {
   const [svcForm, setSvcForm] = useState({
     appointment_id: '',
     service_price: '',
-    payment_method: 'debito',
+    payment_method: '',
   })
   const [isManual, setIsManual] = useState(false)
   const [manualForm, setManualForm] = useState({ client_id: '', barber_id: '', service_id: '' })
@@ -92,20 +84,23 @@ export default function Checkout() {
       getBarbers(),
       getClients(),
       getPackages(),
-      getCommissionRules(),
       getAppointments(`status != 'Concluído' && status != 'Cancelado'`),
       getProducts(),
       getClientPackages(),
       pb.collection('services').getFullList({ filter: 'is_active=true' }),
-    ]).then(([b, c, p, r, a, prods, cp, svcs]) => {
+      pb
+        .collection('settings')
+        .getFirstListItem('key="payment_methods"')
+        .catch(() => ({ value: ['cash', 'pix', 'debito', 'credito'] })),
+    ]).then(([b, c, p, a, prods, cp, svcs, sett]) => {
       setBarbers(b)
       setClients(c)
       setPackages(p)
-      setRules(r)
       setAppointments(a)
       setProducts(prods.filter((prod) => prod.is_active !== false))
       setClientPackages(cp.filter((pkg) => pkg.remaining_uses > 0))
       setServices(svcs)
+      setPaymentMethods(sett.value || ['cash', 'pix', 'debito', 'credito'])
     })
   }
 
@@ -126,53 +121,15 @@ export default function Checkout() {
 
     setIsSubmitting(true)
     try {
-      const pkg = packages.find((p) => p.id === pkgForm.package_id)
-      const barber = barbers.find((b) => b.id === pkgForm.barber_id)
-      if (!pkg || !barber) throw new Error('Dados inválidos')
-
-      const expiresAt = addDays(new Date(), 90)
-      await createClientPackage({
-        client_id: pkgForm.client_id,
-        package_id: pkg.id,
-        barber_id: barber.id,
-        remaining_uses: pkg.quantity,
-        expires_at: format(expiresAt, 'yyyy-MM-dd 23:59:59'),
+      await pb.send('/backend/v1/checkout/package', {
+        method: 'POST',
+        body: JSON.stringify(pkgForm),
+        headers: { 'Content-Type': 'application/json' },
       })
-
-      let commAmount = 0
-      const rule = rules.find(
-        (r) => r.item_type === 'package' && (!r.barber_id || r.barber_id === ''),
-      )
-      if (rule) {
-        commAmount = rule.type === 'percentage' ? pkg.price * (rule.value / 100) : rule.value
-      } else {
-        commAmount =
-          barber.commission_type === 'percentage'
-            ? pkg.price * ((barber.commission_value || 0) / 100)
-            : barber.commission_value || 0
-      }
-
-      if (commAmount > 0) {
-        const isCredit = pkgForm.payment_method === 'credito'
-        const status = isCredit ? 'pending' : 'available'
-        const due_date = isCredit ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
-
-        const commPayload: any = {
-          barber_id: barber.id,
-          amount: commAmount,
-          type: 'package_sale',
-          date: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
-          is_advance: false,
-          payment_method: pkgForm.payment_method,
-          status,
-        }
-        if (due_date) commPayload.due_date = due_date
-
-        await createCommission(commPayload)
-      }
 
       setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
       setSuccessState({ type: 'package', message: 'Pacote vendido com sucesso!' })
+      loadData()
     } catch (err: any) {
       const msg = err instanceof Error ? err.message : getErrorMessage(err)
       toast({ title: msg || 'Erro ao vender pacote', variant: 'destructive' })
@@ -192,7 +149,7 @@ export default function Checkout() {
 
     setIsSubmitting(true)
     try {
-      // Validate stock before proceeding with any operation
+      // Validate stock locally before sending to prevent unnecessary network roundtrips
       for (const sp of selectedProducts) {
         const prod = sp.product
         if ((prod.stock_quantity || 0) - sp.quantity < 0) {
@@ -200,176 +157,19 @@ export default function Checkout() {
         }
       }
 
-      const finalServicePrice = parseFloat(svcForm.service_price.toString().replace(',', '.')) || 0
-
-      let apt: any = null
-      let clientId = ''
-      let barberId = ''
-
-      if (isManual) {
-        if (!manualForm.client_id || !manualForm.barber_id) {
-          throw new Error('Preencha o cliente e o profissional para atendimento avulso.')
-        }
-        if (!manualForm.service_id && selectedProducts.length === 0) {
-          throw new Error('Selecione um serviço ou adicione produtos.')
-        }
-
-        if (manualForm.service_id) {
-          apt = await pb.collection('appointments').create({
-            client_id: manualForm.client_id,
-            barber_id: manualForm.barber_id,
-            service_id: manualForm.service_id,
-            status: 'Concluído',
-            date: format(new Date(), 'yyyy-MM-dd 12:00:00'),
-            time: format(new Date(), 'HH:mm'),
-            price: finalServicePrice,
-          })
-        }
-        clientId = manualForm.client_id
-        barberId = manualForm.barber_id
-      } else {
-        apt = appointments.find((a) => a.id === svcForm.appointment_id)
-        if (!apt) throw new Error('Agendamento não encontrado')
-        clientId = apt.client_id
-        barberId = apt.barber_id
-
-        if (selectedProducts.length > 0 && !clientId) {
-          throw new Error(
-            'É necessário ter um cliente associado no agendamento para realizar a venda de produtos.',
-          )
-        }
-
-        let finalPackageId = apt.client_package_id
-        if (packageToConsume) {
-          finalPackageId = packageToConsume
-          const cp = clientPackages.find((c) => c.id === packageToConsume)
-          if (cp) {
-            const currentUses = cp.remaining_uses || 0
-            await consumePackage(cp.id, { remaining_uses: Math.max(0, currentUses - 1) })
-          }
-        } else if (apt.client_package_id && apt.expand?.client_package_id) {
-          const currentUses = apt.expand.client_package_id.remaining_uses || 0
-          await consumePackage(apt.client_package_id, {
-            remaining_uses: Math.max(0, currentUses - 1),
-          })
-        }
-
-        const updatePayload: any = {
-          status: 'Concluído',
-          price: finalServicePrice,
-        }
-        if (finalPackageId) updatePayload.client_package_id = finalPackageId
-
-        await updateAppointment(apt.id, updatePayload)
-      }
-
-      const barber = barbers.find((b) => b.id === barberId)
-      const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-      const isCredit = svcForm.payment_method === 'credito'
-      const status = isCredit ? 'pending' : 'available'
-      const due_date = isCredit ? format(addDays(new Date(), 30), 'yyyy-MM-dd 12:00:00') : ''
-
-      if (barber && finalServicePrice > 0) {
-        let commAmount = 0
-        const rule = rules.find(
-          (r) => r.item_type === 'service' && (!r.barber_id || r.barber_id === ''),
-        )
-        if (rule) {
-          commAmount =
-            rule.type === 'percentage' ? finalServicePrice * (rule.value / 100) : rule.value
-        } else {
-          commAmount =
-            barber.commission_type === 'percentage'
-              ? finalServicePrice * ((barber.commission_value || 0) / 100)
-              : barber.commission_value || 0
-        }
-
-        if (commAmount > 0) {
-          const commPayload: any = {
-            barber_id: barber.id,
-            amount: commAmount,
-            type: 'service',
-            date: now,
-            is_advance: false,
-            payment_method: svcForm.payment_method,
-            status,
-          }
-          if (due_date) commPayload.due_date = due_date
-          await createCommission(commPayload)
-        }
-      }
-
-      const productOps = selectedProducts.map(async (sp) => {
-        const prod = sp.product
-
-        await updateProduct(prod.id, {
-          stock_quantity: Math.max(0, (prod.stock_quantity || 0) - sp.quantity),
-        })
-
-        const purchasePayload: any = {
-          client_id: clientId,
-          product_id: prod.id,
-          price_at_sale: prod.price || 0,
-          date: now,
-        }
-        if (barberId) purchasePayload.barber_id = barberId
-
-        await createProductPurchase(purchasePayload)
-
-        if (barber) {
-          let prodComm = 0
-          const specificProductRule = rules.find(
-            (r) =>
-              r.item_type === 'product' &&
-              r.item_id === prod.id &&
-              (!r.barber_id || r.barber_id === ''),
-          )
-          const categoryRule = rules.find(
-            (r) =>
-              r.item_type === 'category' &&
-              r.item_id === prod.category &&
-              (!r.barber_id || r.barber_id === ''),
-          )
-          const allProductRule = rules.find(
-            (r) =>
-              r.item_type === 'product' &&
-              (!r.item_id || r.item_id === 'all') &&
-              (!r.barber_id || r.barber_id === ''),
-          )
-
-          const pRule = specificProductRule || categoryRule || allProductRule
-
-          if (pRule) {
-            prodComm =
-              pRule.type === 'percentage'
-                ? prod.price * sp.quantity * (pRule.value / 100)
-                : pRule.value * sp.quantity
-          } else {
-            prodComm =
-              barber.commission_type === 'percentage'
-                ? prod.price * sp.quantity * ((barber.commission_value || 0) / 100)
-                : (barber.commission_value || 0) * sp.quantity
-          }
-
-          if (prodComm > 0) {
-            const prodCommPayload: any = {
-              barber_id: barber.id,
-              amount: prodComm,
-              type: 'product',
-              date: now,
-              is_advance: false,
-              payment_method: svcForm.payment_method,
-              status,
-            }
-            if (due_date) prodCommPayload.due_date = due_date
-            await createCommission(prodCommPayload)
-          }
-        }
+      await pb.send('/backend/v1/checkout/service', {
+        method: 'POST',
+        body: JSON.stringify({
+          isManual,
+          manualForm,
+          svcForm,
+          selectedProducts,
+          packageToConsume,
+        }),
+        headers: { 'Content-Type': 'application/json' },
       })
 
-      await Promise.all(productOps)
-
-      setSvcForm({ appointment_id: '', service_price: '', payment_method: 'debito' })
+      setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
       setManualForm({ client_id: '', barber_id: '', service_id: '' })
       setIsManual(false)
       setSelectedProducts([])
@@ -743,10 +543,18 @@ export default function Checkout() {
                           <SelectValue placeholder="Selecione o pagamento..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="cash">Dinheiro</SelectItem>
-                          <SelectItem value="pix">Pix</SelectItem>
-                          <SelectItem value="debito">Cartão de Débito</SelectItem>
-                          <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                          {paymentMethods.includes('cash') && (
+                            <SelectItem value="cash">Dinheiro</SelectItem>
+                          )}
+                          {paymentMethods.includes('pix') && (
+                            <SelectItem value="pix">Pix</SelectItem>
+                          )}
+                          {paymentMethods.includes('debito') && (
+                            <SelectItem value="debito">Cartão de Débito</SelectItem>
+                          )}
+                          {paymentMethods.includes('credito') && (
+                            <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -849,10 +657,16 @@ export default function Checkout() {
                         <SelectValue placeholder="Selecione o pagamento..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cash">Dinheiro</SelectItem>
-                        <SelectItem value="pix">Pix</SelectItem>
-                        <SelectItem value="debito">Cartão de Débito</SelectItem>
-                        <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                        {paymentMethods.includes('cash') && (
+                          <SelectItem value="cash">Dinheiro</SelectItem>
+                        )}
+                        {paymentMethods.includes('pix') && <SelectItem value="pix">Pix</SelectItem>}
+                        {paymentMethods.includes('debito') && (
+                          <SelectItem value="debito">Cartão de Débito</SelectItem>
+                        )}
+                        {paymentMethods.includes('credito') && (
+                          <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

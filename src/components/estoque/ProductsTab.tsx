@@ -34,20 +34,27 @@ import {
 export function ProductsTab() {
   const [items, setItems] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [categories, setCategories] = useState<any[]>([])
   const [form, setForm] = useState<any>({
     name: '',
     price: '',
     stock_quantity: '',
     min_stock: '',
-    category: 'Beleza',
+    category_id: '',
     is_active: true,
   })
   const [editingId, setEditingId] = useState<string | null>(null)
   const { toast } = useToast()
 
   const loadData = async () => {
-    const records = await pb.collection('products').getFullList({ sort: '-created' })
+    const records = await pb
+      .collection('products')
+      .getFullList({ sort: '-created', expand: 'category_id' })
     setItems(records)
+    const cats = await pb
+      .collection('categories')
+      .getFullList({ filter: "type='product'", sort: 'name' })
+    setCategories(cats)
   }
 
   useEffect(() => {
@@ -56,7 +63,7 @@ export function ProductsTab() {
 
   const handleOpen = (item?: any) => {
     if (item) {
-      setForm({ ...item, category: item.category || 'Beleza' })
+      setForm({ ...item, category_id: item.category_id || '' })
       setEditingId(item.id)
     } else {
       setForm({
@@ -64,7 +71,7 @@ export function ProductsTab() {
         price: '',
         stock_quantity: 0,
         min_stock: 0,
-        category: 'Beleza',
+        category_id: '',
         is_active: true,
       })
       setEditingId(null)
@@ -137,7 +144,14 @@ export function ProductsTab() {
                   </Badge>
                 </TableCell>
                 <TableCell>{item.min_stock}</TableCell>
-                <TableCell>{item.category || '-'}</TableCell>
+                <TableCell>
+                  {item.expand?.category_id?.name || item.category || '-'}
+                  {item.expand?.category_id && (
+                    <Badge variant="outline" className="ml-2 text-[10px]">
+                      {item.expand.category_id.commission_percentage}% Com.
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -217,16 +231,18 @@ export function ProductsTab() {
             <div className="space-y-2">
               <Label>Categoria</Label>
               <Select
-                value={form.category}
-                onValueChange={(v) => setForm({ ...form, category: v })}
+                value={form.category_id}
+                onValueChange={(v) => setForm({ ...form, category_id: v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Beleza">Beleza</SelectItem>
-                  <SelectItem value="Bebidas">Bebidas</SelectItem>
-                  <SelectItem value="Acessórios">Acessórios</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} ({c.commission_percentage}%)
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

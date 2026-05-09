@@ -27,10 +27,11 @@ import { Badge } from '@/components/ui/badge'
 export function ServicesTab() {
   const [items, setItems] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [categories, setCategories] = useState<any[]>([])
   const [form, setForm] = useState<any>({
     name: '',
     price: '',
-    commission_rate: '',
+    category_id: '',
     duration_minutes: 30,
     is_active: true,
   })
@@ -38,8 +39,14 @@ export function ServicesTab() {
   const { toast } = useToast()
 
   const loadData = async () => {
-    const records = await pb.collection('services').getFullList({ sort: '-created' })
+    const records = await pb
+      .collection('services')
+      .getFullList({ sort: '-created', expand: 'category_id' })
     setItems(records)
+    const cats = await pb
+      .collection('categories')
+      .getFullList({ filter: "type='service'", sort: 'name' })
+    setCategories(cats)
   }
 
   useEffect(() => {
@@ -51,7 +58,7 @@ export function ServicesTab() {
       setForm({ ...item })
       setEditingId(item.id)
     } else {
-      setForm({ name: '', price: '', commission_rate: '', duration_minutes: 30, is_active: true })
+      setForm({ name: '', price: '', category_id: '', duration_minutes: 30, is_active: true })
       setEditingId(null)
     }
     setIsOpen(true)
@@ -62,7 +69,6 @@ export function ServicesTab() {
       const data = {
         ...form,
         price: Number(form.price),
-        commission_rate: Number(form.commission_rate),
         duration_minutes: Number(form.duration_minutes),
       }
       if (editingId) {
@@ -102,7 +108,7 @@ export function ServicesTab() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Preço</TableHead>
-              <TableHead>Comissão (%)</TableHead>
+              <TableHead>Categoria / Comissão (%)</TableHead>
               <TableHead>Duração (min)</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -113,7 +119,18 @@ export function ServicesTab() {
               <TableRow key={item.id} className={!item.is_active ? 'opacity-60' : ''}>
                 <TableCell className="font-medium">{item.name}</TableCell>
                 <TableCell>R$ {item.price?.toFixed(2)}</TableCell>
-                <TableCell>{item.commission_rate}%</TableCell>
+                <TableCell>
+                  {item.expand?.category_id ? (
+                    <div className="flex items-center gap-2">
+                      <span>{item.expand.category_id.name}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {item.expand.category_id.commission_percentage}%
+                      </Badge>
+                    </div>
+                  ) : (
+                    <span>{item.commission_rate || 0}% (Legado)</span>
+                  )}
+                </TableCell>
                 <TableCell>{item.duration_minutes} min</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -173,13 +190,22 @@ export function ServicesTab() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Comissão Padrão (%)</Label>
-                <Input
-                  type="number"
-                  value={form.commission_rate}
-                  onChange={(e) => setForm({ ...form, commission_rate: e.target.value })}
-                  placeholder="50"
-                />
+                <Label>Categoria de Comissão</Label>
+                <Select
+                  value={form.category_id}
+                  onValueChange={(v) => setForm({ ...form, category_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} ({c.commission_percentage}%)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

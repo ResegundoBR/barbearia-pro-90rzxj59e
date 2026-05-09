@@ -10,6 +10,7 @@ import {
   Bell,
   UserCircle,
   Crown,
+  Settings,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -40,7 +41,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
 
-const navItems = [
+const baseNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Agenda', url: '/agenda', icon: CalendarDays },
   { title: 'Clientes', url: '/clientes', icon: Users },
@@ -53,6 +54,11 @@ export default function Layout() {
   const location = useLocation()
   const { state } = useMainStore()
   const { user } = useAuth()
+
+  const navItems =
+    user?.access_level === 'Admin'
+      ? [...baseNavItems, { title: 'Configurações', url: '/settings', icon: Settings }]
+      : baseNavItems
 
   const currentPlan = user?.plan || 'Free'
 
