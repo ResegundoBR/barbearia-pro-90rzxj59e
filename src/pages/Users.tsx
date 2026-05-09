@@ -31,6 +31,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Plus, Trash2, Edit, X } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
+import { useRealtime } from '@/hooks/use-realtime'
 import pb from '@/lib/pocketbase/client'
 
 export default function UsersPage() {
@@ -89,6 +90,10 @@ export default function UsersPage() {
       loadData()
     }
   }, [isAdmin])
+
+  useRealtime('users', () => {
+    if (isAdmin) loadData()
+  })
 
   if (!isAdmin) {
     return (
@@ -203,17 +208,46 @@ export default function UsersPage() {
     }
   }
 
-  const modules = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'agenda', label: 'Agenda' },
-    { id: 'clientes', label: 'Clientes' },
-    { id: 'estoque', label: 'Serviços & Pacotes' },
-    { id: 'produtos', label: 'Produtos e Categorias' },
-    { id: 'staff', label: 'Equipe & Comissões' },
-    { id: 'checkout', label: 'Checkout (POS)' },
-    { id: 'financeiro', label: 'Financeiro' },
-    { id: 'action_delete', label: 'Ação: Excluir Registros' },
-    { id: 'action_reports', label: 'Ação: Visualizar Relatórios' },
+  const permissionGroups = [
+    {
+      title: 'Módulos Principais',
+      items: [
+        { id: 'dashboard', label: 'Dashboard (Acesso Geral)' },
+        { id: 'agenda', label: 'Agenda' },
+        { id: 'clientes', label: 'Clientes' },
+        { id: 'estoque', label: 'Serviços & Pacotes' },
+        { id: 'produtos', label: 'Produtos e Categorias' },
+        { id: 'staff_view', label: 'Equipes e Comissões (Visualização)' },
+        { id: 'staff_edit', label: 'Equipes e Comissões (Edição)' },
+        { id: 'checkout', label: 'Checkout (POS)' },
+        { id: 'financeiro', label: 'Financeiro' },
+        { id: 'action_delete', label: 'Ação: Excluir Registros' },
+        { id: 'action_reports', label: 'Ação: Visualizar Relatórios' },
+      ],
+    },
+    {
+      title: 'Dashboard - Abas',
+      items: [
+        { id: 'dash_tab_overview', label: 'Aba: Visão Geral' },
+        { id: 'dash_tab_financial', label: 'Aba: Financeiro' },
+        { id: 'dash_tab_packages', label: 'Aba: Pacotes Ativos' },
+      ],
+    },
+    {
+      title: 'Dashboard - Blocos (Visão Geral)',
+      items: [
+        { id: 'dash_block_revenue', label: 'Bloco: Faturamento' },
+        { id: 'dash_block_clients', label: 'Bloco: Clientes Atendidos' },
+        { id: 'dash_block_new_clients', label: 'Bloco: Novos Clientes' },
+        { id: 'dash_block_ticket_serv', label: 'Bloco: Ticket Médio - Serviços' },
+        { id: 'dash_block_ticket_prod', label: 'Bloco: Ticket Médio - Produtos' },
+        { id: 'dash_block_peak', label: 'Gráfico: Horários de Pico' },
+        { id: 'dash_block_history', label: 'Gráfico: Histórico de Vendas' },
+        { id: 'dash_block_top_sellers', label: 'Tabela: Itens Mais Vendidos' },
+        { id: 'dash_block_forecast', label: 'Bloco: Previsão de Recebimento' },
+        { id: 'dash_block_alerts', label: 'Bloco: Alertas' },
+      ],
+    },
   ]
 
   const toggleModule = async (role: string, modId: string, checked: boolean) => {
@@ -322,41 +356,48 @@ export default function UsersPage() {
                 Defina quais módulos cada perfil pode acessar. (Admin tem acesso total sempre)
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Módulo</TableHead>
-                    <TableHead className="text-center">Sócio</TableHead>
-                    <TableHead className="text-center">Autônomo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {modules.map((mod) => (
-                    <TableRow key={mod.id}>
-                      <TableCell>{mod.label}</TableCell>
-                      <TableCell className="text-center">
-                        <Checkbox
-                          checked={
-                            rolePerms['Socio']?.includes(mod.id) ||
-                            rolePerms['Socio']?.includes('*')
-                          }
-                          onCheckedChange={(c) => toggleModule('Socio', mod.id, !!c)}
-                        />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Checkbox
-                          checked={
-                            rolePerms['Autonomo']?.includes(mod.id) ||
-                            rolePerms['Autonomo']?.includes('*')
-                          }
-                          onCheckedChange={(c) => toggleModule('Autonomo', mod.id, !!c)}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardContent className="px-0">
+              {permissionGroups.map((group) => (
+                <div key={group.title} className="mb-6 px-6">
+                  <h4 className="font-semibold text-sm bg-muted p-2 rounded-md mb-2">
+                    {group.title}
+                  </h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Permissão</TableHead>
+                        <TableHead className="text-center w-24">Sócio</TableHead>
+                        <TableHead className="text-center w-24">Autônomo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.items.map((mod) => (
+                        <TableRow key={mod.id}>
+                          <TableCell className="text-sm">{mod.label}</TableCell>
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={
+                                rolePerms['Socio']?.includes(mod.id) ||
+                                rolePerms['Socio']?.includes('*')
+                              }
+                              onCheckedChange={(c) => toggleModule('Socio', mod.id, !!c)}
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={
+                                rolePerms['Autonomo']?.includes(mod.id) ||
+                                rolePerms['Autonomo']?.includes('*')
+                              }
+                              onCheckedChange={(c) => toggleModule('Autonomo', mod.id, !!c)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>

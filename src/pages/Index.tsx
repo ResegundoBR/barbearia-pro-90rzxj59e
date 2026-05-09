@@ -64,9 +64,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useRealtime } from '@/hooks/use-realtime'
+import { usePermissions } from '@/hooks/use-permissions'
 
 export default function Index() {
   const { user } = useAuth()
+  const { hasAccess } = usePermissions()
   const isAdmin =
     user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
 
@@ -82,6 +84,13 @@ export default function Index() {
   const [period, setPeriod] = useState('month')
   const [barberFilter, setBarberFilter] = useState('all')
   const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'packages'>('overview')
+
+  useEffect(() => {
+    if (!hasAccess('dash_tab_overview') && activeTab === 'overview') {
+      if (hasAccess('dash_tab_financial')) setActiveTab('financial')
+      else if (hasAccess('dash_tab_packages')) setActiveTab('packages')
+    }
+  }, [hasAccess, activeTab])
 
   const [alertModal, setAlertModal] = useState<'risk' | 'packages' | 'stock' | 'tomorrow' | null>(
     null,
@@ -418,24 +427,30 @@ export default function Index() {
       <div className="border-b border-border mb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab as any} className="w-full">
           <TabsList className="bg-transparent w-full justify-start rounded-none px-0 h-auto gap-4">
-            <TabsTrigger
-              value="overview"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-2"
-            >
-              Visão Geral
-            </TabsTrigger>
-            <TabsTrigger
-              value="financial"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-2"
-            >
-              Financeiro
-            </TabsTrigger>
-            <TabsTrigger
-              value="packages"
-              className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-2"
-            >
-              Pacotes Ativos
-            </TabsTrigger>
+            {hasAccess('dash_tab_overview') && (
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-2"
+              >
+                Visão Geral
+              </TabsTrigger>
+            )}
+            {hasAccess('dash_tab_financial') && (
+              <TabsTrigger
+                value="financial"
+                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-2"
+              >
+                Financeiro
+              </TabsTrigger>
+            )}
+            {hasAccess('dash_tab_packages') && (
+              <TabsTrigger
+                value="packages"
+                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-2"
+              >
+                Pacotes Ativos
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
       </div>
@@ -443,328 +458,348 @@ export default function Index() {
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fade-in">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-            <Card
-              className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
-              onClick={() => setDashboardModal('revenue')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
-                  Faturamento
-                </CardTitle>
-                <BadgeDollarSign className="size-4 text-emerald-500 shrink-0" />
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="text-2xl font-bold">R$ {totalRevenue.toFixed(2)}</div>
-              </CardContent>
-            </Card>
-            <Card
-              className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
-              onClick={() => setDashboardModal('clients')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
-                  Clientes Atendidos
-                </CardTitle>
-                <Users className="size-4 text-blue-500 shrink-0" />
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="text-2xl font-bold">{uniqueClientsPeriod}</div>
-              </CardContent>
-            </Card>
-            <Card
-              className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
-              onClick={() => setDashboardModal('new_clients')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
-                  Novos Clientes
-                </CardTitle>
-                <Users className="size-4 text-purple-500 shrink-0" />
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="text-2xl font-bold">{newClientsCount}</div>
-              </CardContent>
-            </Card>
-            <Card className="bg-glass border-none">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
-                  Ticket Médio - Serv.
-                </CardTitle>
-                <BadgeDollarSign className="size-4 text-amber-500 shrink-0" />
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="text-2xl font-bold">R$ {avgTicket.toFixed(2)}</div>
-              </CardContent>
-            </Card>
-            <Card className="bg-glass border-none">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
-                  Ticket Médio - Prod.
-                </CardTitle>
-                <BadgeDollarSign className="size-4 text-orange-500 shrink-0" />
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="text-2xl font-bold">R$ {avgProductTicket.toFixed(2)}</div>
-              </CardContent>
-            </Card>
+            {hasAccess('dash_block_revenue') && (
+              <Card
+                className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setDashboardModal('revenue')}
+              >
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
+                  <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
+                    Faturamento
+                  </CardTitle>
+                  <BadgeDollarSign className="size-4 text-emerald-500 shrink-0" />
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="text-2xl font-bold">R$ {totalRevenue.toFixed(2)}</div>
+                </CardContent>
+              </Card>
+            )}
+            {hasAccess('dash_block_clients') && (
+              <Card
+                className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setDashboardModal('clients')}
+              >
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
+                  <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
+                    Clientes Atendidos
+                  </CardTitle>
+                  <Users className="size-4 text-blue-500 shrink-0" />
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="text-2xl font-bold">{uniqueClientsPeriod}</div>
+                </CardContent>
+              </Card>
+            )}
+            {hasAccess('dash_block_new_clients') && (
+              <Card
+                className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setDashboardModal('new_clients')}
+              >
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
+                  <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
+                    Novos Clientes
+                  </CardTitle>
+                  <Users className="size-4 text-purple-500 shrink-0" />
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="text-2xl font-bold">{newClientsCount}</div>
+                </CardContent>
+              </Card>
+            )}
+            {hasAccess('dash_block_ticket_serv') && (
+              <Card className="bg-glass border-none">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
+                  <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
+                    Ticket Médio - Serv.
+                  </CardTitle>
+                  <BadgeDollarSign className="size-4 text-amber-500 shrink-0" />
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="text-2xl font-bold">R$ {avgTicket.toFixed(2)}</div>
+                </CardContent>
+              </Card>
+            )}
+            {hasAccess('dash_block_ticket_prod') && (
+              <Card className="bg-glass border-none">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
+                  <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
+                    Ticket Médio - Prod.
+                  </CardTitle>
+                  <BadgeDollarSign className="size-4 text-orange-500 shrink-0" />
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="text-2xl font-bold">R$ {avgProductTicket.toFixed(2)}</div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            <Card className="bg-glass border-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Horários de Pico
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px] w-full mt-4">
-                  <ChartContainer
-                    config={{ count: { label: 'Agendamentos', color: 'hsl(var(--primary))' } }}
-                  >
-                    <AreaChart
-                      data={peakData}
-                      margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
-                    >
-                      <defs>
-                        <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.1} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                      <XAxis dataKey="hour" tickLine={false} axisLine={false} />
-                      <YAxis tickLine={false} axisLine={false} width={30} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Area
-                        type="monotone"
-                        dataKey="count"
-                        stroke="var(--color-count)"
-                        strokeWidth={2}
-                        fillOpacity={1}
-                        fill="url(#fillCount)"
-                      />
-                    </AreaChart>
-                  </ChartContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-glass border-none w-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Histórico de Vendas (Receita)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] w-full mt-4">
-                  {historyData.length > 0 ? (
+            {hasAccess('dash_block_peak') && (
+              <Card className="bg-glass border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Horários de Pico
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px] w-full mt-4">
                     <ChartContainer
-                      config={{
-                        services: { label: 'Serviços & Pacotes', color: 'hsl(var(--primary))' },
-                        products: { label: 'Produtos', color: '#10b981' },
-                      }}
+                      config={{ count: { label: 'Agendamentos', color: 'hsl(var(--primary))' } }}
                     >
-                      <BarChart
-                        data={historyData}
+                      <AreaChart
+                        data={peakData}
                         margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
                       >
+                        <defs>
+                          <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.1} />
+                          </linearGradient>
+                        </defs>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                        <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                        <YAxis
-                          tickLine={false}
-                          axisLine={false}
-                          width={50}
-                          tickFormatter={(val) => `R$ ${val}`}
-                        />
+                        <XAxis dataKey="hour" tickLine={false} axisLine={false} />
+                        <YAxis tickLine={false} axisLine={false} width={30} />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Legend verticalAlign="top" height={36} />
-                        <Bar
-                          dataKey="services"
-                          stackId="a"
-                          fill="var(--color-services)"
-                          radius={[0, 0, 4, 4]}
+                        <Area
+                          type="monotone"
+                          dataKey="count"
+                          stroke="var(--color-count)"
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#fillCount)"
                         />
-                        <Bar
-                          dataKey="products"
-                          stackId="a"
-                          fill="var(--color-products)"
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
+                      </AreaChart>
                     </ChartContainer>
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                      Sem dados para o período.
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasAccess('dash_block_history') && (
+              <Card className="bg-glass border-none w-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Histórico de Vendas (Receita)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px] w-full mt-4">
+                    {historyData.length > 0 ? (
+                      <ChartContainer
+                        config={{
+                          services: { label: 'Serviços & Pacotes', color: 'hsl(var(--primary))' },
+                          products: { label: 'Produtos', color: '#10b981' },
+                        }}
+                      >
+                        <BarChart
+                          data={historyData}
+                          margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                        >
+                          <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                          <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                          <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            width={50}
+                            tickFormatter={(val) => `R$ ${val}`}
+                          />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend verticalAlign="top" height={36} />
+                          <Bar
+                            dataKey="services"
+                            stackId="a"
+                            fill="var(--color-services)"
+                            radius={[0, 0, 4, 4]}
+                          />
+                          <Bar
+                            dataKey="products"
+                            stackId="a"
+                            fill="var(--color-products)"
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ChartContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                        Sem dados para o período.
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasAccess('dash_block_top_sellers') && (
+              <Card className="bg-glass border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Itens Mais Vendidos (Top 5)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead className="text-right">Qtd</TableHead>
+                        <TableHead className="text-right">Receita</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {topSellers.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px]">
+                              {item.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{item.count}</TableCell>
+                          <TableCell className="text-right text-emerald-500 font-medium">
+                            R$ {item.revenue.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {topSellers.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                            Nenhuma venda no período.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {hasAccess('dash_block_forecast') && (
+            <div className="grid grid-cols-1 gap-4">
+              <Card className="bg-glass border-none w-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
+                    Previsão de Recebimento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div
+                    className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                    onClick={() => setForecastModal('tomorrow')}
+                  >
+                    <p className="text-xs text-muted-foreground">Amanhã</p>
+                    {isLoading ? (
+                      <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
+                    ) : (
+                      <p className="text-2xl font-bold text-primary">
+                        R$ {predictedTomorrow.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                  <div
+                    className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                    onClick={() => setForecastModal('week')}
+                  >
+                    <p className="text-xs text-muted-foreground">Restante da Semana</p>
+                    {isLoading ? (
+                      <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
+                    ) : (
+                      <p className="text-2xl font-bold text-primary">
+                        R$ {predictedRestOfWeek.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                  <div
+                    className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                    onClick={() => setForecastModal('month')}
+                  >
+                    <p className="text-xs text-muted-foreground">Restante do Mês</p>
+                    {isLoading ? (
+                      <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
+                    ) : (
+                      <p className="text-2xl font-bold text-primary">
+                        R$ {predictedRestOfMonth.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {hasAccess('dash_block_alerts') && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="bg-glass border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
+                    Alertas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {lowStockProductsList.length > 0 && (
+                    <div
+                      className="flex items-center justify-between gap-3 bg-orange-500/10 text-orange-500 p-2 rounded-md cursor-pointer"
+                      onClick={() => setAlertModal('stock')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <AlertTriangle className="size-5 shrink-0" />
+                        <div>
+                          <p className="font-semibold text-sm">
+                            {lowStockProductsList.length} produtos com baixo estoque
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="size-4 opacity-50" />
                     </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-glass border-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Itens Mais Vendidos (Top 5)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead className="text-right">Qtd</TableHead>
-                      <TableHead className="text-right">Receita</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {topSellers.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-[10px]">
-                            {item.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">{item.count}</TableCell>
-                        <TableCell className="text-right text-emerald-500 font-medium">
-                          R$ {item.revenue.toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {topSellers.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                          Nenhuma venda no período.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <Card className="bg-glass border-none w-full">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
-                  Previsão de Recebimento
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div
-                  className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
-                  onClick={() => setForecastModal('tomorrow')}
-                >
-                  <p className="text-xs text-muted-foreground">Amanhã</p>
-                  {isLoading ? (
-                    <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
-                  ) : (
-                    <p className="text-2xl font-bold text-primary">
-                      R$ {predictedTomorrow.toFixed(2)}
-                    </p>
-                  )}
-                </div>
-                <div
-                  className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
-                  onClick={() => setForecastModal('week')}
-                >
-                  <p className="text-xs text-muted-foreground">Restante da Semana</p>
-                  {isLoading ? (
-                    <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
-                  ) : (
-                    <p className="text-2xl font-bold text-primary">
-                      R$ {predictedRestOfWeek.toFixed(2)}
-                    </p>
-                  )}
-                </div>
-                <div
-                  className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
-                  onClick={() => setForecastModal('month')}
-                >
-                  <p className="text-xs text-muted-foreground">Restante do Mês</p>
-                  {isLoading ? (
-                    <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
-                  ) : (
-                    <p className="text-2xl font-bold text-primary">
-                      R$ {predictedRestOfMonth.toFixed(2)}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="bg-glass border-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
-                  Alertas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {lowStockProductsList.length > 0 && (
                   <div
-                    className="flex items-center justify-between gap-3 bg-orange-500/10 text-orange-500 p-2 rounded-md cursor-pointer"
-                    onClick={() => setAlertModal('stock')}
+                    className="flex items-center justify-between gap-3 bg-red-500/10 text-red-500 p-2 rounded-md cursor-pointer"
+                    onClick={() => setAlertModal('risk')}
                   >
                     <div className="flex items-center gap-3">
                       <AlertTriangle className="size-5 shrink-0" />
                       <div>
                         <p className="font-semibold text-sm">
-                          {lowStockProductsList.length} produtos com baixo estoque
+                          {atRiskClientsList.length} clientes em risco
                         </p>
                       </div>
                     </div>
                     <ChevronRight className="size-4 opacity-50" />
                   </div>
-                )}
-                <div
-                  className="flex items-center justify-between gap-3 bg-red-500/10 text-red-500 p-2 rounded-md cursor-pointer"
-                  onClick={() => setAlertModal('risk')}
-                >
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className="size-5 shrink-0" />
-                    <div>
-                      <p className="font-semibold text-sm">
-                        {atRiskClientsList.length} clientes em risco
-                      </p>
+                  <div
+                    className="flex items-center justify-between gap-3 bg-amber-500/10 text-amber-500 p-2 rounded-md cursor-pointer"
+                    onClick={() => setAlertModal('packages')}
+                  >
+                    <div className="flex items-center gap-3">
+                      <PackageSearch className="size-5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-sm">
+                          {lowUsesPackagesList.length} pacotes com 1 uso restante
+                        </p>
+                      </div>
                     </div>
+                    <ChevronRight className="size-4 opacity-50" />
                   </div>
-                  <ChevronRight className="size-4 opacity-50" />
-                </div>
-                <div
-                  className="flex items-center justify-between gap-3 bg-amber-500/10 text-amber-500 p-2 rounded-md cursor-pointer"
-                  onClick={() => setAlertModal('packages')}
-                >
-                  <div className="flex items-center gap-3">
-                    <PackageSearch className="size-5 shrink-0" />
-                    <div>
-                      <p className="font-semibold text-sm">
-                        {lowUsesPackagesList.length} pacotes com 1 uso restante
-                      </p>
+                  <div
+                    className="flex items-center justify-between gap-3 bg-blue-500/10 text-blue-500 p-2 rounded-md cursor-pointer"
+                    onClick={() => setAlertModal('tomorrow')}
+                  >
+                    <div className="flex items-center gap-3">
+                      <CalendarDays className="size-5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-sm">
+                          {aptsTomorrowList.length} agendamentos amanhã
+                        </p>
+                      </div>
                     </div>
+                    <ChevronRight className="size-4 opacity-50" />
                   </div>
-                  <ChevronRight className="size-4 opacity-50" />
-                </div>
-                <div
-                  className="flex items-center justify-between gap-3 bg-blue-500/10 text-blue-500 p-2 rounded-md cursor-pointer"
-                  onClick={() => setAlertModal('tomorrow')}
-                >
-                  <div className="flex items-center gap-3">
-                    <CalendarDays className="size-5 shrink-0" />
-                    <div>
-                      <p className="font-semibold text-sm">
-                        {aptsTomorrowList.length} agendamentos amanhã
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="size-4 opacity-50" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       )}
 

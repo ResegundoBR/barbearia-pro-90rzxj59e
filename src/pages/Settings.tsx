@@ -46,7 +46,10 @@ export default function Settings() {
     event_type: 'new_appointment',
     recipients: [] as string[],
     channel: 'internal',
-    timing_offset: 0,
+    timing_unit: 'hours_minutes',
+    timing_hours: 0,
+    timing_minutes: 0,
+    timing_days: 0,
     is_active: true,
   })
 
@@ -149,11 +152,25 @@ export default function Settings() {
 
   const handleOpenNotif = (r?: any) => {
     if (r) {
+      const unit = r.timing_unit || 'hours_minutes'
+      let h = 0,
+        m = 0,
+        d = 0
+      if (unit === 'days') {
+        d = r.timing_offset || 0
+      } else {
+        const totalMin = r.timing_offset || 0
+        h = Math.floor(totalMin / 60)
+        m = totalMin % 60
+      }
       setNotifForm({
         event_type: r.event_type,
         recipients: r.recipients || [],
         channel: r.channel || 'internal',
-        timing_offset: r.timing_offset || 0,
+        timing_unit: unit,
+        timing_hours: h,
+        timing_minutes: m,
+        timing_days: d,
         is_active: r.is_active,
       })
       setEditingNotifId(r.id)
@@ -162,7 +179,10 @@ export default function Settings() {
         event_type: 'new_appointment',
         recipients: [],
         channel: 'internal',
-        timing_offset: 0,
+        timing_unit: 'hours_minutes',
+        timing_hours: 0,
+        timing_minutes: 0,
+        timing_days: 0,
         is_active: true,
       })
       setEditingNotifId(null)
@@ -172,11 +192,20 @@ export default function Settings() {
 
   const handleSaveNotif = async () => {
     try {
+      let offset = 0
+      if (notifForm.timing_unit === 'days') {
+        offset = Number(notifForm.timing_days) || 0
+      } else {
+        offset =
+          (Number(notifForm.timing_hours) || 0) * 60 + (Number(notifForm.timing_minutes) || 0)
+      }
+
       const payload = {
         event_type: notifForm.event_type,
         recipients: notifForm.recipients,
         channel: notifForm.channel,
-        timing_offset: Number(notifForm.timing_offset),
+        timing_unit: notifForm.timing_unit,
+        timing_offset: offset,
         is_active: notifForm.is_active,
       }
 
@@ -297,6 +326,9 @@ export default function Settings() {
                       {r.event_type === 'cancellation' && 'Cancelamento'}
                       {r.event_type === 'no_show' && 'Não Comparecimento'}
                       {r.event_type === 'retention' && 'Retenção de Cliente'}
+                      {r.event_type === 'recorrencia_barba' && 'Recorrência Barba'}
+                      {r.event_type === 'recorrencia_cabelo' && 'Recorrência Cabelo'}
+                      {r.event_type === 'no_show_3dias' && 'No-show 3 dias'}
                       {r.event_type === 'other' && 'Outros'}
                     </TableCell>
                     <TableCell>
@@ -364,6 +396,9 @@ export default function Settings() {
                   <SelectItem value="cancellation">Cancelamento</SelectItem>
                   <SelectItem value="no_show">Não Comparecimento</SelectItem>
                   <SelectItem value="retention">Retenção de Cliente</SelectItem>
+                  <SelectItem value="recorrencia_barba">Recorrência Barba</SelectItem>
+                  <SelectItem value="recorrencia_cabelo">Recorrência Cabelo</SelectItem>
+                  <SelectItem value="no_show_3dias">No-show 3 dias</SelectItem>
                   <SelectItem value="other">Outros</SelectItem>
                 </SelectContent>
               </Select>
@@ -402,16 +437,68 @@ export default function Settings() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Offset / Tempo (Horas ou Dias)</Label>
-                <Input
-                  type="number"
-                  value={notifForm.timing_offset}
-                  onChange={(e) =>
-                    setNotifForm({ ...notifForm, timing_offset: Number(e.target.value) })
-                  }
-                  placeholder="0"
-                />
+              <div className="space-y-3">
+                <Label>Tempo de Disparo (Offset)</Label>
+                <div className="flex gap-4 mb-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="timing_unit"
+                      checked={notifForm.timing_unit === 'hours_minutes'}
+                      onChange={() => setNotifForm({ ...notifForm, timing_unit: 'hours_minutes' })}
+                    />
+                    <span className="text-sm">Horas/Minutos</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="timing_unit"
+                      checked={notifForm.timing_unit === 'days'}
+                      onChange={() => setNotifForm({ ...notifForm, timing_unit: 'days' })}
+                    />
+                    <span className="text-sm">Dias</span>
+                  </label>
+                </div>
+
+                {notifForm.timing_unit === 'hours_minutes' ? (
+                  <div className="flex gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Horas</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={notifForm.timing_hours}
+                        onChange={(e) =>
+                          setNotifForm({ ...notifForm, timing_hours: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Minutos</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={notifForm.timing_minutes}
+                        onChange={(e) =>
+                          setNotifForm({ ...notifForm, timing_minutes: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Dias</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={notifForm.timing_days}
+                      onChange={(e) =>
+                        setNotifForm({ ...notifForm, timing_days: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

@@ -45,6 +45,7 @@ import {
   getClientPackages,
 } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
+import { usePermissions } from '@/hooks/use-permissions'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -62,6 +63,9 @@ const WEEK_DAYS = [
 ]
 
 export default function Staff() {
+  const { hasAccess } = usePermissions()
+  const canEdit = hasAccess('staff_edit')
+
   const [barbers, setBarbers] = useState<any[]>([])
   const [commissions, setCommissions] = useState<any[]>([])
 
@@ -474,9 +478,11 @@ export default function Staff() {
             </PopoverContent>
           </Popover>
         </div>
-        <Button onClick={openBarber}>
-          <Plus className="size-4 mr-2" /> Adicionar Profissional
-        </Button>
+        {canEdit && (
+          <Button onClick={openBarber}>
+            <Plus className="size-4 mr-2" /> Adicionar Profissional
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -519,9 +525,9 @@ export default function Staff() {
                 return (
                   <TableRow key={b.id}>
                     <TableCell
-                      className="font-medium cursor-pointer hover:underline text-blue-600"
-                      onClick={() => editBarber(b)}
-                      title="Clique para editar"
+                      className={`font-medium ${canEdit ? 'cursor-pointer hover:underline text-blue-600' : ''}`}
+                      onClick={() => canEdit && editBarber(b)}
+                      title={canEdit ? 'Clique para editar' : ''}
                     >
                       {b.name}
                     </TableCell>

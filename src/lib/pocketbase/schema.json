@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-09T20:45:31.927Z",
+  "generatedAt": "2026-05-09T20:59:28.900Z",
   "collections": [
     {
       "name": "users",
@@ -1205,6 +1205,13 @@
           "type": "number",
           "required": false,
           "system": false
+        },
+        {
+          "name": "timing_unit",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["hours_minutes", "days"]
         }
       ],
       "indexes": []
