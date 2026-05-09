@@ -50,7 +50,7 @@ export default function Checkout() {
   const [appointments, setAppointments] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [services, setServices] = useState<any[]>([])
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([])
 
   const [pkgForm, setPkgForm] = useState({
     barber_id: '',
@@ -89,10 +89,10 @@ export default function Checkout() {
       getClientPackages(),
       pb.collection('services').getFullList({ filter: 'is_active=true' }),
       pb
-        .collection('settings')
-        .getFirstListItem('key="payment_methods"')
-        .catch(() => ({ value: ['cash', 'pix', 'debito', 'credito'] })),
-    ]).then(([b, c, p, a, prods, cp, svcs, sett]) => {
+        .collection('payment_methods')
+        .getFullList({ filter: 'is_active=true', sort: 'name' })
+        .catch(() => []),
+    ]).then(([b, c, p, a, prods, cp, svcs, pms]) => {
       setBarbers(b)
       setClients(c)
       setPackages(p)
@@ -105,7 +105,7 @@ export default function Checkout() {
         ),
       )
       setServices(svcs)
-      setPaymentMethods(sett.value || ['cash', 'pix', 'debito', 'credito'])
+      setPaymentMethods(pms)
     })
   }
 
@@ -544,19 +544,12 @@ export default function Checkout() {
                           <SelectValue placeholder="Selecione o pagamento..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {paymentMethods.includes('cash') && (
-                            <SelectItem value="cash">Dinheiro</SelectItem>
-                          )}
-                          {paymentMethods.includes('pix') && (
-                            <SelectItem value="pix">Pix</SelectItem>
-                          )}
-                          {paymentMethods.includes('debito') && (
-                            <SelectItem value="debito">Cartão de Débito</SelectItem>
-                          )}
-                          {paymentMethods.includes('credito') && (
-                            <SelectItem value="credito">Cartão de Crédito</SelectItem>
-                          )}
-                        </SelectContent>
+                          {paymentMethods.map((pm) => (
+                            <SelectItem key={pm.id} value={pm.id}>
+                              {pm.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>{' '}
                       </Select>
                     </div>
                   </CardContent>
@@ -658,16 +651,11 @@ export default function Checkout() {
                         <SelectValue placeholder="Selecione o pagamento..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {paymentMethods.includes('cash') && (
-                          <SelectItem value="cash">Dinheiro</SelectItem>
-                        )}
-                        {paymentMethods.includes('pix') && <SelectItem value="pix">Pix</SelectItem>}
-                        {paymentMethods.includes('debito') && (
-                          <SelectItem value="debito">Cartão de Débito</SelectItem>
-                        )}
-                        {paymentMethods.includes('credito') && (
-                          <SelectItem value="credito">Cartão de Crédito</SelectItem>
-                        )}
+                        {paymentMethods.map((pm) => (
+                          <SelectItem key={pm.id} value={pm.id}>
+                            {pm.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

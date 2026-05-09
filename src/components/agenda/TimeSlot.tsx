@@ -41,10 +41,11 @@ export function TimeSlot({
           'h-14 rounded-md p-1.5 flex justify-between items-center border cursor-pointer transition-colors shadow-sm',
           isMissed
             ? 'bg-black text-white border-black'
-            : isCompleted && !isFuture
+            : isCompleted
               ? 'bg-muted/50 border-border opacity-25'
               : 'bg-card border-l-4 hover:bg-muted/30 border-l-primary',
-          isCanceled && !isFuture && 'opacity-50 grayscale',
+          !isCompleted && isCanceled && 'opacity-50 grayscale',
+          isCompleted ? 'opacity-25' : 'opacity-100',
         )}
       >
         <div className="flex flex-col overflow-hidden">

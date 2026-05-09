@@ -78,12 +78,23 @@ export default function Layout() {
 
   const navItems = canAccessSettings
     ? [
-        ...baseNavItems.slice(0, 6),
+        { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+        { title: 'Agenda', url: '/agenda', icon: CalendarDays },
+        { title: 'Clientes', url: '/clientes', icon: Users },
+        { title: 'Equipe & Comissões', url: '/staff', icon: Users },
         { title: 'Financeiro', url: '/financeiro', icon: Wallet },
-        baseNavItems[6],
+        { title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
+        { title: 'Produtos e Categorias', url: '/produtos-categorias', icon: ShoppingBag },
+        { title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign },
         { title: 'Configurações', url: '/settings', icon: Settings },
       ]
-    : baseNavItems
+    : [
+        { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+        { title: 'Agenda', url: '/agenda', icon: CalendarDays },
+        { title: 'Clientes', url: '/clientes', icon: Users },
+        { title: 'Equipe & Comissões', url: '/staff', icon: Users },
+        { title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign },
+      ]
 
   const currentPlan = user?.plan || 'Free'
 

@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, CalendarDays, ShoppingBag, Package } from 'lucide-react'
+import { ArrowLeft, CalendarDays, ShoppingBag, Package, FileText } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import {
@@ -19,6 +19,7 @@ export default function ClienteDetail() {
   const [appointments, setAppointments] = useState<any[]>([])
   const [purchases, setPurchases] = useState<any[]>([])
   const [packages, setPackages] = useState<any[]>([])
+  const [logs, setLogs] = useState<any[]>([])
 
   const loadData = async () => {
     if (!id) return
@@ -29,6 +30,14 @@ export default function ClienteDetail() {
       setPurchases(await getProductPurchasesByClient(id))
       const allPacks = await getClientPackages()
       setPackages(allPacks.filter((p) => p.client_id === id))
+      try {
+        const clientLogs = await pb
+          .collection('client_logs')
+          .getFullList({ filter: `client_id="${id}"`, sort: '-created' })
+        setLogs(clientLogs)
+      } catch {
+        /* intentionally ignored */
+      }
     } catch (e) {
       console.error(e)
     }
@@ -43,6 +52,7 @@ export default function ClienteDetail() {
   useRealtime('appointments', loadData)
   useRealtime('product_purchases', loadData)
   useRealtime('client_packages', loadData)
+  useRealtime('client_logs', loadData)
 
   const stats = useMemo(() => {
     const completedApts = appointments.filter((a) => a.status === 'Concluído')
@@ -148,38 +158,72 @@ export default function ClienteDetail() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Atividades</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activity.length === 0 ? (
-            <p className="text-muted-foreground">Nenhuma atividade registrada.</p>
-          ) : (
-            <div className="space-y-4">
-              {activity.map((act) => (
-                <div
-                  key={act.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    {act.type === 'service' && <CalendarDays className="size-5 text-blue-500" />}
-                    {act.type === 'product' && <ShoppingBag className="size-5 text-green-500" />}
-                    {act.type === 'package' && <Package className="size-5 text-purple-500" />}
-                    <div>
-                      <p className="font-medium">{act.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(act.date, 'dd/MM/yyyy HH:mm')}
-                      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Histórico de Atividades</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activity.length === 0 ? (
+              <p className="text-muted-foreground">Nenhuma atividade registrada.</p>
+            ) : (
+              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                {activity.map((act) => (
+                  <div
+                    key={act.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      {act.type === 'service' && <CalendarDays className="size-5 text-blue-500" />}
+                      {act.type === 'product' && <ShoppingBag className="size-5 text-green-500" />}
+                      {act.type === 'package' && <Package className="size-5 text-purple-500" />}
+                      <div>
+                        <p className="font-medium">{act.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(act.date, 'dd/MM/yyyy HH:mm')}
+                        </p>
+                      </div>
                     </div>
+                    <span className="font-bold">R$ {(act.val || 0).toFixed(2)}</span>
                   </div>
-                  <span className="font-bold">R$ {(act.val || 0).toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Observações e Ocorrências</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {logs.length === 0 ? (
+              <p className="text-muted-foreground">Nenhuma ocorrência registrada.</p>
+            ) : (
+              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                {logs.map((log) => (
+                  <div key={log.id} className="p-3 border rounded-lg bg-muted/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileText className="size-4 text-muted-foreground" />
+                      <span className="text-xs font-semibold capitalize bg-primary/10 text-primary px-2 py-0.5 rounded">
+                        {log.event_type === 'no_show'
+                          ? 'Falta (No-Show)'
+                          : log.event_type === 'reschedule'
+                            ? 'Remarcação'
+                            : log.event_type}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {format(new Date(log.created), 'dd/MM/yyyy')}
+                      </span>
+                    </div>
+                    <p className="text-sm mt-2">{log.details}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

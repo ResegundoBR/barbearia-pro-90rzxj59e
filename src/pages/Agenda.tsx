@@ -352,9 +352,9 @@ export default function Agenda() {
               <div
                 key={apt.id}
                 className={cn(
-                  'absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] cursor-pointer',
-                  !isFuture && isCanceled && 'opacity-50 grayscale',
-                  !isFuture && isCompleted && 'opacity-25',
+                  'absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:scale-[1.02] cursor-pointer',
+                  isCompleted ? 'opacity-25' : 'opacity-100',
+                  !isCompleted && isCanceled && 'opacity-50 grayscale',
                 )}
                 style={{
                   top,
@@ -447,8 +447,8 @@ export default function Agenda() {
                         key={apt.id}
                         className={cn(
                           'text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm',
-                          !isFuture && isCanceled && 'opacity-50 grayscale',
-                          !isFuture && isCompleted && 'opacity-25',
+                          isCompleted ? 'opacity-25' : 'opacity-100',
+                          !isCompleted && isCanceled && 'opacity-50 grayscale',
                         )}
                         style={{
                           backgroundColor: isMissed
