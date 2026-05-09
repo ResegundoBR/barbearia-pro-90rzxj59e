@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function Financeiro() {
   const { user } = useAuth()
@@ -54,6 +55,14 @@ export default function Financeiro() {
   useEffect(() => {
     if (canAccess) loadMethods()
   }, [user, canAccess])
+
+  useRealtime(
+    'payment_methods',
+    () => {
+      if (canAccess) loadMethods()
+    },
+    canAccess,
+  )
 
   if (!canAccess) {
     return <div className="p-8 text-center text-muted-foreground">Acesso Restrito.</div>

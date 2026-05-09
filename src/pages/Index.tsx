@@ -89,6 +89,7 @@ export default function Index() {
   const [dashboardModal, setDashboardModal] = useState<
     'revenue' | 'clients' | 'new_clients' | null
   >(null)
+  const [forecastModal, setForecastModal] = useState<'tomorrow' | 'week' | 'month' | null>(null)
 
   const [historyType, setHistoryType] = useState<'services' | 'products'>('services')
 
@@ -117,6 +118,7 @@ export default function Index() {
   useRealtime('product_purchases', () => loadData())
   useRealtime('commissions', () => loadData())
   useRealtime('clients', () => loadData())
+  useRealtime('payment_methods', () => loadData())
 
   const periodStart = useMemo(() => {
     const now = new Date()
@@ -186,8 +188,7 @@ export default function Index() {
 
   const validAppointments = filteredAppointments.filter((a) => a.status !== 'Cancelado')
   const completedPeriod = validAppointments.filter(
-    (a) =>
-      (a.status === 'Concluído' || a.status === 'Confirmado') && isInPeriod(a.date || a.updated),
+    (a) => a.status === 'Concluído' && isInPeriod(a.date || a.updated),
   )
   const productPurchasesPeriod = productPurchases.filter((p) => isInPeriod(p.date || p.created))
 
@@ -631,7 +632,10 @@ export default function Index() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
+                <div
+                  className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                  onClick={() => setForecastModal('tomorrow')}
+                >
                   <p className="text-xs text-muted-foreground">Amanhã</p>
                   {isLoading ? (
                     <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
@@ -641,7 +645,10 @@ export default function Index() {
                     </p>
                   )}
                 </div>
-                <div className="space-y-1">
+                <div
+                  className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                  onClick={() => setForecastModal('week')}
+                >
                   <p className="text-xs text-muted-foreground">Restante da Semana</p>
                   {isLoading ? (
                     <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
@@ -651,7 +658,10 @@ export default function Index() {
                     </p>
                   )}
                 </div>
-                <div className="space-y-1">
+                <div
+                  className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                  onClick={() => setForecastModal('month')}
+                >
                   <p className="text-xs text-muted-foreground">Restante do Mês</p>
                   {isLoading ? (
                     <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
@@ -1012,6 +1022,71 @@ export default function Index() {
                 </TableBody>
               </Table>
             )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!forecastModal} onOpenChange={(v) => !v && setForecastModal(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {forecastModal === 'tomorrow' && 'Previsão de Recebimento - Amanhã'}
+              {forecastModal === 'week' && 'Previsão de Recebimento - Restante da Semana'}
+              {forecastModal === 'month' && 'Previsão de Recebimento - Restante do Mês'}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data/Hora</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Serviço/Pacote</TableHead>
+                  <TableHead>Profissional</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingAppointments
+                  .filter((a) => {
+                    const d = new Date(a.date)
+                    if (forecastModal === 'tomorrow') return d >= tomorrow && d <= tomorrowEnd
+                    if (forecastModal === 'week') return d > tomorrowEnd && d <= weekEnd
+                    if (forecastModal === 'month') return d > tomorrowEnd && d <= monthEnd
+                    return false
+                  })
+                  .map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell>
+                        {a.date ? format(new Date(a.date), 'dd/MM/yyyy') : ''} {a.time}
+                      </TableCell>
+                      <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
+                      <TableCell>
+                        {a.expand?.client_package_id
+                          ? a.expand.client_package_id.expand?.package_id?.name
+                          : a.expand?.service_id?.name || '-'}
+                      </TableCell>
+                      <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
+                      <TableCell className="text-right font-medium text-emerald-500">
+                        R$ {calcApptRevenue(a).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {pendingAppointments.filter((a) => {
+                  const d = new Date(a.date)
+                  if (forecastModal === 'tomorrow') return d >= tomorrow && d <= tomorrowEnd
+                  if (forecastModal === 'week') return d > tomorrowEnd && d <= weekEnd
+                  if (forecastModal === 'month') return d > tomorrowEnd && d <= monthEnd
+                  return false
+                }).length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                      Nenhum agendamento previsto para este período.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </ScrollArea>
         </DialogContent>
       </Dialog>

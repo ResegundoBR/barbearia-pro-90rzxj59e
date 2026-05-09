@@ -148,6 +148,8 @@ export default function Agenda() {
     loadData()
   }, [selectedDate, view])
   useRealtime('appointments', loadData)
+  useRealtime('product_purchases', loadData)
+  useRealtime('payment_methods', loadData)
 
   const isAdmin = user?.access_level === 'Admin'
   const visibleBarbers = useMemo(
@@ -351,7 +353,7 @@ export default function Agenda() {
                 className={cn(
                   'absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] cursor-pointer',
                   isCanceled && 'opacity-50 grayscale',
-                  isCompleted && 'opacity-75',
+                  isCompleted && 'opacity-25',
                 )}
                 style={{
                   top,
@@ -444,7 +446,7 @@ export default function Agenda() {
                         className={cn(
                           'text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm',
                           isCanceled && 'opacity-50 grayscale',
-                          isCompleted && 'opacity-75',
+                          isCompleted && 'opacity-25',
                         )}
                         style={{
                           backgroundColor: isMissed
