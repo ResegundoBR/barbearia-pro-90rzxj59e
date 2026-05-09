@@ -201,7 +201,14 @@ export default function Index() {
     (acc, curr) => acc + (curr.price_at_sale || curr.expand?.product_id?.price || 0),
     0,
   )
-  const totalRevenue = periodRevenue + productRevenue
+
+  const packagesPeriod = filteredPackages.filter((p) => isInPeriod(p.created))
+  const packagesRevenue = packagesPeriod.reduce(
+    (acc, curr) => acc + (curr.expand?.package_id?.price || 0),
+    0,
+  )
+
+  const totalRevenue = periodRevenue + productRevenue + packagesRevenue
 
   const uniqueClientsPeriod = new Set(completedPeriod.map((a) => a.client_id)).size
   const avgTicket = completedPeriod.length > 0 ? periodRevenue / completedPeriod.length : 0
@@ -308,10 +315,18 @@ export default function Index() {
       counts[name].revenue += price
     })
 
+    packagesPeriod.forEach((pkg) => {
+      const name = pkg.expand?.package_id?.name || 'Pacote Avulso'
+      const price = pkg.expand?.package_id?.price || 0
+      if (!counts[name]) counts[name] = { name, type: 'Pacote', count: 0, revenue: 0 }
+      counts[name].count++
+      counts[name].revenue += price
+    })
+
     return Object.values(counts)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5)
-  }, [completedPeriod, productPurchasesPeriod])
+  }, [completedPeriod, productPurchasesPeriod, packagesPeriod])
 
   const historyData = useMemo(() => {
     const dataMap: Record<string, { date: string; services: number; products: number }> = {}
@@ -328,13 +343,19 @@ export default function Index() {
       dataMap[d].products += p.price_at_sale || p.expand?.product_id?.price || 0
     })
 
+    packagesPeriod.forEach((pkg) => {
+      const d = pkg.created.substring(0, 10)
+      if (!dataMap[d]) dataMap[d] = { date: d, services: 0, products: 0 }
+      dataMap[d].services += pkg.expand?.package_id?.price || 0
+    })
+
     const sortedDates = Object.keys(dataMap).sort()
     return sortedDates.map((dateStr) => ({
       date: format(new Date(dateStr + 'T12:00:00'), 'dd/MM'),
       services: dataMap[dateStr].services,
       products: dataMap[dateStr].products,
     }))
-  }, [completedPeriod, productPurchasesPeriod])
+  }, [completedPeriod, productPurchasesPeriod, packagesPeriod])
 
   const clientsServed = useMemo(() => {
     return Array.from(new Set(completedPeriod.map((a) => a.client_id))).map((id) => {
@@ -919,7 +940,7 @@ export default function Index() {
                           15000,
                     )
                     return (
-                      <TableRow key={a.id}>
+                      <TableRow key={`apt_${a.id}`}>
                         <TableCell>
                           {a.date ? format(new Date(a.date), 'dd/MM/yyyy') : ''}
                         </TableCell>
@@ -940,7 +961,7 @@ export default function Index() {
                           15000,
                     )
                     return (
-                      <TableRow key={p.id}>
+                      <TableRow key={`prod_${p.id}`}>
                         <TableCell>
                           {p.date ? format(new Date(p.date), 'dd/MM/yyyy') : ''}
                         </TableCell>
@@ -953,13 +974,34 @@ export default function Index() {
                       </TableRow>
                     )
                   })}
-                  {completedPeriod.length === 0 && productPurchasesPeriod.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                        Nenhuma venda no período.
-                      </TableCell>
-                    </TableRow>
-                  )}
+                  {packagesPeriod.map((pkg) => {
+                    const comm = commissions.find(
+                      (c) =>
+                        c.type === 'package' &&
+                        Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) <
+                          15000,
+                    )
+                    return (
+                      <TableRow key={`pkg_${pkg.id}`}>
+                        <TableCell>{format(new Date(pkg.created), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell>{pkg.expand?.client_id?.name || 'Avulso'}</TableCell>
+                        <TableCell>{pkg.expand?.barber_id?.name || '-'}</TableCell>
+                        <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
+                        <TableCell className="text-right">
+                          R$ {(pkg.expand?.package_id?.price || 0).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {completedPeriod.length === 0 &&
+                    productPurchasesPeriod.length === 0 &&
+                    packagesPeriod.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                          Nenhuma venda no período.
+                        </TableCell>
+                      </TableRow>
+                    )}
                 </TableBody>
               </Table>
             )}

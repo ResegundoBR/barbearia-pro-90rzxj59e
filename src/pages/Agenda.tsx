@@ -344,6 +344,7 @@ export default function Agenda() {
               sH,
               sM,
             )
+            const isFuture = aptDateTime > new Date()
             const isPast = aptDateTime < new Date()
             const isMissed = isPast && !isCompleted && !isCanceled
 
@@ -352,8 +353,8 @@ export default function Agenda() {
                 key={apt.id}
                 className={cn(
                   'absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] cursor-pointer',
-                  isCanceled && 'opacity-50 grayscale',
-                  isCompleted && 'opacity-25',
+                  !isFuture && isCanceled && 'opacity-50 grayscale',
+                  !isFuture && isCompleted && 'opacity-25',
                 )}
                 style={{
                   top,
@@ -437,6 +438,7 @@ export default function Agenda() {
                       sH,
                       sM,
                     )
+                    const isFuture = aptDateTime > new Date()
                     const isPast = aptDateTime < new Date()
                     const isMissed = isPast && !isCompleted && !isCanceled
 
@@ -445,8 +447,8 @@ export default function Agenda() {
                         key={apt.id}
                         className={cn(
                           'text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm',
-                          isCanceled && 'opacity-50 grayscale',
-                          isCompleted && 'opacity-25',
+                          !isFuture && isCanceled && 'opacity-50 grayscale',
+                          !isFuture && isCompleted && 'opacity-25',
                         )}
                         style={{
                           backgroundColor: isMissed

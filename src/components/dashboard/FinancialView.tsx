@@ -66,7 +66,11 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
   const normalizedCommissions = useMemo(() => {
     return commissions.map((c) => {
       let effectiveStatus =
-        c.payment_method === 'credito' || c.payment_method === 'credit_card' ? 'paid' : c.status
+        c.payment_method === 'credito' ||
+        c.payment_method === 'credit_card' ||
+        c.payment_method === 'card'
+          ? 'paid'
+          : c.status
       if (effectiveStatus === 'available') effectiveStatus = 'pending'
       return { ...c, status: effectiveStatus }
     })
@@ -175,9 +179,6 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
             .collection('appointments')
             .getFullList({ filter: futureAptFilter, expand: 'service_id' }),
         ])
-
-        const totalGross = aptsRes.reduce((acc, a) => acc + (a.price || 0), 0)
-        setGrossRevenue(totalGross)
 
         const totalFuture = futureAptsRes.reduce(
           (acc, a) => acc + (a.price || a.expand?.service_id?.price || 0),
@@ -310,6 +311,12 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
         const sorted = groups.sort(
           (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime(),
         )
+
+        const calcGross = sorted
+          .filter((t) => t.type === 'service_checkout' || t.type === 'package_sale')
+          .reduce((acc, t) => acc + t.grossAmount, 0)
+        setGrossRevenue(calcGross)
+
         setTransactions(sorted.slice(0, 100))
       } catch (err) {
         console.error('Error loading transactions', err)
