@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -48,7 +48,18 @@ import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import { Checkbox } from '@/components/ui/checkbox'
 import type { DateRange } from 'react-day-picker'
+
+const WEEK_DAYS = [
+  { value: 0, label: 'Dom' },
+  { value: 1, label: 'Seg' },
+  { value: 2, label: 'Ter' },
+  { value: 3, label: 'Qua' },
+  { value: 4, label: 'Qui' },
+  { value: 5, label: 'Sex' },
+  { value: 6, label: 'Sáb' },
+]
 
 export default function Staff() {
   const [barbers, setBarbers] = useState<any[]>([])
@@ -63,17 +74,46 @@ export default function Staff() {
 
   const [form, setForm] = useState<any>({
     name: '',
-    commission_type: 'percentage',
-    commission_value: 0,
-    color: '#3b82f6',
     work_level: 'autonomo',
+    payment_schedule_config: {
+      frequency: 'semanal',
+      cycles: [
+        { workDays: [1, 2, 3], paymentDay: 4 },
+        { workDays: [4, 5, 6], paymentDay: 1 },
+      ],
+    },
   })
 
-  const getNextPayDate = (date: Date) => {
+  const getNextPayDate = (date: Date, config?: any) => {
     const day = date.getDay()
-    const daysToAdd = day >= 0 && day <= 3 ? 4 - day : 8 - day
+    let frequency = 'semanal'
+    let cycles = [
+      { workDays: [1, 2, 3], paymentDay: 4 },
+      { workDays: [4, 5, 6], paymentDay: 1 },
+      { workDays: [0], paymentDay: 1 },
+    ]
+
+    if (config && config.cycles && config.cycles.length > 0) {
+      frequency = config.frequency || 'semanal'
+      cycles = config.cycles
+    }
+
+    let activeCycle = cycles.find((c: any) => c.workDays.includes(day))
+    if (!activeCycle) {
+      activeCycle = { workDays: [day], paymentDay: (day + 7) % 7 || 1 }
+    }
+
+    const pDay = activeCycle.paymentDay
+    let daysToAdd = (pDay - day + 7) % 7
+    if (daysToAdd === 0) daysToAdd = 7
+
     const d = new Date(date)
     d.setDate(d.getDate() + daysToAdd)
+
+    if (frequency === 'quinzenal') {
+      d.setDate(d.getDate() + 7)
+    }
+
     return d
   }
 
@@ -246,10 +286,14 @@ export default function Staff() {
   const openBarber = () => {
     setForm({
       name: '',
-      commission_type: 'percentage',
-      commission_value: 0,
-      color: '#3b82f6',
       work_level: 'autonomo',
+      payment_schedule_config: {
+        frequency: 'semanal',
+        cycles: [
+          { workDays: [1, 2, 3], paymentDay: 4 },
+          { workDays: [4, 5, 6], paymentDay: 1 },
+        ],
+      },
     })
     setBDialog(true)
   }
@@ -258,12 +302,67 @@ export default function Staff() {
     setForm({
       id: b.id,
       name: b.name,
-      commission_type: b.commission_type || 'percentage',
-      commission_value: b.commission_value || 0,
-      color: b.color || '#3b82f6',
       work_level: b.work_level || 'autonomo',
+      payment_schedule_config: b.payment_schedule_config || {
+        frequency: 'semanal',
+        cycles: [
+          { workDays: [1, 2, 3], paymentDay: 4 },
+          { workDays: [4, 5, 6], paymentDay: 1 },
+        ],
+      },
     })
     setBDialog(true)
+  }
+
+  const addCycle = () => {
+    setForm((prev: any) => ({
+      ...prev,
+      payment_schedule_config: {
+        ...prev.payment_schedule_config,
+        cycles: [...(prev.payment_schedule_config?.cycles || []), { workDays: [], paymentDay: 1 }],
+      },
+    }))
+  }
+
+  const removeCycle = (index: number) => {
+    const newCycles = [...form.payment_schedule_config.cycles]
+    newCycles.splice(index, 1)
+    setForm((prev: any) => ({
+      ...prev,
+      payment_schedule_config: {
+        ...prev.payment_schedule_config,
+        cycles: newCycles,
+      },
+    }))
+  }
+
+  const updateCycleWorkDays = (index: number, day: number, checked: boolean) => {
+    const newCycles = [...form.payment_schedule_config.cycles]
+    const cycle = newCycles[index]
+    if (checked) {
+      cycle.workDays = [...cycle.workDays, day]
+    } else {
+      cycle.workDays = cycle.workDays.filter((d: number) => d !== day)
+    }
+    setForm((prev: any) => ({
+      ...prev,
+      payment_schedule_config: {
+        ...prev.payment_schedule_config,
+        cycles: newCycles,
+      },
+    }))
+  }
+
+  const updateCyclePaymentDay = (index: number, day: number) => {
+    const newCycles = [...form.payment_schedule_config.cycles]
+    newCycles[index].paymentDay = day
+    setForm((prev: any) => ({
+      ...prev,
+      payment_schedule_config: {
+        ...prev.payment_schedule_config,
+        cycles: newCycles,
+      },
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -404,7 +503,10 @@ export default function Staff() {
                   (earliest, c) => {
                     const cDate = c.due_date
                       ? new Date(c.due_date)
-                      : getNextPayDate(c.date ? new Date(c.date) : new Date(c.created))
+                      : getNextPayDate(
+                          c.date ? new Date(c.date) : new Date(c.created),
+                          b.payment_schedule_config,
+                        )
                     if (!earliest || cDate < earliest) return cDate
                     return earliest
                   },
@@ -412,7 +514,7 @@ export default function Staff() {
                 )
                 const displayPayDate = earliestDue
                   ? format(earliestDue, 'dd/MM/yyyy')
-                  : format(getNextPayDate(new Date()), 'dd/MM/yyyy')
+                  : format(getNextPayDate(new Date(), b.payment_schedule_config), 'dd/MM/yyyy')
 
                 return (
                   <TableRow key={b.id}>
@@ -434,7 +536,7 @@ export default function Staff() {
                     <TableCell>
                       {b.work_level === 'socio' ? (
                         <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
-                          Recebido na hora
+                          Pago na hora
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">{displayPayDate}</span>
@@ -515,13 +617,19 @@ export default function Staff() {
                       <TableCell>
                         {selectedBarberDetailed?.work_level === 'socio' ? (
                           <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
-                            Recebido na hora
+                            Pago na hora
                           </Badge>
                         ) : (
                           <span className="font-medium text-amber-600">
                             {item.dueDate
                               ? format(item.dueDate, 'dd/MM/yyyy')
-                              : format(getNextPayDate(item.commDate), 'dd/MM/yyyy')}
+                              : format(
+                                  getNextPayDate(
+                                    item.commDate,
+                                    selectedBarberDetailed?.payment_schedule_config,
+                                  ),
+                                  'dd/MM/yyyy',
+                                )}
                           </span>
                         )}
                       </TableCell>
@@ -562,46 +670,43 @@ export default function Staff() {
 
       <Card className="mt-8 border-none shadow-sm">
         <CardHeader className="bg-muted/30 pb-4 border-b">
-          <CardTitle className="text-xl">Configurações Financeiras</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Regras automáticas de vencimento para comissões de profissionais Autônomos.
-          </p>
+          <CardTitle className="text-xl">Configurações de Pagamento</CardTitle>
+          <CardDescription>
+            As regras de vencimento agora são configuradas individualmente para cada profissional
+            Autônomo.
+          </CardDescription>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border rounded-lg p-4 bg-card">
-              <h4 className="font-semibold text-lg text-primary mb-1">Ciclo A (Seg - Qua)</h4>
-              <p className="text-sm text-muted-foreground">
-                Comissões geradas neste período têm vencimento marcado para a{' '}
-                <strong>Quinta-feira</strong> da mesma semana.
-              </p>
+          <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-3">
+            <div className="mt-0.5">
+              <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                Autônomo
+              </Badge>
             </div>
-            <div className="border rounded-lg p-4 bg-card">
-              <h4 className="font-semibold text-lg text-primary mb-1">Ciclo B (Qui - Sáb)</h4>
-              <p className="text-sm text-muted-foreground">
-                Comissões geradas neste período têm vencimento marcado para a{' '}
-                <strong>Segunda-feira</strong> da semana seguinte.
-              </p>
-            </div>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              As datas da coluna "A Pagar" são calculadas automaticamente com base nos ciclos
+              definidos no perfil de cada profissional.
+            </p>
           </div>
           <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-start gap-3">
             <div className="mt-0.5">
-              <Badge className="bg-emerald-500 hover:bg-emerald-600">Sócio</Badge>
+              <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">Sócio</Badge>
             </div>
             <p className="text-sm text-emerald-800 dark:text-emerald-200">
-              Profissionais com nível de trabalho configurado como "Sócio" são isentos dos ciclos
-              acima. O status de suas transações será sempre <strong>"Recebido na hora"</strong>.
+              Profissionais com nível de trabalho configurado como "Sócio" recebem comissionamento
+              integral. O status de suas transações é sempre classificado como{' '}
+              <strong>"Pago na hora"</strong>.
             </p>
           </div>
         </CardContent>
       </Card>
 
       <Dialog open={bDialog} onOpenChange={setBDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Novo Profissional</DialogTitle>
+            <DialogTitle>{form.id ? 'Editar Profissional' : 'Novo Profissional'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Nome</Label>
               <Input
@@ -625,6 +730,109 @@ export default function Staff() {
                 </SelectContent>
               </Select>
             </div>
+
+            {form.work_level === 'autonomo' && (
+              <div className="space-y-4 border p-4 rounded-lg bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Configuração de Pagamento</Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">Frequência</Label>
+                  <Select
+                    value={form.payment_schedule_config?.frequency || 'semanal'}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        payment_schedule_config: { ...form.payment_schedule_config, frequency: v },
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="semanal">Semanal</SelectItem>
+                      <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Ciclos de Pagamento</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addCycle}>
+                      <Plus className="size-3 mr-1" /> Adicionar
+                    </Button>
+                  </div>
+
+                  {form.payment_schedule_config?.cycles?.map((cycle: any, index: number) => (
+                    <div
+                      key={index}
+                      className="border p-3 rounded-md space-y-3 bg-background relative"
+                    >
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-2 top-2 h-6 w-6 text-destructive hover:bg-destructive/10"
+                        onClick={() => removeCycle(index)}
+                      >
+                        <Trash className="size-3" />
+                      </Button>
+
+                      <div className="space-y-2 pr-8">
+                        <Label className="text-xs text-muted-foreground">Dias Trabalhados</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {WEEK_DAYS.map((day) => (
+                            <div key={day.value} className="flex items-center space-x-1">
+                              <Checkbox
+                                id={`cycle-${index}-day-${day.value}`}
+                                checked={cycle.workDays?.includes(day.value)}
+                                onCheckedChange={(checked) =>
+                                  updateCycleWorkDays(index, day.value, !!checked)
+                                }
+                              />
+                              <Label
+                                htmlFor={`cycle-${index}-day-${day.value}`}
+                                className="text-xs font-normal cursor-pointer"
+                              >
+                                {day.label}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Dia do Pagamento</Label>
+                        <Select
+                          value={cycle.paymentDay?.toString()}
+                          onValueChange={(v) => updateCyclePaymentDay(index, parseInt(v))}
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {WEEK_DAYS.map((day) => (
+                              <SelectItem key={day.value} value={day.value.toString()}>
+                                {day.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ))}
+                  {(!form.payment_schedule_config?.cycles ||
+                    form.payment_schedule_config.cycles.length === 0) && (
+                    <p className="text-sm text-muted-foreground text-center py-2 border border-dashed rounded-md">
+                      Nenhum ciclo configurado.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             <DialogFooter className="pt-4">
               <Button type="submit">Salvar</Button>
