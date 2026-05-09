@@ -155,6 +155,7 @@ export default function Index() {
   const isInPeriod = (dateString: string) => {
     if (!dateString) return false
     const d = new Date(dateString)
+    if (isNaN(d.getTime())) return false
     return d >= periodStart && d <= periodEnd
   }
 
@@ -379,14 +380,16 @@ export default function Index() {
               </SelectContent>
             </Select>
           )}
-          <Tabs value={period} onValueChange={setPeriod} className="w-full sm:w-auto">
-            <TabsList className="bg-card">
-              <TabsTrigger value="today">Hoje</TabsTrigger>
-              <TabsTrigger value="week">Semana</TabsTrigger>
-              <TabsTrigger value="month">Mês</TabsTrigger>
-              <TabsTrigger value="year">Ano</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {activeTab === 'overview' && (
+            <Tabs value={period} onValueChange={setPeriod} className="w-full sm:w-auto">
+              <TabsList className="bg-card">
+                <TabsTrigger value="today">Hoje</TabsTrigger>
+                <TabsTrigger value="week">Semana</TabsTrigger>
+                <TabsTrigger value="month">Mês</TabsTrigger>
+                <TabsTrigger value="year">Ano</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
         </div>
       </div>
 

@@ -59,9 +59,9 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
   const [grossRevenue, setGrossRevenue] = useState(0)
   const [futureRevenue, setFutureRevenue] = useState(0)
-  const [modalType, setModalType] = useState<'comissoes' | 'adiantamentos' | 'totalLiquido' | null>(
-    null,
-  )
+  const [modalType, setModalType] = useState<
+    'comissoes' | 'adiantamentos' | 'totalLiquido' | 'recebimentos' | null
+  >(null)
 
   const filteredCommissions = useMemo(() => {
     return commissions.filter((c) => {
@@ -87,7 +87,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     .reduce((acc, c) => acc + c.amount, 0)
 
   const totalReceivables = filteredCommissions
-    .filter((c) => !c.is_advance && (c.status === 'pending' || c.status === 'available'))
+    .filter((c) => !c.is_advance && c.status === 'pending')
     .reduce((acc, c) => acc + c.amount, 0)
 
   const netPayable = Math.max(0, totalReceivables - totalAdvances)
@@ -158,12 +158,10 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           pb
             .collection('product_purchases')
             .getFullList({ filter: prodFilter, expand: 'client_id,product_id,barber_id' }),
-          pb
-            .collection('client_packages')
-            .getFullList({
-              filter: prodFilter ? prodFilter.replace(/date/g, 'created') : '',
-              expand: 'client_id,package_id,barber_id',
-            }),
+          pb.collection('client_packages').getFullList({
+            filter: prodFilter ? prodFilter.replace(/date/g, 'created') : '',
+            expand: 'client_id,package_id,barber_id',
+          }),
           pb
             .collection('appointments')
             .getFullList({ filter: futureAptFilter, expand: 'service_id' }),
@@ -336,7 +334,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="w-[280px] justify-start text-left font-normal bg-card"
+                className="w-[280px] justify-start text-left font-normal bg-card relative pr-8"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {date?.from ? (
@@ -349,6 +347,18 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                   )
                 ) : (
                   <span>Selecione o período</span>
+                )}
+                {date?.from && (
+                  <div
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full cursor-pointer z-10 text-muted-foreground"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setDate(undefined)
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </div>
                 )}
               </Button>
             </PopoverTrigger>
@@ -369,16 +379,6 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
               />
             </PopoverContent>
           </Popover>
-          {date?.from && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={resetDateFilter}
-              className="h-9 w-9 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -387,21 +387,25 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os Status</SelectItem>
-            <SelectItem value="paid">Pagas</SelectItem>
-            <SelectItem value="available">Disponíveis</SelectItem>
-            <SelectItem value="pending">A Vencer / A Pagar</SelectItem>
+            <SelectItem value="paid">Pago</SelectItem>
+            <SelectItem value="pending">A Vencer</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="bg-glass border-none">
+        <Card
+          className="bg-glass border-none cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => setModalType('recebimentos')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Recebimento</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">R$ {grossRevenue.toFixed(2)}</div>
-            <p className="text-[10px] text-muted-foreground">Faturamento bruto no período</p>
+            <p className="text-[10px] text-muted-foreground">
+              Faturamento bruto no período (Ver detalhes)
+            </p>
           </CardContent>
         </Card>
         <Card className="bg-glass border-none">
@@ -421,7 +425,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
         >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Comissão a Receber
+              Comissão a Pagar
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -469,9 +473,10 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>
-              {modalType === 'comissoes' && 'Comissões a Receber (Detalhado)'}
+              {modalType === 'comissoes' && 'Comissões a Pagar (Detalhado)'}
               {modalType === 'adiantamentos' && 'Adiantamentos Registrados (Detalhado)'}
               {modalType === 'totalLiquido' && 'Repasses Agendados por Profissional'}
+              {modalType === 'recebimentos' && 'Recebimentos (Detalhado)'}
             </DialogTitle>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto mt-2">
@@ -479,7 +484,8 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Data</TableHead>
+                    <TableHead>Data Serv/Venda</TableHead>
+                    <TableHead>Vencimento</TableHead>
                     <TableHead>Profissional</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
@@ -487,31 +493,70 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                 </TableHeader>
                 <TableBody>
                   {filteredCommissions
-                    .filter(
-                      (c) => !c.is_advance && (c.status === 'pending' || c.status === 'available'),
-                    )
+                    .filter((c) => !c.is_advance && c.status === 'pending')
                     .map((c) => (
                       <TableRow key={c.id}>
                         <TableCell>{format(new Date(c.date || c.created), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell>
+                          {c.due_date ? format(new Date(c.due_date), 'dd/MM/yyyy') : '-'}
+                        </TableCell>
                         <TableCell className="font-medium">
                           {c.expand?.barber_id?.name || '-'}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={c.status === 'available' ? 'default' : 'secondary'}>
-                            {c.status === 'available' ? 'Disponível' : 'A Vencer'}
-                          </Badge>
+                          <Badge variant="secondary">A Vencer</Badge>
                         </TableCell>
                         <TableCell className="text-right text-emerald-500 font-bold">
                           R$ {c.amount.toFixed(2)}
                         </TableCell>
                       </TableRow>
                     ))}
-                  {filteredCommissions.filter(
-                    (c) => !c.is_advance && (c.status === 'pending' || c.status === 'available'),
+                  {filteredCommissions.filter((c) => !c.is_advance && c.status === 'pending')
+                    .length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                        Nenhuma comissão a pagar no momento.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+            {modalType === 'recebimentos' && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Itens</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactions
+                    .filter((t) => t.type === 'service_checkout' || t.type === 'package_sale')
+                    .map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell>
+                          {format(new Date(t.date || t.created), 'dd/MM/yyyy HH:mm')}
+                        </TableCell>
+                        <TableCell>{t.client?.name || 'Avulso'}</TableCell>
+                        <TableCell>{t.items.join(', ')}</TableCell>
+                        <TableCell className="capitalize">
+                          {translatePayment(t.payment_method)}
+                        </TableCell>
+                        <TableCell className="text-right text-emerald-500 font-bold">
+                          R$ {t.grossAmount.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {transactions.filter(
+                    (t) => t.type === 'service_checkout' || t.type === 'package_sale',
                   ).length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-6">
-                        Nenhuma comissão a receber.
+                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                        Nenhum recebimento registrado.
                       </TableCell>
                     </TableRow>
                   )}
@@ -650,16 +695,8 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                       {translatePayment(t.payment_method)}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          t.status === 'paid' || t.status === 'available' ? 'default' : 'secondary'
-                        }
-                      >
-                        {t.status === 'available'
-                          ? 'Disponível'
-                          : t.status === 'pending'
-                            ? 'A Vencer'
-                            : 'Pago'}
+                      <Badge variant={t.status === 'paid' ? 'default' : 'secondary'}>
+                        {t.status === 'pending' ? 'A Vencer' : 'Pago'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">

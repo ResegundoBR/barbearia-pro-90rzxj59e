@@ -13,6 +13,7 @@ import {
   Settings,
   LogOut,
   ShoppingBag,
+  Wallet,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -71,11 +72,19 @@ export default function Layout() {
 
   const [expiringPackages, setExpiringPackages] = useState<any[]>([])
   const [isPackagesModalOpen, setIsPackagesModalOpen] = useState(false)
+  const [logoUrl, setLogoUrl] = useState(
+    'https://img.usecurling.com/i?q=barbershop+logo&shape=fill&color=gradient',
+  )
 
   const canAccessSettings = user?.access_level === 'Admin' || user?.access_level === 'Staff'
 
   const navItems = canAccessSettings
-    ? [...baseNavItems, { title: 'Configurações', url: '/settings', icon: Settings }]
+    ? [
+        ...baseNavItems.slice(0, 6),
+        { title: 'Financeiro', url: '/financeiro', icon: Wallet },
+        baseNavItems[6],
+        { title: 'Configurações', url: '/settings', icon: Settings },
+      ]
     : baseNavItems
 
   const currentPlan = user?.plan || 'Free'
@@ -103,10 +112,26 @@ export default function Layout() {
     }
   }
 
+  const loadLogo = async () => {
+    try {
+      const records = await pb
+        .collection('settings')
+        .getFullList({ filter: 'key="general_config"' })
+      if (records.length > 0 && records[0].logo) {
+        setLogoUrl(pb.files.getURL(records[0], records[0].logo))
+      }
+    } catch {
+      /* intentionally ignored */
+    }
+  }
+
   useEffect(() => {
     if (user) {
       loadAlerts()
     }
+    loadLogo()
+    window.addEventListener('logo-updated', loadLogo)
+    return () => window.removeEventListener('logo-updated', loadLogo)
   }, [user])
 
   useRealtime('client_packages', () => {
@@ -118,9 +143,9 @@ export default function Layout() {
       <Sidebar variant="inset" className="hidden md:flex">
         <SidebarHeader className="p-4 flex flex-row items-center gap-3">
           <img
-            src="https://img.usecurling.com/i?q=barbershop+logo&shape=fill&color=gradient"
+            src={logoUrl}
             alt="Barbearia Pro Logo"
-            className="h-10 object-contain drop-shadow-md"
+            className="h-10 max-w-[200px] object-contain drop-shadow-md"
           />
         </SidebarHeader>
         <SidebarContent>
@@ -164,9 +189,9 @@ export default function Layout() {
 
           <div className="md:hidden flex items-center gap-2 text-primary font-bold">
             <img
-              src="https://img.usecurling.com/i?q=barbershop+logo&shape=fill&color=gradient"
+              src={logoUrl}
               alt="Barbearia Pro Logo"
-              className="h-8 object-contain drop-shadow-md"
+              className="h-8 max-w-[120px] object-contain drop-shadow-md"
             />
             <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">
               {currentPlan}

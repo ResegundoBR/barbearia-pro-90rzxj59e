@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -38,13 +37,10 @@ export default function Settings() {
   const { toast } = useToast()
 
   const [categories, setCategories] = useState<any[]>([])
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([
-    'cash',
-    'pix',
-    'debito',
-    'credito',
-  ])
-  const [settingsId, setSettingsId] = useState<string>('')
+
+  const [logoConfigId, setLogoConfigId] = useState<string>('')
+  const [logoPreview, setLogoPreview] = useState<string>('')
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null)
 
   const [isCatOpen, setIsCatOpen] = useState(false)
   const [editingCatId, setEditingCatId] = useState<string | null>(null)
@@ -55,9 +51,13 @@ export default function Settings() {
       const cats = await pb.collection('categories').getFullList({ sort: 'type,name' })
       setCategories(cats)
 
-      const sett = await pb.collection('settings').getFirstListItem('key="payment_methods"')
-      setSettingsId(sett.id)
-      setPaymentMethods(sett.value || [])
+      const sett = await pb.collection('settings').getFullList({ filter: 'key="general_config"' })
+      if (sett.length > 0) {
+        setLogoConfigId(sett[0].id)
+        if (sett[0].logo) {
+          setLogoPreview(pb.files.getURL(sett[0], sett[0].logo))
+        }
+      }
     } catch (e) {
       console.error(e)
     }
@@ -77,6 +77,36 @@ export default function Settings() {
         Acesso Restrito. Apenas administradores e staff podem acessar esta página.
       </div>
     )
+  }
+
+  const handleLogoFile = (e: any) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedLogoFile(file)
+      setLogoPreview(URL.createObjectURL(file))
+    }
+  }
+
+  const handleSaveLogo = async () => {
+    if (!selectedLogoFile) return
+    const formData = new FormData()
+    formData.append('logo', selectedLogoFile)
+    formData.append('key', 'general_config')
+    formData.append('value', '{}')
+
+    try {
+      if (logoConfigId) {
+        await pb.collection('settings').update(logoConfigId, formData)
+      } else {
+        const r = await pb.collection('settings').create(formData)
+        setLogoConfigId(r.id)
+      }
+      toast({ title: 'Logo atualizado!' })
+      setSelectedLogoFile(null)
+      window.dispatchEvent(new Event('logo-updated'))
+    } catch (err) {
+      toast({ title: 'Erro ao salvar logo', variant: 'destructive' })
+    }
   }
 
   const handleOpenCat = (cat?: any) => {
@@ -128,43 +158,61 @@ export default function Settings() {
     }
   }
 
-  const togglePaymentMethod = async (method: string, enabled: boolean) => {
-    try {
-      let newMethods = [...paymentMethods]
-      if (enabled && !newMethods.includes(method)) newMethods.push(method)
-      if (!enabled && newMethods.includes(method))
-        newMethods = newMethods.filter((m) => m !== method)
-
-      setPaymentMethods(newMethods)
-
-      if (settingsId) {
-        await pb.collection('settings').update(settingsId, { value: newMethods })
-      } else {
-        const r = await pb
-          .collection('settings')
-          .create({ key: 'payment_methods', value: newMethods })
-        setSettingsId(r.id)
-      }
-      toast({ title: 'Configurações de pagamento atualizadas' })
-    } catch (err) {
-      toast({ title: 'Erro ao atualizar pagamento', variant: 'destructive' })
-    }
-  }
-
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 animate-fade-in">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Configurações do Sistema</h2>
         <p className="text-muted-foreground">
-          Gerencie categorias, comissões globais e regras de negócio.
+          Gerencie a identidade visual e as categorias de serviços e produtos.
         </p>
       </div>
 
-      <Tabs defaultValue="categories" className="w-full">
+      <Tabs defaultValue="geral" className="w-full">
         <TabsList className="mb-6">
+          <TabsTrigger value="geral">Geral (Marca)</TabsTrigger>
           <TabsTrigger value="categories">Categorias & Comissões</TabsTrigger>
-          <TabsTrigger value="payments">Métodos de Pagamento</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="geral" className="space-y-4">
+          <Card className="max-w-2xl border-border shadow-sm">
+            <CardHeader>
+              <CardTitle>Identidade Visual</CardTitle>
+              <CardDescription>
+                Faça upload do logotipo da barbearia (PNG recomendado).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-6">
+                <div className="w-32 h-32 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-card overflow-hidden shrink-0">
+                  {logoPreview ? (
+                    <img
+                      src={logoPreview}
+                      alt="Logo"
+                      className="w-full h-full object-contain p-2"
+                    />
+                  ) : (
+                    <span className="text-xs text-muted-foreground text-center px-4">Sem Logo</span>
+                  )}
+                </div>
+                <div className="space-y-2 flex-1">
+                  <Label>Arquivo de Logo</Label>
+                  <Input
+                    type="file"
+                    accept="image/png, image/jpeg, image/svg+xml"
+                    onChange={handleLogoFile}
+                  />
+                  <Button
+                    onClick={handleSaveLogo}
+                    disabled={!selectedLogoFile}
+                    className="mt-2 w-full sm:w-auto"
+                  >
+                    Atualizar Logo
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="categories" className="space-y-4">
           <div className="flex justify-between items-center">
@@ -218,43 +266,6 @@ export default function Settings() {
                 )}
               </TableBody>
             </Table>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="payments" className="space-y-4">
-          <Card className="border-border shadow-sm max-w-2xl">
-            <CardHeader>
-              <CardTitle>Opções de Recebimento no Checkout</CardTitle>
-              <CardDescription>
-                Habilite ou desabilite os métodos que a barbearia aceita.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {[
-                { id: 'cash', label: 'Dinheiro', desc: 'Pagamentos em espécie.' },
-                { id: 'pix', label: 'Pix', desc: 'Transferências instantâneas.' },
-                { id: 'debito', label: 'Cartão de Débito', desc: 'Máquina de cartão (Débito).' },
-                {
-                  id: 'credito',
-                  label: 'Cartão de Crédito',
-                  desc: 'Máquina de cartão (Crédito) com repasse a vencer.',
-                },
-              ].map((method) => (
-                <div
-                  key={method.id}
-                  className="flex items-center justify-between space-x-4 border border-border/50 p-4 rounded-lg bg-card/50"
-                >
-                  <div className="space-y-1">
-                    <Label className="text-base">{method.label}</Label>
-                    <p className="text-sm text-muted-foreground">{method.desc}</p>
-                  </div>
-                  <Switch
-                    checked={paymentMethods.includes(method.id)}
-                    onCheckedChange={(c) => togglePaymentMethod(method.id, c)}
-                  />
-                </div>
-              ))}
-            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
