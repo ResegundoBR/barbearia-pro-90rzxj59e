@@ -14,6 +14,7 @@ import {
   LogOut,
   ShoppingBag,
   Wallet,
+  Check,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -72,6 +73,7 @@ export default function Layout() {
 
   const [expiringPackages, setExpiringPackages] = useState<any[]>([])
   const [isPackagesModalOpen, setIsPackagesModalOpen] = useState(false)
+  const [notifications, setNotifications] = useState<any[]>([])
   const [logoUrl, setLogoUrl] = useState('')
 
   const isAdmin =
@@ -79,32 +81,46 @@ export default function Layout() {
   const isStaff = user?.access_level === 'Staff'
   const canAccessSettings = isAdmin || isStaff
 
-  const navItems = [
-    { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-    { title: 'Agenda', url: '/agenda', icon: CalendarDays },
-    { title: 'Clientes', url: '/clientes', icon: Users },
-  ]
+  const [rolePerms, setRolePerms] = useState<any>({})
+  const defaultPerms = {
+    Admin: ['*'],
+    Socio: ['agenda', 'clientes', 'checkout'],
+    Autonomo: ['agenda'],
+  }
 
-  if (canAccessSettings) {
-    navItems.push({ title: 'Serviços & Pacotes', url: '/estoque', icon: Package })
-    navItems.push({
+  useEffect(() => {
+    pb.collection('settings')
+      .getFirstListItem('key="role_permissions"')
+      .then((r) => setRolePerms(r.value))
+      .catch(() => setRolePerms(defaultPerms))
+  }, [])
+
+  const allowedModules =
+    rolePerms[user?.access_level || 'Autonomo'] ||
+    defaultPerms[user?.access_level as keyof typeof defaultPerms] ||
+    []
+  const hasAccess = (module: string) =>
+    allowedModules.includes('*') || allowedModules.includes(module)
+
+  const allNavItems = [
+    { id: 'dashboard', title: 'Dashboard', url: '/', icon: LayoutDashboard },
+    { id: 'agenda', title: 'Agenda', url: '/agenda', icon: CalendarDays },
+    { id: 'clientes', title: 'Clientes', url: '/clientes', icon: Users },
+    { id: 'estoque', title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
+    {
+      id: 'produtos',
       title: 'Produtos e Categorias',
       url: '/produtos-categorias',
       icon: ShoppingBag,
-    })
-  }
+    },
+    { id: 'staff', title: 'Equipe & Comissões', url: '/staff', icon: Users },
+    { id: 'checkout', title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign },
+    { id: 'financeiro', title: 'Financeiro', url: '/financeiro', icon: Wallet },
+    { id: 'users', title: 'Usuários e Acessos', url: '/users', icon: UserCircle },
+    { id: 'settings', title: 'Configurações', url: '/settings', icon: Settings },
+  ]
 
-  navItems.push({ title: 'Equipe & Comissões', url: '/staff', icon: Users })
-
-  if (isAdmin) {
-    navItems.push({ title: 'Financeiro', url: '/financeiro', icon: Wallet })
-  }
-
-  navItems.push({ title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign })
-
-  if (canAccessSettings) {
-    navItems.push({ title: 'Configurações', url: '/settings', icon: Settings })
-  }
+  const navItems = allNavItems.filter((item) => hasAccess(item.id) || isAdmin)
 
   const currentPlan = user?.plan || 'Free'
 
@@ -126,8 +142,26 @@ export default function Layout() {
         expand: 'client_id,package_id',
       })
       setExpiringPackages(pkgs)
+
+      if (user) {
+        const notifs = await pb.collection('notifications').getFullList({
+          filter: `user_id="${user.id}" && is_read=false`,
+          sort: '-created',
+        })
+        setNotifications(notifs)
+      }
     } catch (e) {
       console.error('Failed to load alerts', e)
+    }
+  }
+
+  const markNotificationAsRead = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    try {
+      await pb.collection('notifications').update(id, { is_read: true })
+      setNotifications((prev) => prev.filter((n) => n.id !== id))
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -253,15 +287,37 @@ export default function Layout() {
                   className="relative hidden sm:flex min-h-[44px] min-w-[44px]"
                 >
                   <Bell className="size-5" />
-                  {expiringPackages.length > 0 && (
+                  {(expiringPackages.length > 0 || notifications.length > 0) && (
                     <span className="absolute top-2 right-2 size-2 bg-destructive rounded-full animate-pulse"></span>
                   )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-4">
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-sm">Notificações do Sistema</h4>
-                  {expiringPackages.length > 0 ? (
+                <div className="space-y-4 max-h-[300px] overflow-y-auto">
+                  <h4 className="font-semibold text-sm">Notificações</h4>
+
+                  {notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      className="p-3 bg-muted/30 border rounded-md relative flex items-start justify-between group"
+                    >
+                      <div className="pr-6">
+                        <p className="text-sm font-bold text-primary">{n.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-6 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => markNotificationAsRead(e, n.id)}
+                        title="Marcar como lida"
+                      >
+                        <Check className="size-4 text-emerald-500" />
+                      </Button>
+                    </div>
+                  ))}
+
+                  {expiringPackages.length > 0 && (
                     <div
                       className="p-3 bg-amber-500/10 text-amber-600 rounded-md cursor-pointer hover:bg-amber-500/20 transition-colors"
                       onClick={() => setIsPackagesModalOpen(true)}
@@ -269,12 +325,11 @@ export default function Layout() {
                       <p className="text-sm font-bold flex items-center gap-2">
                         <Package className="size-4" /> Pacotes Vencendo ({expiringPackages.length})
                       </p>
-                      <p className="text-xs mt-1">
-                        Existem clientes com apenas 1 uso restante em seus pacotes. Clique para
-                        visualizar.
-                      </p>
+                      <p className="text-xs mt-1">Existem clientes com apenas 1 uso restante.</p>
                     </div>
-                  ) : (
+                  )}
+
+                  {notifications.length === 0 && expiringPackages.length === 0 && (
                     <p className="text-sm text-muted-foreground">Nenhuma notificação no momento.</p>
                   )}
                 </div>

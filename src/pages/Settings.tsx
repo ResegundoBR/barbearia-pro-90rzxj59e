@@ -63,18 +63,55 @@ export default function Settings() {
     }
   }
 
-  const canAccessSettings = user?.access_level === 'Admin' || user?.access_level === 'Staff'
+  const isAdmin =
+    user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
 
   useEffect(() => {
-    if (canAccessSettings) {
+    if (isAdmin) {
       loadData()
+      loadNotificationRules()
     }
-  }, [user, canAccessSettings])
+  }, [user, isAdmin])
 
-  if (!canAccessSettings) {
+  const [notifRules, setNotifRules] = useState<any[]>([])
+
+  const loadNotificationRules = async () => {
+    try {
+      const rules = await pb.collection('notification_rules').getFullList()
+      setNotifRules(rules)
+    } catch {
+      /* intentionally ignored */
+    }
+  }
+
+  const toggleNotifRule = async (id: string, current: boolean) => {
+    try {
+      await pb.collection('notification_rules').update(id, { is_active: !current })
+      loadNotificationRules()
+    } catch {
+      /* intentionally ignored */
+    }
+  }
+
+  const toggleRecipient = async (rule: any, role: string) => {
+    try {
+      let recipients = rule.recipients || []
+      if (recipients.includes(role)) {
+        recipients = recipients.filter((r: string) => r !== role)
+      } else {
+        recipients = [...recipients, role]
+      }
+      await pb.collection('notification_rules').update(rule.id, { recipients })
+      loadNotificationRules()
+    } catch {
+      /* intentionally ignored */
+    }
+  }
+
+  if (!isAdmin) {
     return (
       <div className="p-8 text-center text-muted-foreground">
-        Acesso Restrito. Apenas administradores e staff podem acessar esta página.
+        Acesso Restrito. Apenas administradores podem acessar esta página.
       </div>
     )
   }
@@ -168,9 +205,10 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="geral">Geral (Marca)</TabsTrigger>
           <TabsTrigger value="categories">Categorias & Comissões</TabsTrigger>
+          <TabsTrigger value="notifications">Gerenciamento de Notificações</TabsTrigger>
         </TabsList>
 
         <TabsContent value="geral" className="space-y-4">
@@ -210,6 +248,73 @@ export default function Settings() {
                   </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          <Card className="border-border shadow-sm">
+            <CardHeader>
+              <CardTitle>Regras de Notificação</CardTitle>
+              <CardDescription>
+                Configure quais eventos do sistema disparam alertas e quem deve recebê-los.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Evento</TableHead>
+                    <TableHead>Destinatários</TableHead>
+                    <TableHead>Canal</TableHead>
+                    <TableHead className="text-right">Ativo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {notifRules.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">
+                        {r.event_type === 'new_appointment' && 'Novo Agendamento'}
+                        {r.event_type === 'cancellation' && 'Cancelamento'}
+                        {r.event_type === 'no_show' && 'Não Comparecimento'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {['Admin', 'Socio', 'Autonomo'].map((role) => (
+                            <Badge
+                              key={role}
+                              variant={r.recipients?.includes(role) ? 'default' : 'outline'}
+                              className="cursor-pointer"
+                              onClick={() => toggleRecipient(r, role)}
+                            >
+                              {role}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="capitalize text-muted-foreground">
+                        {r.channel === 'internal' ? 'Sistema Interno' : r.channel}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant={r.is_active ? 'default' : 'secondary'}
+                          size="sm"
+                          onClick={() => toggleNotifRule(r.id, r.is_active)}
+                        >
+                          {r.is_active ? 'Sim' : 'Não'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {notifRules.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                        Nenhuma regra encontrada.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>

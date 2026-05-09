@@ -10,6 +10,7 @@ import Estoque from './pages/Estoque'
 import Checkout from './pages/Checkout'
 import Staff from './pages/Staff'
 import Settings from './pages/Settings'
+import UsersPage from './pages/Users'
 import Financeiro from './pages/Financeiro'
 import ProdutosCategorias from './pages/ProdutosCategorias'
 import NotFound from './pages/NotFound'
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/produtos-categorias" element={<ProdutosCategorias />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/users" element={<UsersPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
