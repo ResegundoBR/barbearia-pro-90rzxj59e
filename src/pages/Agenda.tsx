@@ -336,14 +336,9 @@ export default function Agenda() {
             const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
             const isCanceled = apt.status === 'Cancelado'
             const isCompleted = apt.status === 'Concluído'
-            const aptDate = apt.date ? new Date(apt.date) : new Date()
-            const aptDateTime = new Date(
-              aptDate.getFullYear(),
-              aptDate.getMonth(),
-              aptDate.getDate(),
-              sH,
-              sM,
-            )
+            const datePart = apt.date ? apt.date.split(' ')[0] : ''
+            const [y, m, d] = datePart.split('-').map(Number)
+            const aptDateTime = new Date(y, m - 1, d, sH, sM)
             const isFuture = aptDateTime > new Date()
             const isPast = aptDateTime < new Date()
             const isMissed = isPast && !isCompleted && !isCanceled
@@ -429,15 +424,10 @@ export default function Agenda() {
                   {events.slice(0, 4).map((apt) => {
                     const isCompleted = apt.status === 'Concluído'
                     const isCanceled = apt.status === 'Cancelado'
-                    const aptDate = apt.date ? new Date(apt.date) : new Date()
+                    const datePart = apt.date ? apt.date.split(' ')[0] : ''
+                    const [y, m, d] = datePart.split('-').map(Number)
                     const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
-                    const aptDateTime = new Date(
-                      aptDate.getFullYear(),
-                      aptDate.getMonth(),
-                      aptDate.getDate(),
-                      sH,
-                      sM,
-                    )
+                    const aptDateTime = new Date(y, m - 1, d, sH, sM)
                     const isFuture = aptDateTime > new Date()
                     const isPast = aptDateTime < new Date()
                     const isMissed = isPast && !isCompleted && !isCanceled

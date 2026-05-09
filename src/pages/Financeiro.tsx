@@ -50,7 +50,8 @@ export default function Financeiro() {
     }
   }
 
-  const canAccess = user?.access_level === 'Admin' || user?.access_level === 'Staff'
+  const canAccess =
+    user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
 
   useEffect(() => {
     if (canAccess) loadMethods()

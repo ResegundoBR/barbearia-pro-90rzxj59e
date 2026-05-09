@@ -74,27 +74,37 @@ export default function Layout() {
   const [isPackagesModalOpen, setIsPackagesModalOpen] = useState(false)
   const [logoUrl, setLogoUrl] = useState('')
 
-  const canAccessSettings = user?.access_level === 'Admin' || user?.access_level === 'Staff'
+  const isAdmin =
+    user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
+  const isStaff = user?.access_level === 'Staff'
+  const canAccessSettings = isAdmin || isStaff
 
-  const navItems = canAccessSettings
-    ? [
-        { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-        { title: 'Agenda', url: '/agenda', icon: CalendarDays },
-        { title: 'Clientes', url: '/clientes', icon: Users },
-        { title: 'Equipe & Comissões', url: '/staff', icon: Users },
-        { title: 'Financeiro', url: '/financeiro', icon: Wallet },
-        { title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
-        { title: 'Produtos e Categorias', url: '/produtos-categorias', icon: ShoppingBag },
-        { title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign },
-        { title: 'Configurações', url: '/settings', icon: Settings },
-      ]
-    : [
-        { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-        { title: 'Agenda', url: '/agenda', icon: CalendarDays },
-        { title: 'Clientes', url: '/clientes', icon: Users },
-        { title: 'Equipe & Comissões', url: '/staff', icon: Users },
-        { title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign },
-      ]
+  const navItems = [
+    { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+    { title: 'Agenda', url: '/agenda', icon: CalendarDays },
+    { title: 'Clientes', url: '/clientes', icon: Users },
+  ]
+
+  if (canAccessSettings) {
+    navItems.push({ title: 'Serviços & Pacotes', url: '/estoque', icon: Package })
+    navItems.push({
+      title: 'Produtos e Categorias',
+      url: '/produtos-categorias',
+      icon: ShoppingBag,
+    })
+  }
+
+  navItems.push({ title: 'Equipe & Comissões', url: '/staff', icon: Users })
+
+  if (isAdmin) {
+    navItems.push({ title: 'Financeiro', url: '/financeiro', icon: Wallet })
+  }
+
+  navItems.push({ title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign })
+
+  if (canAccessSettings) {
+    navItems.push({ title: 'Configurações', url: '/settings', icon: Settings })
+  }
 
   const currentPlan = user?.plan || 'Free'
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { format } from 'date-fns'
+import { format, endOfWeek, endOfMonth } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,9 +59,51 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
   const [grossRevenue, setGrossRevenue] = useState(0)
   const [futureRevenue, setFutureRevenue] = useState(0)
+  const [futureApts, setFutureApts] = useState<any[]>([])
   const [modalType, setModalType] = useState<
     'comissoes' | 'adiantamentos' | 'totalLiquido' | 'recebimentos' | null
   >(null)
+  const [forecastModal, setForecastModal] = useState<'tomorrow' | 'week' | 'month' | null>(null)
+
+  const getForecastApts = (type: 'tomorrow' | 'week' | 'month') => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    const endOfTomorrow = new Date(tomorrow)
+    endOfTomorrow.setHours(23, 59, 59, 999)
+
+    const endOfThisWeek = endOfWeek(today, { weekStartsOn: 0 })
+    endOfThisWeek.setHours(23, 59, 59, 999)
+
+    const endOfThisMonth = endOfMonth(today)
+    endOfThisMonth.setHours(23, 59, 59, 999)
+
+    return futureApts.filter((a) => {
+      const datePart = a.date ? a.date.split(' ')[0] : ''
+      if (!datePart) return false
+      const [y, m, d] = datePart.split('-').map(Number)
+      const aptDate = new Date(y, m - 1, d)
+
+      if (type === 'tomorrow') {
+        return aptDate.getTime() === tomorrow.getTime()
+      } else if (type === 'week') {
+        return aptDate > tomorrow && aptDate <= endOfThisWeek
+      } else if (type === 'month') {
+        return aptDate > tomorrow && aptDate <= endOfThisMonth
+      }
+      return false
+    })
+  }
+
+  const calcForecast = (type: 'tomorrow' | 'week' | 'month') => {
+    return getForecastApts(type).reduce(
+      (acc, a) => acc + (a.price || a.expand?.service_id?.price || 0),
+      0,
+    )
+  }
 
   const normalizedCommissions = useMemo(() => {
     return commissions.map((c) => {
@@ -185,6 +227,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           0,
         )
         setFutureRevenue(totalFuture)
+        setFutureApts(futureAptsRes)
 
         const groups: TransactionGroup[] = []
         const usedComms = new Set()
@@ -313,7 +356,10 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
         )
 
         const calcGross = sorted
-          .filter((t) => t.type === 'service_checkout' || t.type === 'package_sale')
+          .filter(
+            (t) =>
+              (t.type === 'service_checkout' || t.type === 'package_sale') && t.status === 'paid',
+          )
           .reduce((acc, t) => acc + t.grossAmount, 0)
         setGrossRevenue(calcGross)
 
@@ -488,9 +534,30 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
               Previsão de Recebimento
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-500">R$ {futureRevenue.toFixed(2)}</div>
-            <p className="text-[10px] text-muted-foreground">Projeção para atendimentos futuros</p>
+          <CardContent className="space-y-2">
+            <div
+              className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
+              onClick={() => setForecastModal('tomorrow')}
+            >
+              <span className="text-muted-foreground text-xs">Amanhã</span>
+              <span className="font-bold text-blue-500">
+                R$ {calcForecast('tomorrow').toFixed(2)}
+              </span>
+            </div>
+            <div
+              className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
+              onClick={() => setForecastModal('week')}
+            >
+              <span className="text-muted-foreground text-xs">Restante da Semana</span>
+              <span className="font-bold text-blue-500">R$ {calcForecast('week').toFixed(2)}</span>
+            </div>
+            <div
+              className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
+              onClick={() => setForecastModal('month')}
+            >
+              <span className="text-muted-foreground text-xs">Restante do Mês</span>
+              <span className="font-bold text-blue-500">R$ {calcForecast('month').toFixed(2)}</span>
+            </div>
           </CardContent>
         </Card>
         <Card
@@ -542,6 +609,58 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!forecastModal} onOpenChange={(o) => !o && setForecastModal(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              Previsão de Recebimento -{' '}
+              {forecastModal === 'tomorrow'
+                ? 'Amanhã'
+                : forecastModal === 'week'
+                  ? 'Restante da Semana'
+                  : 'Restante do Mês'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto mt-2">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data / Hora</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Serviço/Pacote</TableHead>
+                  <TableHead className="text-right">Valor Esperado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {forecastModal &&
+                  getForecastApts(forecastModal).map((apt) => (
+                    <TableRow key={apt.id}>
+                      <TableCell>
+                        {apt.date
+                          ? format(new Date(apt.date.split(' ')[0] + 'T00:00:00'), 'dd/MM/yyyy')
+                          : ''}{' '}
+                        {apt.time}
+                      </TableCell>
+                      <TableCell>{apt.expand?.client_id?.name || 'Avulso'}</TableCell>
+                      <TableCell>{apt.expand?.service_id?.name || 'Serviço'}</TableCell>
+                      <TableCell className="text-right font-bold text-blue-500">
+                        R$ {(apt.price || apt.expand?.service_id?.price || 0).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {forecastModal && getForecastApts(forecastModal).length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                      Nenhum agendamento encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!modalType} onOpenChange={(o) => !o && setModalType(null)}>
         <DialogContent className="max-w-4xl">

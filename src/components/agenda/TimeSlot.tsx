@@ -22,15 +22,10 @@ export function TimeSlot({
     const isPending = appointment.status === 'Pendente' || appointment.status === 'Confirmado'
     const isCanceled = appointment.status === 'Cancelado'
 
-    const aptDate = appointment.date ? new Date(appointment.date) : new Date()
+    const datePart = appointment.date ? appointment.date.split(' ')[0] : ''
+    const [y, m, d] = datePart.split('-').map(Number)
     const [sH, sM] = (appointment.time || '00:00').split(':').map(Number)
-    const aptDateTime = new Date(
-      aptDate.getFullYear(),
-      aptDate.getMonth(),
-      aptDate.getDate(),
-      sH,
-      sM,
-    )
+    const aptDateTime = new Date(y, m - 1, d, sH, sM)
     const isFuture = aptDateTime > new Date()
     const isPast = aptDateTime < new Date()
     const isMissed = isPast && !isCompleted && !isCanceled
