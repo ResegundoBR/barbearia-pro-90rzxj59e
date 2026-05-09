@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ChevronDown, ChevronUp, CalendarIcon } from 'lucide-react'
+import { ChevronDown, ChevronUp, CalendarIcon, X } from 'lucide-react'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
@@ -51,7 +51,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
   const [transactions, setTransactions] = useState<TransactionGroup[]>([])
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
 
-  const [date, setDate] = useState<{ from: Date; to: Date }>({
+  const [date, setDate] = useState<{ from?: Date; to?: Date } | undefined>({
     from: new Date(new Date().setDate(new Date().getDate() - 30)),
     to: new Date(),
   })
@@ -60,7 +60,14 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
   const filteredCommissions = useMemo(() => {
     return commissions.filter((c) => {
       const cDate = new Date(c.date || c.created)
-      const inRange = cDate >= date.from && cDate <= new Date(date.to.getTime() + 86400000)
+      let inRange = true
+      if (date?.from) {
+        if (date.to) {
+          inRange = cDate >= date.from && cDate <= new Date(date.to.getTime() + 86400000)
+        } else {
+          inRange = cDate >= date.from
+        }
+      }
       let matchStatus = statusFilter === 'all' || c.status === statusFilter
       if (statusFilter !== 'all' && c.is_advance) {
         matchStatus = statusFilter === 'paid'
@@ -123,14 +130,17 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
   useEffect(() => {
     const loadTransactions = async () => {
       try {
-        const startStr = date.from ? date.from.toISOString() : ''
-        const endStr = date.to ? new Date(date.to.getTime() + 86400000).toISOString() : ''
+        const startStr = date?.from ? date.from.toISOString() : ''
+        const endStr = date?.to ? new Date(date.to.getTime() + 86400000).toISOString() : ''
 
         let aptFilter = `status = 'Concluído'`
         let prodFilter = ''
         if (startStr && endStr) {
           aptFilter += ` && updated >= "${startStr}" && updated <= "${endStr}"`
           prodFilter = `created >= "${startStr}" && created <= "${endStr}"`
+        } else if (startStr) {
+          aptFilter += ` && updated >= "${startStr}"`
+          prodFilter = `created >= "${startStr}"`
         }
 
         const [aptsRes, prodsRes, pkgsRes] = await Promise.all([
@@ -166,7 +176,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
           if (comms.length === 0 && statusFilter !== 'all') continue
           // If no commission mapped and we aren't filtering by status, we still show the transaction
-          if (comms.length === 0 && aptTime < date.from.getTime()) continue
+          if (comms.length === 0 && date?.from && aptTime < date.from.getTime()) continue
 
           const serviceAmount = apt.price || 0
           const productAmount = prods.reduce((acc, p) => acc + (p.price_at_sale || 0), 0)
@@ -211,7 +221,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
           comms.forEach((c) => usedComms.add(c.id))
 
           if (comms.length === 0 && statusFilter !== 'all') continue
-          if (comms.length === 0 && pkgTime < date.from.getTime()) continue
+          if (comms.length === 0 && date?.from && pkgTime < date.from.getTime()) continue
 
           const serviceAmount = pkg.expand?.package_id?.price || 0
           const commissionAmount = comms.reduce((acc, c) => acc + (c.amount || 0), 0)
@@ -292,41 +302,55 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row gap-4">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-[280px] justify-start text-left font-normal bg-card"
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date?.from ? (
-                date.to ? (
-                  <>
-                    {format(date.from, 'dd/MM/yyyy')} - {format(date.to, 'dd/MM/yyyy')}
-                  </>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-[280px] justify-start text-left font-normal bg-card"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, 'dd/MM/yyyy')} - {format(date.to, 'dd/MM/yyyy')}
+                    </>
+                  ) : (
+                    format(date.from, 'dd/MM/yyyy')
+                  )
                 ) : (
-                  format(date.from, 'dd/MM/yyyy')
-                )
-              ) : (
-                <span>Selecione o período</span>
-              )}
+                  <span>Selecione o período</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={(range: any) => {
+                  if (!range) {
+                    setDate(undefined)
+                  } else {
+                    setDate({ from: range.from, to: range.to || range.from })
+                  }
+                }}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+          {date?.from && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDate(undefined)}
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={date?.from}
-              selected={{ from: date.from, to: date.to }}
-              onSelect={(range: any) => {
-                if (range?.from) {
-                  setDate({ from: range.from, to: range.to || range.from })
-                }
-              }}
-              numberOfMonths={2}
-            />
-          </PopoverContent>
-        </Popover>
+          )}
+        </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[200px] bg-card">

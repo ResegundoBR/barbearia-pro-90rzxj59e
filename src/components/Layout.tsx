@@ -91,10 +91,11 @@ export default function Layout() {
     <SidebarProvider>
       <Sidebar variant="inset" className="hidden md:flex">
         <SidebarHeader className="p-4 flex flex-row items-center gap-3">
-          <div className="bg-primary text-primary-foreground p-1.5 rounded-md">
-            <Scissors className="size-5" />
-          </div>
-          <span className="font-bold text-lg tracking-tight">Barbearia Pro</span>
+          <img
+            src="https://img.usecurling.com/i?q=barber&shape=outline&color=gradient"
+            alt="Barbearia Pro Logo"
+            className="h-8 object-contain"
+          />
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
@@ -136,10 +137,14 @@ export default function Layout() {
           <SidebarTrigger className="-ml-2 hidden md:flex min-h-[44px] min-w-[44px]" />
 
           <div className="md:hidden flex items-center gap-2 text-primary font-bold">
-            <div className="bg-primary text-primary-foreground p-1 rounded-md">
-              <Scissors className="size-4" />
-            </div>
-            {currentPlan}
+            <img
+              src="https://img.usecurling.com/i?q=barber&shape=outline&color=gradient"
+              alt="Barbearia Pro Logo"
+              className="h-6 object-contain"
+            />
+            <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">
+              {currentPlan}
+            </span>
           </div>
 
           <div className="flex-1 flex items-center max-w-md relative ml-2 md:ml-0">

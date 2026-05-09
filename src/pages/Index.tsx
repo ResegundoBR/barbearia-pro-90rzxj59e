@@ -26,11 +26,14 @@ import {
   startOfWeek,
   startOfMonth,
   startOfYear,
+  endOfWeek,
+  endOfMonth,
   addDays,
   differenceInDays,
   isTomorrow,
   isThisWeek,
   isThisMonth,
+  startOfDay,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -60,6 +63,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function Index() {
   const { user } = useAuth()
@@ -94,31 +98,65 @@ export default function Index() {
 
   const loadData = async () => {
     setIsLoading(true)
-    let dateFilter = ''
-    const now = new Date()
-
-    if (period === 'today') dateFilter = format(now, 'yyyy-MM-dd')
-    else if (period === 'week')
-      dateFilter = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    else if (period === 'month') dateFilter = format(startOfMonth(now), 'yyyy-MM-dd')
-    else if (period === 'year') dateFilter = format(startOfYear(now), 'yyyy-MM-dd')
-
-    const filterStr = dateFilter ? `date >= "${dateFilter} 00:00:00"` : ''
-    const createdFilterStr = dateFilter ? `created >= "${dateFilter} 00:00:00"` : ''
-
-    setAppointments(await getAppointments(filterStr))
+    setAppointments(await getAppointments(''))
     setClients(await getClients())
     setPackages(await getClientPackages())
     setBarbers(await getBarbers())
     setProducts(await getProducts())
-    setCommissions(await getCommissions(filterStr || createdFilterStr))
-    setProductPurchases(await getProductPurchases(filterStr))
+    setCommissions(await getCommissions(''))
+    setProductPurchases(await getProductPurchases(''))
     setIsLoading(false)
   }
 
   useEffect(() => {
     loadData()
+  }, [])
+
+  useRealtime('appointments', () => loadData())
+  useRealtime('client_packages', () => loadData())
+  useRealtime('product_purchases', () => loadData())
+  useRealtime('commissions', () => loadData())
+  useRealtime('clients', () => loadData())
+
+  const periodStart = useMemo(() => {
+    const now = new Date()
+    if (period === 'today') return startOfDay(now)
+    if (period === 'week') return startOfWeek(now, { weekStartsOn: 1 })
+    if (period === 'month') return startOfMonth(now)
+    if (period === 'year') return startOfYear(now)
+    return new Date(0)
   }, [period])
+
+  const periodEnd = useMemo(() => {
+    const now = new Date()
+    if (period === 'today') {
+      const d = new Date(startOfDay(now))
+      d.setHours(23, 59, 59, 999)
+      return d
+    }
+    if (period === 'week') {
+      const end = endOfWeek(now, { weekStartsOn: 1 })
+      end.setHours(23, 59, 59, 999)
+      return end
+    }
+    if (period === 'month') {
+      const end = endOfMonth(now)
+      end.setHours(23, 59, 59, 999)
+      return end
+    }
+    if (period === 'year') {
+      const end = new Date(now.getFullYear(), 11, 31)
+      end.setHours(23, 59, 59, 999)
+      return end
+    }
+    return new Date(8640000000000000)
+  }, [period])
+
+  const isInPeriod = (dateString: string) => {
+    if (!dateString) return false
+    const d = new Date(dateString)
+    return d >= periodStart && d <= periodEnd
+  }
 
   const loggedInBarber = barbers.find((b) => b.name === user?.name)
   const effectiveBarberFilter = isAdmin ? barberFilter : loggedInBarber?.id || 'all'
@@ -147,14 +185,17 @@ export default function Index() {
 
   const validAppointments = filteredAppointments.filter((a) => a.status !== 'Cancelado')
   const completedPeriod = validAppointments.filter(
-    (a) => a.status === 'Concluído' || a.status === 'Confirmado',
+    (a) =>
+      (a.status === 'Concluído' || a.status === 'Confirmado') && isInPeriod(a.date || a.updated),
   )
+  const productPurchasesPeriod = productPurchases.filter((p) => isInPeriod(p.date || p.created))
+
   const periodRevenue = completedPeriod.reduce(
     (acc, curr) => acc + (curr.price || curr.expand?.service_id?.price || 0),
     0,
   )
 
-  const productRevenue = productPurchases.reduce(
+  const productRevenue = productPurchasesPeriod.reduce(
     (acc, curr) => acc + (curr.price_at_sale || curr.expand?.product_id?.price || 0),
     0,
   )
@@ -163,22 +204,9 @@ export default function Index() {
   const uniqueClientsPeriod = new Set(completedPeriod.map((a) => a.client_id)).size
   const avgTicket = completedPeriod.length > 0 ? periodRevenue / completedPeriod.length : 0
   const avgProductTicket =
-    productPurchases.length > 0 ? productRevenue / productPurchases.length : 0
+    productPurchasesPeriod.length > 0 ? productRevenue / productPurchasesPeriod.length : 0
 
-  const tomorrowStr = format(addDays(new Date(), 1), 'yyyy-MM-dd')
-
-  const clientsCreatedInPeriod = clients.filter((c) => {
-    let dateFilter = ''
-    const now = new Date()
-    if (period === 'today') dateFilter = format(now, 'yyyy-MM-dd')
-    else if (period === 'week')
-      dateFilter = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    else if (period === 'month') dateFilter = format(startOfMonth(now), 'yyyy-MM-dd')
-    else if (period === 'year') dateFilter = format(startOfYear(now), 'yyyy-MM-dd')
-
-    if (!dateFilter) return true
-    return c.created >= `${dateFilter} 00:00:00`
-  })
+  const clientsCreatedInPeriod = clients.filter((c) => isInPeriod(c.created))
 
   const newClientsCount =
     effectiveBarberFilter === 'all'
@@ -190,14 +218,11 @@ export default function Index() {
     (c) =>
       c.is_at_risk || (c.last_visit && differenceInDays(new Date(), new Date(c.last_visit)) > 30),
   )
-  const expiringPackagesList = packages.filter(
-    (p) =>
-      p.expires_at &&
-      differenceInDays(new Date(p.expires_at), new Date()) <= 7 &&
-      p.remaining_uses > 0,
-  )
+
+  const lowUsesPackagesList = filteredPackages.filter((p) => p.remaining_uses === 1)
+
   const aptsTomorrowList = filteredAppointments.filter(
-    (a) => a.date && a.date.startsWith(tomorrowStr) && a.status !== 'Cancelado',
+    (a) => a.date && isTomorrow(new Date(a.date)) && a.status !== 'Cancelado',
   )
 
   const calcApptRevenue = (a: any) => {
@@ -209,17 +234,39 @@ export default function Index() {
     return price
   }
 
-  const predictedTomorrow = filteredAppointments
-    .filter((a) => a.status !== 'Cancelado' && a.date && isTomorrow(new Date(a.date)))
+  const tomorrow = addDays(startOfDay(new Date()), 1)
+  const tomorrowEnd = new Date(tomorrow)
+  tomorrowEnd.setHours(23, 59, 59, 999)
+
+  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 })
+  weekEnd.setHours(23, 59, 59, 999)
+
+  const monthEnd = endOfMonth(new Date())
+  monthEnd.setHours(23, 59, 59, 999)
+
+  const pendingAppointments = filteredAppointments.filter(
+    (a) => a.status !== 'Cancelado' && a.status !== 'Concluído' && a.date,
+  )
+
+  const predictedTomorrow = pendingAppointments
+    .filter((a) => {
+      const d = new Date(a.date)
+      return d >= tomorrow && d <= tomorrowEnd
+    })
     .reduce((acc, a) => acc + calcApptRevenue(a), 0)
-  const predictedWeek = filteredAppointments
-    .filter(
-      (a) =>
-        a.status !== 'Cancelado' && a.date && isThisWeek(new Date(a.date), { weekStartsOn: 1 }),
-    )
+
+  const predictedRestOfWeek = pendingAppointments
+    .filter((a) => {
+      const d = new Date(a.date)
+      return d > tomorrowEnd && d <= weekEnd
+    })
     .reduce((acc, a) => acc + calcApptRevenue(a), 0)
-  const predictedMonth = filteredAppointments
-    .filter((a) => a.status !== 'Cancelado' && a.date && isThisMonth(new Date(a.date)))
+
+  const predictedRestOfMonth = pendingAppointments
+    .filter((a) => {
+      const d = new Date(a.date)
+      return d > tomorrowEnd && d <= monthEnd
+    })
     .reduce((acc, a) => acc + calcApptRevenue(a), 0)
 
   const lowStockProductsList = products.filter(
@@ -229,7 +276,7 @@ export default function Index() {
   const peakData = useMemo(() => {
     const hours = Array.from({ length: 13 }, (_, i) => i + 8)
     const counts = hours.map((h) => ({ hour: `${h}h`, count: 0 }))
-    validAppointments.forEach((a) => {
+    completedPeriod.forEach((a) => {
       if (a.time) {
         const h = parseInt(a.time.split(':')[0], 10)
         const entry = counts.find((c) => c.hour === `${h}h`)
@@ -237,7 +284,7 @@ export default function Index() {
       }
     })
     return counts
-  }, [validAppointments])
+  }, [completedPeriod])
 
   const topSellers = useMemo(() => {
     const counts: Record<string, { name: string; type: string; count: number; revenue: number }> =
@@ -251,7 +298,7 @@ export default function Index() {
       counts[name].revenue += price
     })
 
-    productPurchases.forEach((p) => {
+    productPurchasesPeriod.forEach((p) => {
       const name = p.expand?.product_id?.name || 'Produto Avulso'
       const price = p.price_at_sale || p.expand?.product_id?.price || 0
       if (!counts[name]) counts[name] = { name, type: 'Produto', count: 0, revenue: 0 }
@@ -262,7 +309,7 @@ export default function Index() {
     return Object.values(counts)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5)
-  }, [completedPeriod, productPurchases])
+  }, [completedPeriod, productPurchasesPeriod])
 
   const historyData = useMemo(() => {
     const dataMap: Record<string, { date: string; services: number; products: number }> = {}
@@ -273,7 +320,7 @@ export default function Index() {
       dataMap[d].services += a.price || a.expand?.service_id?.price || 0
     })
 
-    productPurchases.forEach((p) => {
+    productPurchasesPeriod.forEach((p) => {
       const d = p.date ? p.date.substring(0, 10) : p.created.substring(0, 10)
       if (!dataMap[d]) dataMap[d] = { date: d, services: 0, products: 0 }
       dataMap[d].products += p.price_at_sale || p.expand?.product_id?.price || 0
@@ -285,7 +332,7 @@ export default function Index() {
       services: dataMap[dateStr].services,
       products: dataMap[dateStr].products,
     }))
-  }, [completedPeriod, productPurchases])
+  }, [completedPeriod, productPurchasesPeriod])
 
   const clientsServed = useMemo(() => {
     return Array.from(new Set(completedPeriod.map((a) => a.client_id))).map((id) => {
@@ -592,20 +639,22 @@ export default function Index() {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Esta Semana</p>
-                  {isLoading ? (
-                    <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
-                  ) : (
-                    <p className="text-2xl font-bold text-primary">R$ {predictedWeek.toFixed(2)}</p>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Este Mês</p>
+                  <p className="text-xs text-muted-foreground">Restante da Semana</p>
                   {isLoading ? (
                     <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
                   ) : (
                     <p className="text-2xl font-bold text-primary">
-                      R$ {predictedMonth.toFixed(2)}
+                      R$ {predictedRestOfWeek.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Restante do Mês</p>
+                  {isLoading ? (
+                    <div className="h-8 w-24 bg-muted animate-pulse rounded-md mt-1" />
+                  ) : (
+                    <p className="text-2xl font-bold text-primary">
+                      R$ {predictedRestOfMonth.toFixed(2)}
                     </p>
                   )}
                 </div>
@@ -659,7 +708,7 @@ export default function Index() {
                     <PackageSearch className="size-5 shrink-0" />
                     <div>
                       <p className="font-semibold text-sm">
-                        {expiringPackagesList.length} pacotes vencendo
+                        {lowUsesPackagesList.length} pacotes com 1 uso restante
                       </p>
                     </div>
                   </div>
@@ -724,6 +773,47 @@ export default function Index() {
                   <TableRow>
                     <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
                       Nenhum produto com estoque baixo.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={alertModal === 'packages'} onOpenChange={(v) => !v && setAlertModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Pacotes com 1 uso restante</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Pacote</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead className="text-right">Usos Restantes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lowUsesPackagesList.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>{p.expand?.client_id?.name || '-'}</TableCell>
+                    <TableCell>{p.expand?.package_id?.name || '-'}</TableCell>
+                    <TableCell>
+                      {p.expires_at ? format(new Date(p.expires_at), 'dd/MM/yyyy') : '-'}
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-amber-500">
+                      {p.remaining_uses}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {lowUsesPackagesList.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                      Nenhum pacote com 1 uso restante.
                     </TableCell>
                   </TableRow>
                 )}
@@ -829,7 +919,7 @@ export default function Index() {
                       </TableRow>
                     )
                   })}
-                  {productPurchases.map((p) => {
+                  {productPurchasesPeriod.map((p) => {
                     const comm = commissions.find(
                       (c) =>
                         c.type === 'product' &&
@@ -850,7 +940,7 @@ export default function Index() {
                       </TableRow>
                     )
                   })}
-                  {completedPeriod.length === 0 && productPurchases.length === 0 && (
+                  {completedPeriod.length === 0 && productPurchasesPeriod.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                         Nenhuma venda no período.
