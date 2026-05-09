@@ -11,7 +11,7 @@ migrate(
       fields: [
         { name: 'name', type: 'text', required: true },
         { name: 'type', type: 'select', required: true, values: ['service', 'product'] },
-        { name: 'commission_percentage', type: 'number', required: true },
+        { name: 'commission_percentage', type: 'number' },
         { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
         { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true },
       ],

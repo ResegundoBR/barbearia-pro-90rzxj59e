@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-09T11:44:21.167Z",
+  "generatedAt": "2026-05-09T11:49:38.493Z",
   "collections": [
     {
       "name": "users",
@@ -292,6 +292,13 @@
           "type": "number",
           "required": true,
           "system": false
+        },
+        {
+          "name": "category_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "categories"
         }
       ],
       "indexes": []
@@ -668,6 +675,13 @@
           "type": "number",
           "required": false,
           "system": false
+        },
+        {
+          "name": "category_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "categories"
         }
       ],
       "indexes": []
@@ -829,6 +843,93 @@
           "type": "bool",
           "required": false,
           "system": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "categories",
+      "type": "base",
+      "apiRules": {
+        "list": "",
+        "view": "",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["service", "product"]
+        },
+        {
+          "name": "commission_percentage",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "settings",
+      "type": "base",
+      "apiRules": {
+        "list": "",
+        "view": "",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "value",
+          "type": "json",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": []
