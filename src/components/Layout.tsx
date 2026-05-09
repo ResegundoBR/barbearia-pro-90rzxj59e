@@ -12,6 +12,7 @@ import {
   Crown,
   Settings,
   LogOut,
+  ShoppingBag,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -56,6 +57,7 @@ const baseNavItems = [
   { title: 'Agenda', url: '/agenda', icon: CalendarDays },
   { title: 'Clientes', url: '/clientes', icon: Users },
   { title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
+  { title: 'Produtos e Categorias', url: '/produtos-categorias', icon: ShoppingBag },
   { title: 'Equipe & Comissões', url: '/staff', icon: Users },
   { title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign },
 ]

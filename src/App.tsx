@@ -10,6 +10,7 @@ import Estoque from './pages/Estoque'
 import Checkout from './pages/Checkout'
 import Staff from './pages/Staff'
 import Settings from './pages/Settings'
+import ProdutosCategorias from './pages/ProdutosCategorias'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/estoque" element={<Estoque />} />
               <Route path="/staff" element={<Staff />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/produtos-categorias" element={<ProdutosCategorias />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
