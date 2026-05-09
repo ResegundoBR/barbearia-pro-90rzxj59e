@@ -36,21 +36,22 @@ export default function Settings() {
   const { user } = useAuth()
   const { toast } = useToast()
 
-  const [categories, setCategories] = useState<any[]>([])
-
   const [logoConfigId, setLogoConfigId] = useState<string>('')
   const [logoPreview, setLogoPreview] = useState<string>('')
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null)
 
-  const [isCatOpen, setIsCatOpen] = useState(false)
-  const [editingCatId, setEditingCatId] = useState<string | null>(null)
-  const [catForm, setCatForm] = useState({ name: '', type: 'service', commission_percentage: 0 })
+  const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const [editingNotifId, setEditingNotifId] = useState<string | null>(null)
+  const [notifForm, setNotifForm] = useState({
+    event_type: 'new_appointment',
+    recipients: [] as string[],
+    channel: 'internal',
+    timing_offset: 0,
+    is_active: true,
+  })
 
   const loadData = async () => {
     try {
-      const cats = await pb.collection('categories').getFullList({ sort: 'type,name' })
-      setCategories(cats)
-
       const sett = await pb.collection('settings').getFullList({ filter: 'key="logo"' })
       if (sett.length > 0) {
         setLogoConfigId(sett[0].id)
@@ -129,7 +130,7 @@ export default function Settings() {
     const formData = new FormData()
     formData.append('logo', selectedLogoFile)
     formData.append('key', 'logo')
-    formData.append('value', '{}')
+    formData.append('value', JSON.stringify({}))
 
     try {
       if (logoConfigId) {
@@ -138,7 +139,7 @@ export default function Settings() {
         const r = await pb.collection('settings').create(formData)
         setLogoConfigId(r.id)
       }
-      toast({ title: 'Logo atualizado!' })
+      toast({ title: 'Logo atualizado com sucesso!' })
       setSelectedLogoFile(null)
       window.dispatchEvent(new Event('logo-updated'))
     } catch (err) {
@@ -146,53 +147,72 @@ export default function Settings() {
     }
   }
 
-  const handleOpenCat = (cat?: any) => {
-    if (cat) {
-      setCatForm({
-        name: cat.name,
-        type: cat.type,
-        commission_percentage: cat.commission_percentage,
+  const handleOpenNotif = (r?: any) => {
+    if (r) {
+      setNotifForm({
+        event_type: r.event_type,
+        recipients: r.recipients || [],
+        channel: r.channel || 'internal',
+        timing_offset: r.timing_offset || 0,
+        is_active: r.is_active,
       })
-      setEditingCatId(cat.id)
+      setEditingNotifId(r.id)
     } else {
-      setCatForm({ name: '', type: 'service', commission_percentage: 0 })
-      setEditingCatId(null)
+      setNotifForm({
+        event_type: 'new_appointment',
+        recipients: [],
+        channel: 'internal',
+        timing_offset: 0,
+        is_active: true,
+      })
+      setEditingNotifId(null)
     }
-    setIsCatOpen(true)
+    setIsNotifOpen(true)
   }
 
-  const handleSaveCat = async () => {
+  const handleSaveNotif = async () => {
     try {
       const payload = {
-        name: catForm.name,
-        type: catForm.type,
-        commission_percentage: Number(catForm.commission_percentage),
+        event_type: notifForm.event_type,
+        recipients: notifForm.recipients,
+        channel: notifForm.channel,
+        timing_offset: Number(notifForm.timing_offset),
+        is_active: notifForm.is_active,
       }
 
-      if (editingCatId) {
-        await pb.collection('categories').update(editingCatId, payload)
-        toast({ title: 'Categoria atualizada!' })
+      if (editingNotifId) {
+        await pb.collection('notification_rules').update(editingNotifId, payload)
+        toast({ title: 'Regra atualizada!' })
       } else {
-        await pb.collection('categories').create(payload)
-        toast({ title: 'Categoria criada!' })
+        await pb.collection('notification_rules').create(payload)
+        toast({ title: 'Regra criada!' })
       }
-      setIsCatOpen(false)
-      loadData()
+      setIsNotifOpen(false)
+      loadNotificationRules()
     } catch (err) {
-      toast({ title: 'Erro ao salvar categoria', variant: 'destructive' })
+      toast({ title: 'Erro ao salvar regra', variant: 'destructive' })
     }
   }
 
-  const handleDeleteCat = async (id: string) => {
-    if (confirm('Tem certeza que deseja remover esta categoria?')) {
+  const handleDeleteNotif = async (id: string) => {
+    if (confirm('Tem certeza que deseja remover esta regra?')) {
       try {
-        await pb.collection('categories').delete(id)
-        toast({ title: 'Categoria removida' })
-        loadData()
+        await pb.collection('notification_rules').delete(id)
+        toast({ title: 'Regra removida' })
+        loadNotificationRules()
       } catch (err) {
-        toast({ title: 'Erro: Categoria pode estar em uso.', variant: 'destructive' })
+        toast({ title: 'Erro ao remover regra', variant: 'destructive' })
       }
     }
+  }
+
+  const toggleFormRecipient = (role: string) => {
+    setNotifForm((prev) => ({
+      ...prev,
+      recipients: prev.recipients.includes(role)
+        ? prev.recipients.filter((r) => r !== role)
+        : [...prev.recipients, role],
+    }))
   }
 
   return (
@@ -207,7 +227,6 @@ export default function Settings() {
       <Tabs defaultValue="geral" className="w-full">
         <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="geral">Geral (Marca)</TabsTrigger>
-          <TabsTrigger value="categories">Categorias & Comissões</TabsTrigger>
           <TabsTrigger value="notifications">Gerenciamento de Notificações</TabsTrigger>
         </TabsList>
 
@@ -253,77 +272,10 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
-          <Card className="border-border shadow-sm">
-            <CardHeader>
-              <CardTitle>Regras de Notificação</CardTitle>
-              <CardDescription>
-                Configure quais eventos do sistema disparam alertas e quem deve recebê-los.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Evento</TableHead>
-                    <TableHead>Destinatários</TableHead>
-                    <TableHead>Canal</TableHead>
-                    <TableHead className="text-right">Ativo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {notifRules.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">
-                        {r.event_type === 'new_appointment' && 'Novo Agendamento'}
-                        {r.event_type === 'cancellation' && 'Cancelamento'}
-                        {r.event_type === 'no_show' && 'Não Comparecimento'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {['Admin', 'Socio', 'Autonomo'].map((role) => (
-                            <Badge
-                              key={role}
-                              variant={r.recipients?.includes(role) ? 'default' : 'outline'}
-                              className="cursor-pointer"
-                              onClick={() => toggleRecipient(r, role)}
-                            >
-                              {role}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="capitalize text-muted-foreground">
-                        {r.channel === 'internal' ? 'Sistema Interno' : r.channel}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant={r.is_active ? 'default' : 'secondary'}
-                          size="sm"
-                          onClick={() => toggleNotifRule(r.id, r.is_active)}
-                        >
-                          {r.is_active ? 'Sim' : 'Não'}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {notifRules.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                        Nenhuma regra encontrada.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="categories" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Gerenciar Categorias</h3>
-            <Button onClick={() => handleOpenCat()}>
-              <Plus className="size-4 mr-2" /> Nova Categoria
+            <h3 className="text-lg font-semibold">Regras de Notificação</h3>
+            <Button onClick={() => handleOpenNotif()}>
+              <Plus className="size-4 mr-2" /> Nova Regra
             </Button>
           </div>
 
@@ -331,41 +283,56 @@ export default function Settings() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Tipo de Item</TableHead>
-                  <TableHead>Comissão Padrão (%)</TableHead>
+                  <TableHead>Evento</TableHead>
+                  <TableHead>Destinatários</TableHead>
+                  <TableHead>Canal</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {categories.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={c.type === 'service' ? 'default' : 'secondary'}>
-                        {c.type === 'service' ? 'Serviço' : 'Produto'}
-                      </Badge>
+                {notifRules.map((r) => (
+                  <TableRow key={r.id} className={!r.is_active ? 'opacity-50' : ''}>
+                    <TableCell className="font-medium">
+                      {r.event_type === 'new_appointment' && 'Novo Agendamento'}
+                      {r.event_type === 'cancellation' && 'Cancelamento'}
+                      {r.event_type === 'no_show' && 'Não Comparecimento'}
+                      {r.event_type === 'retention' && 'Retenção de Cliente'}
+                      {r.event_type === 'other' && 'Outros'}
                     </TableCell>
-                    <TableCell>{c.commission_percentage}%</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {r.recipients?.map((role: string) => (
+                          <Badge key={role} variant="outline">
+                            {role}
+                          </Badge>
+                        ))}
+                        {(!r.recipients || r.recipients.length === 0) && (
+                          <span className="text-muted-foreground text-xs">Nenhum</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="capitalize text-muted-foreground">
+                      {r.channel === 'internal' ? 'Sistema Interno' : r.channel}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenCat(c)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenNotif(r)}>
                         <Edit className="size-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteCat(c.id)}
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteNotif(r.id)}
                       >
                         <Trash2 className="size-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
-                {categories.length === 0 && (
+                {notifRules.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                      Nenhuma categoria cadastrada.
+                      Nenhuma regra encontrada.
                     </TableCell>
                   </TableRow>
                 )}
@@ -375,58 +342,95 @@ export default function Settings() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={isCatOpen} onOpenChange={setIsCatOpen}>
+      <Dialog open={isNotifOpen} onOpenChange={setIsNotifOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingCatId ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
+            <DialogTitle>
+              {editingNotifId ? 'Editar Regra de Notificação' : 'Nova Regra de Notificação'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Nome da Categoria</Label>
-              <Input
-                value={catForm.name}
-                onChange={(e) => setCatForm({ ...catForm, name: e.target.value })}
-                placeholder="Ex: Cabelo, Barba, Produtos Premium..."
-              />
+              <Label>Tipo de Evento</Label>
+              <Select
+                value={notifForm.event_type}
+                onValueChange={(v) => setNotifForm({ ...notifForm, event_type: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new_appointment">Novo Agendamento</SelectItem>
+                  <SelectItem value="cancellation">Cancelamento</SelectItem>
+                  <SelectItem value="no_show">Não Comparecimento</SelectItem>
+                  <SelectItem value="retention">Retenção de Cliente</SelectItem>
+                  <SelectItem value="other">Outros</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label>Destinatários (Perfis)</Label>
+              <div className="flex gap-2 border p-3 rounded-md">
+                {['Admin', 'Socio', 'Autonomo'].map((role) => (
+                  <Badge
+                    key={role}
+                    variant={notifForm.recipients.includes(role) ? 'default' : 'outline'}
+                    className="cursor-pointer"
+                    onClick={() => toggleFormRecipient(role)}
+                  >
+                    {role}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Tipo</Label>
+                <Label>Canal de Envio</Label>
                 <Select
-                  value={catForm.type}
-                  onValueChange={(v) => setCatForm({ ...catForm, type: v })}
+                  value={notifForm.channel}
+                  onValueChange={(v) => setNotifForm({ ...notifForm, channel: v })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="service">Serviços</SelectItem>
-                    <SelectItem value="product">Produtos</SelectItem>
+                    <SelectItem value="internal">Sistema Interno</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Comissão Padrão (%)</Label>
+                <Label>Offset / Tempo (Horas ou Dias)</Label>
                 <Input
                   type="number"
-                  min="0"
-                  max="100"
-                  value={catForm.commission_percentage}
+                  value={notifForm.timing_offset}
                   onChange={(e) =>
-                    setCatForm({ ...catForm, commission_percentage: Number(e.target.value) })
+                    setNotifForm({ ...notifForm, timing_offset: Number(e.target.value) })
                   }
                   placeholder="0"
                 />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Esta comissão será aplicada automaticamente no checkout para todos os itens associados
-              a esta categoria.
-            </p>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={notifForm.is_active}
+                onChange={(e) => setNotifForm({ ...notifForm, is_active: e.target.checked })}
+                className="rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="is_active" className="cursor-pointer">
+                Regra Ativa
+              </Label>
+            </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSaveCat} className="w-full sm:w-auto">
-              Salvar Categoria
+            <Button onClick={handleSaveNotif} className="w-full sm:w-auto">
+              Salvar Regra
             </Button>
           </DialogFooter>
         </DialogContent>

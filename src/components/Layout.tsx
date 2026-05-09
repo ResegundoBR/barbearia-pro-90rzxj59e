@@ -52,6 +52,7 @@ import {
 import useMainStore from '@/stores/main'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
+import { usePermissions } from '@/hooks/use-permissions'
 import pb from '@/lib/pocketbase/client'
 import { useState, useEffect } from 'react'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -76,31 +77,9 @@ export default function Layout() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [logoUrl, setLogoUrl] = useState('')
 
-  const isAdmin =
-    user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
+  const { hasAccess, isAdmin } = usePermissions()
   const isStaff = user?.access_level === 'Staff'
   const canAccessSettings = isAdmin || isStaff
-
-  const [rolePerms, setRolePerms] = useState<any>({})
-  const defaultPerms = {
-    Admin: ['*'],
-    Socio: ['agenda', 'clientes', 'checkout'],
-    Autonomo: ['agenda'],
-  }
-
-  useEffect(() => {
-    pb.collection('settings')
-      .getFirstListItem('key="role_permissions"')
-      .then((r) => setRolePerms(r.value))
-      .catch(() => setRolePerms(defaultPerms))
-  }, [])
-
-  const allowedModules =
-    rolePerms[user?.access_level || 'Autonomo'] ||
-    defaultPerms[user?.access_level as keyof typeof defaultPerms] ||
-    []
-  const hasAccess = (module: string) =>
-    allowedModules.includes('*') || allowedModules.includes(module)
 
   const allNavItems = [
     { id: 'dashboard', title: 'Dashboard', url: '/', icon: LayoutDashboard },
@@ -163,6 +142,10 @@ export default function Layout() {
     } catch (err) {
       console.error(err)
     }
+  }
+
+  const handleNotificationClick = async (e: React.MouseEvent, id: string) => {
+    await markNotificationAsRead(e, id)
   }
 
   const loadLogo = async () => {
@@ -299,7 +282,8 @@ export default function Layout() {
                   {notifications.map((n) => (
                     <div
                       key={n.id}
-                      className="p-3 bg-muted/30 border rounded-md relative flex items-start justify-between group"
+                      className="p-3 bg-muted/30 border rounded-md relative flex items-start justify-between group cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={(e) => handleNotificationClick(e, n.id)}
                     >
                       <div className="pr-6">
                         <p className="text-sm font-bold text-primary">{n.title}</p>

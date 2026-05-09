@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { format, endOfWeek, endOfMonth } from 'date-fns'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +29,7 @@ interface FinancialViewProps {
   commissions: any[]
   isAdmin: boolean
   onOpenAdvanceModal: () => void
+  hideForecast?: boolean
 }
 
 interface TransactionGroup {
@@ -47,7 +49,12 @@ interface TransactionGroup {
   commissions: any[]
 }
 
-export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: FinancialViewProps) {
+export function FinancialView({
+  commissions,
+  isAdmin,
+  onOpenAdvanceModal,
+  hideForecast = false,
+}: FinancialViewProps) {
   const [transactions, setTransactions] = useState<TransactionGroup[]>([])
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
 
@@ -513,7 +520,12 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div
+        className={cn(
+          'grid grid-cols-1 md:grid-cols-2 gap-4',
+          hideForecast ? 'lg:grid-cols-4' : 'lg:grid-cols-5',
+        )}
+      >
         <Card
           className="bg-glass border-none cursor-pointer hover:bg-muted/50 transition-colors"
           onClick={() => setModalType('recebimentos')}
@@ -528,38 +540,44 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-glass border-none">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Previsão de Recebimento
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div
-              className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
-              onClick={() => setForecastModal('tomorrow')}
-            >
-              <span className="text-muted-foreground text-xs">Amanhã</span>
-              <span className="font-bold text-blue-500">
-                R$ {calcForecast('tomorrow').toFixed(2)}
-              </span>
-            </div>
-            <div
-              className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
-              onClick={() => setForecastModal('week')}
-            >
-              <span className="text-muted-foreground text-xs">Restante da Semana</span>
-              <span className="font-bold text-blue-500">R$ {calcForecast('week').toFixed(2)}</span>
-            </div>
-            <div
-              className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
-              onClick={() => setForecastModal('month')}
-            >
-              <span className="text-muted-foreground text-xs">Restante do Mês</span>
-              <span className="font-bold text-blue-500">R$ {calcForecast('month').toFixed(2)}</span>
-            </div>
-          </CardContent>
-        </Card>
+        {!hideForecast && (
+          <Card className="bg-glass border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Previsão de Recebimento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div
+                className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
+                onClick={() => setForecastModal('tomorrow')}
+              >
+                <span className="text-muted-foreground text-xs">Amanhã</span>
+                <span className="font-bold text-blue-500">
+                  R$ {calcForecast('tomorrow').toFixed(2)}
+                </span>
+              </div>
+              <div
+                className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
+                onClick={() => setForecastModal('week')}
+              >
+                <span className="text-muted-foreground text-xs">Restante da Semana</span>
+                <span className="font-bold text-blue-500">
+                  R$ {calcForecast('week').toFixed(2)}
+                </span>
+              </div>
+              <div
+                className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
+                onClick={() => setForecastModal('month')}
+              >
+                <span className="text-muted-foreground text-xs">Restante do Mês</span>
+                <span className="font-bold text-blue-500">
+                  R$ {calcForecast('month').toFixed(2)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <Card
           className="bg-glass border-none cursor-pointer hover:bg-muted/50 transition-colors"
           onClick={() => setModalType('comissoes')}

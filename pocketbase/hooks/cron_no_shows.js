@@ -1,9 +1,9 @@
 cronAdd('no_shows_daily', '0 0 * * *', () => {
   const now = new Date()
-  now.setDate(now.getDate() - 7)
+  now.setDate(now.getDate() - 3)
   const cutoffStr = now.toISOString().replace('T', ' ').substring(0, 19)
 
-  // Find appointments that are older than 7 days and haven't been completed, cancelled, or already marked as absent
+  // Find appointments that are older than 3 days and haven't been completed, cancelled, or already marked as absent
   const apts = $app.findRecordsByFilter(
     'appointments',
     `date <= {:cutoff} && status != 'Concluído' && status != 'Cancelado' && status != 'Ausente'`,
@@ -40,7 +40,7 @@ cronAdd('no_shows_daily', '0 0 * * *', () => {
       log.set('client_id', apt.getString('client_id'))
       log.set('appointment_id', apt.id)
       log.set('event_type', 'no_show')
-      log.set('details', `Não compareceu no dia ${dateBr}, horário ${time}, barbeiro ${barberName}`)
+      log.set('details', `Automated: Client did not show for appointment on ${dateBr}`)
 
       $app.save(log)
 

@@ -33,6 +33,7 @@ import { getClients, createClient, updateClient, getBarbers } from '@/services/a
 import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
+import { usePermissions } from '@/hooks/use-permissions'
 
 const applyPhoneMask = (v: string) => {
   if (!v) return ''
@@ -58,6 +59,7 @@ const defForm = {
 
 export default function Clientes() {
   const { user } = useAuth()
+  const { hasAccess } = usePermissions()
   const [clients, setClients] = useState<any[]>([])
   const [barbers, setBarbers] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -126,9 +128,11 @@ export default function Clientes() {
           <h2 className="text-2xl font-bold tracking-tight">Clientes (CRM)</h2>
           <p className="text-muted-foreground">Gerencie seus clientes e acompanhe histórico.</p>
         </div>
-        <Button onClick={openNew} className="gap-2">
-          <UserPlus className="size-4" /> Novo Cliente
-        </Button>
+        {hasAccess('action_delete') && (
+          <Button onClick={openNew} className="gap-2">
+            <UserPlus className="size-4" /> Novo Cliente
+          </Button>
+        )}
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -290,12 +294,15 @@ export default function Clientes() {
                     <Switch
                       checked={c.is_active !== false}
                       onCheckedChange={() => toggleActive(c.id, c.is_active !== false)}
+                      disabled={!hasAccess('action_delete')}
                     />
                   </TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
-                      <Edit className="size-4" />
-                    </Button>
+                    {hasAccess('action_delete') && (
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
+                        <Edit className="size-4" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" asChild>
                       <Link to={`/clientes/${c.id}`}>
                         <Eye className="size-4" />

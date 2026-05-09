@@ -212,6 +212,8 @@ export default function UsersPage() {
     { id: 'staff', label: 'Equipe & Comissões' },
     { id: 'checkout', label: 'Checkout (POS)' },
     { id: 'financeiro', label: 'Financeiro' },
+    { id: 'action_delete', label: 'Ação: Excluir Registros' },
+    { id: 'action_reports', label: 'Ação: Visualizar Relatórios' },
   ]
 
   const toggleModule = async (role: string, modId: string, checked: boolean) => {
