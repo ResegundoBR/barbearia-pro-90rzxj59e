@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -8,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -26,19 +25,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Edit, Plus, Trash2, DollarSign, Printer } from 'lucide-react'
-import { format } from 'date-fns'
-import { getBarbers, createBarber, updateBarber } from '@/services/barbers'
+import { Plus, DollarSign, Printer, CalendarIcon } from 'lucide-react'
 import {
-  getCommissionRules,
-  createCommissionRule,
-  updateCommissionRule,
-  deleteCommissionRule,
-} from '@/services/commission_rules'
-import { getServices } from '@/services/services'
-import { getProducts } from '@/services/products'
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  subDays,
+  startOfDay,
+  endOfDay,
+} from 'date-fns'
+import { getBarbers, createBarber } from '@/services/barbers'
 import {
-  getPackages,
   getCommissions,
   getAppointments,
   getProductPurchases,
@@ -46,51 +45,68 @@ import {
 } from '@/services/api'
 import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import type { DateRange } from 'react-day-picker'
 
 export default function Staff() {
   const [barbers, setBarbers] = useState<any[]>([])
   const [commissions, setCommissions] = useState<any[]>([])
-  const [rules, setRules] = useState<any[]>([])
-  const [services, setServices] = useState<any[]>([])
-  const [products, setProducts] = useState<any[]>([])
-  const [packages, setPackages] = useState<any[]>([])
+
+  const [dateFilter, setDateFilter] = useState('this_month')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
 
   const [bDialog, setBDialog] = useState(false)
-  const [rDialog, setRDialog] = useState(false)
-
   const [selectedBarberDetailed, setSelectedBarberDetailed] = useState<any>(null)
   const [reportItems, setReportItems] = useState<any[]>([])
 
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<any>({
     name: '',
     commission_type: 'percentage',
     commission_value: 0,
     color: '#3b82f6',
   })
-  const [rForm, setRForm] = useState<any>({
-    id: null,
-    barber_id: '',
-    item_id: '',
-    item_type: 'service',
-    value: 0,
-    type: 'percentage',
-  })
 
   const { toast } = useToast()
 
   const loadData = async () => {
     setBarbers(await getBarbers())
-    setRules(await getCommissionRules())
-    setServices(await getServices())
-    setProducts(await getProducts())
-    setPackages(await getPackages())
     setCommissions(await getCommissions())
   }
 
   useEffect(() => {
     loadData()
   }, [])
+
+  const getRange = () => {
+    const today = new Date()
+    switch (dateFilter) {
+      case 'this_month':
+        return { from: startOfMonth(today), to: endOfMonth(today) }
+      case 'this_week':
+        return { from: startOfWeek(today), to: endOfWeek(today) }
+      case 'last_30':
+        return { from: subDays(today, 30), to: endOfDay(today) }
+      case 'last_7':
+        return { from: subDays(today, 7), to: endOfDay(today) }
+      case 'custom':
+        return dateRange && dateRange.from
+          ? {
+              from: startOfDay(dateRange.from),
+              to: dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from),
+            }
+          : { from: new Date(0), to: new Date(2100, 1, 1) }
+      default:
+        return { from: startOfMonth(today), to: endOfMonth(today) }
+    }
+  }
+
+  const range = getRange()
+
+  const filteredCommissions = commissions.filter((c) => {
+    const d = c.date ? new Date(c.date) : new Date(c.created)
+    return d >= range.from && d <= range.to
+  })
 
   const openDetailedReport = async (b: any) => {
     setSelectedBarberDetailed(b)
@@ -113,12 +129,13 @@ export default function Staff() {
             type: 'Serviço',
             client: a.expand?.client_id?.name || 'Avulso',
             item: a.expand?.service_id?.name || 'Serviço',
-            date: new Date(a.updated),
+            date: a.date ? new Date(a.date) : new Date(a.updated),
             time: a.time || format(new Date(a.updated), 'HH:mm'),
             packageUsed: !!a.client_package_id,
             price: a.price || a.expand?.service_id?.price || 0,
             commission: c?.amount || 0,
             status: c ? c.status : 'none',
+            commDate: c?.date ? new Date(c.date) : new Date(a.updated),
           }
         }),
         ...prods.map((p) => {
@@ -132,12 +149,13 @@ export default function Staff() {
             type: 'Produto',
             client: p.expand?.client_id?.name || 'Avulso',
             item: p.expand?.product_id?.name || 'Produto',
-            date: new Date(p.created),
+            date: p.date ? new Date(p.date) : new Date(p.created),
             time: format(new Date(p.created), 'HH:mm'),
             packageUsed: false,
             price: p.price_at_sale || 0,
             commission: c?.amount || 0,
             status: c ? c.status : 'none',
+            commDate: c?.date ? new Date(c.date) : new Date(p.created),
           }
         }),
         ...packs.map((pk) => {
@@ -157,9 +175,16 @@ export default function Staff() {
             price: pk.expand?.package_id?.price || 0,
             commission: c?.amount || 0,
             status: c ? c.status : 'none',
+            commDate: c?.date ? new Date(c.date) : new Date(pk.created),
           }
         }),
-      ].sort((a, b) => b.date.getTime() - a.date.getTime())
+      ]
+        .filter((i) => {
+          if (i.commission <= 0) return false
+          const d = i.commDate
+          return d >= range.from && d <= range.to
+        })
+        .sort((a, b) => b.commDate.getTime() - a.commDate.getTime())
 
       setReportItems(items)
     } catch (e) {
@@ -190,6 +215,7 @@ export default function Staff() {
           <body>
             <div class="header">
               <h2>Relatório Detalhado - ${selectedBarberDetailed?.name}</h2>
+              <p>Período selecionado: ${format(range.from, 'dd/MM/yyyy')} a ${format(range.to, 'dd/MM/yyyy')}</p>
               <p>Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
             </div>
             ${content}
@@ -205,21 +231,15 @@ export default function Staff() {
     }
   }
 
-  const openBarber = (b?: any) => {
-    setForm(
-      b
-        ? { ...b }
-        : { name: '', commission_type: 'percentage', commission_value: 0, color: '#3b82f6' },
-    )
-    setEditingId(b ? b.id : null)
+  const openBarber = () => {
+    setForm({ name: '', commission_type: 'percentage', commission_value: 0, color: '#3b82f6' })
     setBDialog(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      if (editingId) await updateBarber(editingId, form)
-      else await createBarber(form)
+      await createBarber(form)
       toast({ title: 'Profissional salvo!' })
       setBDialog(false)
       loadData()
@@ -228,192 +248,149 @@ export default function Staff() {
     }
   }
 
-  const handleRuleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      if (rForm.item_type === 'category' && !rForm.item_id) {
-        toast({ title: 'Selecione uma categoria', variant: 'destructive' })
-        return
-      }
-      if (rForm.id) {
-        await updateCommissionRule(rForm.id, rForm)
-        toast({ title: 'Regra atualizada!' })
-      } else {
-        await createCommissionRule(rForm)
-        toast({ title: 'Regra criada!' })
-      }
-      setRDialog(false)
-      loadData()
-    } catch {
-      toast({ title: 'Erro ao salvar regra', variant: 'destructive' })
-    }
-  }
-
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-10">
+    <div className="space-y-6 max-w-6xl mx-auto pb-10">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Equipe & Comissões</h2>
-        <p className="text-muted-foreground">Gestão de profissionais e regras específicas.</p>
+        <h2 className="text-2xl font-bold tracking-tight">Equipes & Comissões</h2>
+        <p className="text-muted-foreground">
+          Gestão de profissionais e acompanhamento de comissões.
+        </p>
       </div>
 
-      <Tabs defaultValue="staff" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="staff">Profissionais</TabsTrigger>
-          <TabsTrigger value="rules">Regras Granulares</TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={dateFilter === 'this_month' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDateFilter('this_month')}
+          >
+            Este mês
+          </Button>
+          <Button
+            variant={dateFilter === 'this_week' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDateFilter('this_week')}
+          >
+            Esta semana
+          </Button>
+          <Button
+            variant={dateFilter === 'last_30' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDateFilter('last_30')}
+          >
+            Últimos 30 dias
+          </Button>
+          <Button
+            variant={dateFilter === 'last_7' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDateFilter('last_7')}
+          >
+            Últimos 7 dias
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={dateFilter === 'custom' ? 'default' : 'outline'}
+                size="sm"
+                className="gap-2"
+              >
+                <CalendarIcon className="size-4" />
+                {dateFilter === 'custom' && dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {format(dateRange.from, 'dd/MM/yy')} - {format(dateRange.to, 'dd/MM/yy')}
+                    </>
+                  ) : (
+                    format(dateRange.from, 'dd/MM/yy')
+                  )
+                ) : (
+                  'Intervalo'
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={(range) => {
+                  setDateRange(range as any)
+                  setDateFilter('custom')
+                }}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <Button onClick={openBarber}>
+          <Plus className="size-4 mr-2" /> Adicionar Profissional
+        </Button>
+      </div>
 
-        <TabsContent value="staff" className="mt-4 space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => openBarber()}>
-              <Plus className="size-4 mr-2" /> Adicionar
-            </Button>
-          </div>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Pagos (Total)</TableHead>
-                    <TableHead>Comissão Disponível</TableHead>
-                    <TableHead>Comissão a Vencer</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Pagos (Total)</TableHead>
+                <TableHead>Comissão Disponível</TableHead>
+                <TableHead>Comissão a Receber</TableHead>
+                <TableHead>Total a Receber</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {barbers.map((b) => {
+                const bComms = filteredCommissions.filter((c) => c.barber_id === b.id)
+                const paid = bComms
+                  .filter((c) => c.status === 'paid')
+                  .reduce((acc, c) => acc + (c.amount || 0), 0)
+                const available = bComms
+                  .filter((c) => c.status === 'available')
+                  .reduce((acc, c) => acc + (c.amount || 0), 0)
+                const pending = bComms
+                  .filter((c) => c.status === 'pending')
+                  .reduce((acc, c) => acc + (c.amount || 0), 0)
+                const totalReceber = available + pending
+                return (
+                  <TableRow key={b.id}>
+                    <TableCell className="font-medium">{b.name}</TableCell>
+                    <TableCell>R$ {paid.toFixed(2)}</TableCell>
+                    <TableCell className="text-emerald-600 font-medium">
+                      R$ {available.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-amber-500 font-medium">
+                      R$ {pending.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-primary font-bold">
+                      R$ {totalReceber.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openDetailedReport(b)}
+                        title="Relatório Detalhado"
+                      >
+                        <DollarSign className="size-4 text-emerald-600" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {barbers.map((b) => {
-                    const bComms = commissions.filter((c) => c.barber_id === b.id)
-                    const paid = bComms
-                      .filter((c) => c.status === 'paid')
-                      .reduce((acc, c) => acc + (c.amount || 0), 0)
-                    const available = bComms
-                      .filter((c) => c.status === 'available')
-                      .reduce((acc, c) => acc + (c.amount || 0), 0)
-                    const pending = bComms
-                      .filter((c) => c.status === 'pending')
-                      .reduce((acc, c) => acc + (c.amount || 0), 0)
-                    return (
-                      <TableRow key={b.id}>
-                        <TableCell className="font-medium">{b.name}</TableCell>
-                        <TableCell>R$ {paid.toFixed(2)}</TableCell>
-                        <TableCell className="text-emerald-600 font-medium">
-                          R$ {available.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-amber-500 font-medium">
-                          R$ {pending.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDetailedReport(b)}
-                            title="Relatório Detalhado"
-                          >
-                            <DollarSign className="size-4 text-emerald-600" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openBarber(b)}
-                            title="Editar Profissional"
-                          >
-                            <Edit className="size-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="rules" className="mt-4 space-y-4">
-          <div className="flex justify-end">
-            <Button
-              onClick={() => {
-                setRForm({
-                  id: null,
-                  barber_id: '',
-                  item_id: '',
-                  item_type: 'service',
-                  value: 0,
-                  type: 'percentage',
-                })
-                setRDialog(true)
-              }}
-            >
-              <Plus className="size-4 mr-2" /> Nova Regra
-            </Button>
-          </div>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Categoria/Tipo</TableHead>
-                    <TableHead>Comissão (%)</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rules
-                    .filter((r) => !r.barber_id)
-                    .map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-medium">
-                          {r.item_type === 'service'
-                            ? 'Serviços'
-                            : r.item_type === 'package'
-                              ? 'Pacotes'
-                              : r.item_type === 'category'
-                                ? `Categoria - ${r.item_id}`
-                                : r.item_type === 'product'
-                                  ? !r.item_id || r.item_id === 'all'
-                                    ? 'Todos os Produtos'
-                                    : `Produto: ${products.find((p) => p.id === r.item_id)?.name || 'Desconhecido'}`
-                                  : r.item_type}
-                        </TableCell>
-                        <TableCell>{r.value}%</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setRForm({ ...r })
-                              setRDialog(true)
-                            }}
-                          >
-                            <Edit className="size-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            onClick={async () => {
-                              await deleteCommissionRule(r.id)
-                              loadData()
-                            }}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  {rules.filter((r) => !r.barber_id).length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
-                        Nenhuma regra cadastrada.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                )
+              })}
+              {barbers.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    Nenhum profissional encontrado.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Dialog
         open={!!selectedBarberDetailed}
@@ -435,7 +412,6 @@ export default function Staff() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Item</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Pacote?</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Valor Venda</TableHead>
                     <TableHead className="text-right">Comissão</TableHead>
@@ -448,11 +424,21 @@ export default function Staff() {
                         {format(item.date, 'dd/MM/yyyy')} às {item.time}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{item.type}</Badge>
+                        <Badge
+                          variant="outline"
+                          className={
+                            item.type === 'Serviço'
+                              ? 'bg-blue-100 text-blue-800 border-blue-200'
+                              : item.type === 'Produto'
+                                ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                : 'bg-gray-100 text-gray-800 border-gray-200'
+                          }
+                        >
+                          {item.type}
+                        </Badge>
                       </TableCell>
                       <TableCell>{item.item}</TableCell>
                       <TableCell>{item.client}</TableCell>
-                      <TableCell>{item.packageUsed ? 'Sim' : '-'}</TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -468,7 +454,7 @@ export default function Staff() {
                             : item.status === 'available'
                               ? 'Disponível'
                               : item.status === 'pending'
-                                ? 'A Vencer'
+                                ? 'A Receber'
                                 : '-'}
                         </Badge>
                       </TableCell>
@@ -480,8 +466,8 @@ export default function Staff() {
                   ))}
                   {reportItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        Nenhum registro de atividade encontrado.
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        Nenhuma comissão registrada para este período.
                       </TableCell>
                     </TableRow>
                   )}
@@ -506,7 +492,7 @@ export default function Staff() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Comissão a Vencer:</span>
+                    <span className="text-muted-foreground">Comissão a Receber:</span>
                     <span className="text-amber-500 font-semibold">
                       R${' '}
                       {reportItems
@@ -530,7 +516,7 @@ export default function Staff() {
       <Dialog open={bDialog} onOpenChange={setBDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar Profissional' : 'Novo Profissional'}</DialogTitle>
+            <DialogTitle>Novo Profissional</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -567,95 +553,6 @@ export default function Staff() {
             </div>
             <DialogFooter>
               <Button type="submit">Salvar</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={rDialog} onOpenChange={setRDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{rForm.id ? 'Editar Regra' : 'Nova Regra de Comissão'}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleRuleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Categoria / Tipo</Label>
-              <Select
-                value={rForm.item_type}
-                onValueChange={(v) => {
-                  setRForm({
-                    ...rForm,
-                    item_type: v,
-                    item_id: v === 'category' ? 'Beleza' : v === 'product' ? 'all' : '',
-                  })
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="service">Serviços</SelectItem>
-                  <SelectItem value="package">Pacotes</SelectItem>
-                  <SelectItem value="category">Categoria de Produto</SelectItem>
-                  <SelectItem value="product">Produtos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {rForm.item_type === 'category' && (
-              <div className="space-y-2">
-                <Label>Qual Categoria?</Label>
-                <Select
-                  required
-                  value={rForm.item_id}
-                  onValueChange={(v) => setRForm({ ...rForm, item_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a categoria..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Beleza">Beleza</SelectItem>
-                    <SelectItem value="Bebidas">Bebidas</SelectItem>
-                    <SelectItem value="Acessórios">Acessórios</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {rForm.item_type === 'product' && (
-              <div className="space-y-2">
-                <Label>Qual Produto?</Label>
-                <Select
-                  required
-                  value={rForm.item_id}
-                  onValueChange={(v) => setRForm({ ...rForm, item_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o produto..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os Produtos</SelectItem>
-                    {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label>Comissão (%)</Label>
-              <Input
-                type="number"
-                required
-                min="0"
-                max="100"
-                value={rForm.value}
-                onChange={(e) => setRForm({ ...rForm, value: Number(e.target.value) })}
-              />
-            </div>
-            <DialogFooter>
-              <Button type="submit">Salvar Regra</Button>
             </DialogFooter>
           </form>
         </DialogContent>
