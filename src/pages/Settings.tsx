@@ -51,7 +51,7 @@ export default function Settings() {
       const cats = await pb.collection('categories').getFullList({ sort: 'type,name' })
       setCategories(cats)
 
-      const sett = await pb.collection('settings').getFullList({ filter: 'key="general_config"' })
+      const sett = await pb.collection('settings').getFullList({ filter: 'key="logo"' })
       if (sett.length > 0) {
         setLogoConfigId(sett[0].id)
         if (sett[0].logo) {
@@ -91,7 +91,7 @@ export default function Settings() {
     if (!selectedLogoFile) return
     const formData = new FormData()
     formData.append('logo', selectedLogoFile)
-    formData.append('key', 'general_config')
+    formData.append('key', 'logo')
     formData.append('value', '{}')
 
     try {

@@ -333,6 +333,10 @@ export default function Agenda() {
             const height = Math.max(15, (eH - sH + (eM - sM) / 60) * 60)
             const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
             const isCanceled = apt.status === 'Cancelado'
+            const isCompleted = apt.status === 'Concluído'
+            const isPast =
+              new Date(apt.date || new Date()) < new Date(new Date().setHours(0, 0, 0, 0))
+            const isMissed = isPast && !isCompleted && !isCanceled
 
             return (
               <div
@@ -340,8 +344,14 @@ export default function Agenda() {
                 className={cn(
                   'absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] cursor-pointer',
                   isCanceled && 'opacity-50 grayscale',
+                  isCompleted && 'opacity-50',
                 )}
-                style={{ top, height, backgroundColor: barberColor }}
+                style={{
+                  top,
+                  height,
+                  backgroundColor: isMissed ? 'black' : barberColor,
+                  color: isMissed ? 'white' : 'white',
+                }}
                 onClick={(e) => {
                   e.stopPropagation()
                   handleOpenDetail(apt)
@@ -406,25 +416,37 @@ export default function Agenda() {
                   </span>
                 </div>
                 <div className="flex flex-col gap-1 flex-1 overflow-hidden">
-                  {events.slice(0, 4).map((apt) => (
-                    <div
-                      key={apt.id}
-                      className={cn(
-                        'text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm',
-                        apt.status === 'Cancelado' && 'opacity-50 grayscale',
-                      )}
-                      style={{
-                        backgroundColor: apt.expand?.barber_id?.color || 'hsl(var(--primary))',
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleOpenDetail(apt)
-                      }}
-                    >
-                      {apt.time} - {apt.expand?.barber_id?.name?.split(' ')[0]} -{' '}
-                      {apt.expand?.service_id?.name} ({apt.expand?.client_id?.name})
-                    </div>
-                  ))}
+                  {events.slice(0, 4).map((apt) => {
+                    const isCompleted = apt.status === 'Concluído'
+                    const isCanceled = apt.status === 'Cancelado'
+                    const isPast =
+                      new Date(apt.date || new Date()) < new Date(new Date().setHours(0, 0, 0, 0))
+                    const isMissed = isPast && !isCompleted && !isCanceled
+
+                    return (
+                      <div
+                        key={apt.id}
+                        className={cn(
+                          'text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm',
+                          isCanceled && 'opacity-50 grayscale',
+                          isCompleted && 'opacity-50',
+                        )}
+                        style={{
+                          backgroundColor: isMissed
+                            ? 'black'
+                            : apt.expand?.barber_id?.color || 'hsl(var(--primary))',
+                          color: isMissed ? 'white' : 'white',
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenDetail(apt)
+                        }}
+                      >
+                        {apt.time} - {apt.expand?.barber_id?.name?.split(' ')[0]} -{' '}
+                        {apt.expand?.service_id?.name} ({apt.expand?.client_id?.name})
+                      </div>
+                    )
+                  })}
                   {events.length > 4 && (
                     <div className="text-[10px] text-muted-foreground font-medium pl-1">
                       +{events.length - 4} mais

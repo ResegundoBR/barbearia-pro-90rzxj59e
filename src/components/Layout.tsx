@@ -114,9 +114,7 @@ export default function Layout() {
 
   const loadLogo = async () => {
     try {
-      const records = await pb
-        .collection('settings')
-        .getFullList({ filter: 'key="general_config"' })
+      const records = await pb.collection('settings').getFullList({ filter: 'key="logo"' })
       if (records.length > 0 && records[0].logo) {
         setLogoUrl(pb.files.getURL(records[0], records[0].logo))
       }

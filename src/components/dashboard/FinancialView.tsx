@@ -63,8 +63,16 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     'comissoes' | 'adiantamentos' | 'totalLiquido' | 'recebimentos' | null
   >(null)
 
+  const normalizedCommissions = useMemo(() => {
+    return commissions.map((c) => {
+      const effectiveStatus =
+        c.payment_method === 'credito' || c.payment_method === 'credit_card' ? 'paid' : c.status
+      return { ...c, status: effectiveStatus }
+    })
+  }, [commissions])
+
   const filteredCommissions = useMemo(() => {
-    return commissions.filter((c) => {
+    return normalizedCommissions.filter((c) => {
       const cDate = new Date(c.date || c.created)
       let inRange = true
       if (date?.from) {
@@ -329,7 +337,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -379,6 +387,62 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
               />
             </PopoverContent>
           </Popover>
+
+          <div className="flex flex-wrap items-center gap-1 sm:ml-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const from = new Date()
+                from.setHours(0, 0, 0, 0)
+                const to = new Date()
+                to.setHours(23, 59, 59, 999)
+                setDate({ from, to })
+              }}
+            >
+              Hoje
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const now = new Date()
+                const from = new Date(now)
+                from.setDate(now.getDate() - now.getDay())
+                from.setHours(0, 0, 0, 0)
+                const to = new Date(from)
+                to.setDate(from.getDate() + 6)
+                to.setHours(23, 59, 59, 999)
+                setDate({ from, to })
+              }}
+            >
+              Semana
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const now = new Date()
+                const from = new Date(now.getFullYear(), now.getMonth(), 1)
+                const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+                setDate({ from, to })
+              }}
+            >
+              Mês
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const now = new Date()
+                const from = new Date(now.getFullYear(), 0, 1)
+                const to = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
+                setDate({ from, to })
+              }}
+            >
+              Ano
+            </Button>
+          </div>
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -498,7 +562,17 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                       <TableRow key={c.id}>
                         <TableCell>{format(new Date(c.date || c.created), 'dd/MM/yyyy')}</TableCell>
                         <TableCell>
-                          {c.due_date ? format(new Date(c.due_date), 'dd/MM/yyyy') : '-'}
+                          {c.due_date
+                            ? format(new Date(c.due_date), 'dd/MM/yyyy')
+                            : c.expand?.barber_id?.payment_schedule_config?.days
+                              ? format(
+                                  new Date(
+                                    new Date(c.date || c.created).getTime() +
+                                      c.expand.barber_id.payment_schedule_config.days * 86400000,
+                                  ),
+                                  'dd/MM/yyyy',
+                                )
+                              : '-'}
                         </TableCell>
                         <TableCell className="font-medium">
                           {c.expand?.barber_id?.name || '-'}
