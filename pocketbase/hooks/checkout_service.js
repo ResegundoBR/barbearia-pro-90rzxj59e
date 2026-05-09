@@ -57,33 +57,61 @@ routerAdd(
       // 2. Commissions & Products
       const now = new Date().toISOString().replace('T', ' ').substring(0, 19)
       const isCredit = svcForm.payment_method === 'credito'
-      const status = isCredit ? 'pending' : 'available'
-
+      let status = isCredit ? 'pending' : 'available'
       let due_date = ''
+
+      const barber = txApp.findRecordById('barbers', barberId)
+      const workLevel = barber.getString('work_level') || 'autonomo'
+
       if (isCredit) {
         const d = new Date()
         d.setDate(d.getDate() + 30)
         due_date = d.toISOString().replace('T', ' ').substring(0, 19)
+      } else {
+        const scheduleStr = barber.getString('payment_schedule_config')
+        if (scheduleStr) {
+          try {
+            const schedule = JSON.parse(scheduleStr)
+            if (schedule && schedule.rules && Array.isArray(schedule.rules)) {
+              const today = new Date()
+              const currentDay = today.getDay()
+              for (const rule of schedule.rules) {
+                if (rule.days.includes(currentDay)) {
+                  let diff = rule.payDay - currentDay
+                  if (diff <= 0) diff += 7
+                  const payDate = new Date(today)
+                  payDate.setDate(payDate.getDate() + diff)
+                  due_date = payDate.toISOString().replace('T', ' ').substring(0, 19)
+                  status = 'pending'
+                  break
+                }
+              }
+            }
+          } catch (e) {}
+        }
       }
-
-      const barber = txApp.findRecordById('barbers', barberId)
 
       // Service Commission
       if (apt && finalServicePrice > 0) {
         let commAmount = 0
-        const svcId = apt.getString('service_id')
-        if (svcId) {
-          const svc = txApp.findRecordById('services', svcId)
-          const catId = svc.getString('category_id')
-          if (catId) {
-            const cat = txApp.findRecordById('categories', catId)
-            const perc = cat.getFloat('commission_percentage') || 0
-            commAmount = finalServicePrice * (perc / 100)
-          } else {
-            commAmount =
-              barber.getString('commission_type') === 'percentage'
-                ? finalServicePrice * (barber.getFloat('commission_value') / 100)
-                : barber.getFloat('commission_value')
+
+        if (workLevel === 'socio') {
+          commAmount = finalServicePrice
+        } else {
+          const svcId = apt.getString('service_id')
+          if (svcId) {
+            const svc = txApp.findRecordById('services', svcId)
+            const catId = svc.getString('category_id')
+            if (catId) {
+              const cat = txApp.findRecordById('categories', catId)
+              const perc = cat.getFloat('commission_percentage') || 0
+              commAmount = finalServicePrice * (perc / 100)
+            } else {
+              commAmount =
+                barber.getString('commission_type') === 'percentage'
+                  ? finalServicePrice * (barber.getFloat('commission_value') / 100)
+                  : barber.getFloat('commission_value')
+            }
           }
         }
 
@@ -123,16 +151,23 @@ routerAdd(
           txApp.save(purch)
 
           let prodComm = 0
-          const catId = prod.getString('category_id')
-          if (catId) {
-            const cat = txApp.findRecordById('categories', catId)
-            const perc = cat.getFloat('commission_percentage') || 0
-            prodComm = prod.getFloat('price') * sp.quantity * (perc / 100)
+
+          if (workLevel === 'socio') {
+            prodComm = prod.getFloat('price') * sp.quantity
           } else {
-            prodComm =
-              barber.getString('commission_type') === 'percentage'
-                ? prod.getFloat('price') * sp.quantity * (barber.getFloat('commission_value') / 100)
-                : barber.getFloat('commission_value') * sp.quantity
+            const catId = prod.getString('category_id')
+            if (catId) {
+              const cat = txApp.findRecordById('categories', catId)
+              const perc = cat.getFloat('commission_percentage') || 0
+              prodComm = prod.getFloat('price') * sp.quantity * (perc / 100)
+            } else {
+              prodComm =
+                barber.getString('commission_type') === 'percentage'
+                  ? prod.getFloat('price') *
+                    sp.quantity *
+                    (barber.getFloat('commission_value') / 100)
+                  : barber.getFloat('commission_value') * sp.quantity
+            }
           }
 
           if (prodComm > 0) {

@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, DollarSign, Printer, CalendarIcon } from 'lucide-react'
+import { Plus, DollarSign, Printer, CalendarIcon, Trash } from 'lucide-react'
 import {
   format,
   startOfMonth,
@@ -65,6 +65,8 @@ export default function Staff() {
     commission_type: 'percentage',
     commission_value: 0,
     color: '#3b82f6',
+    work_level: 'autonomo',
+    payment_schedule_config: { rules: [] },
   })
 
   const { toast } = useToast()
@@ -89,6 +91,8 @@ export default function Staff() {
         return { from: subDays(today, 30), to: endOfDay(today) }
       case 'last_7':
         return { from: subDays(today, 7), to: endOfDay(today) }
+      case 'all_time':
+        return { from: new Date(0), to: new Date(2100, 1, 1) }
       case 'custom':
         return dateRange && dateRange.from
           ? {
@@ -232,15 +236,50 @@ export default function Staff() {
   }
 
   const openBarber = () => {
-    setForm({ name: '', commission_type: 'percentage', commission_value: 0, color: '#3b82f6' })
+    setForm({
+      name: '',
+      commission_type: 'percentage',
+      commission_value: 0,
+      color: '#3b82f6',
+      work_level: 'autonomo',
+      payment_schedule_config: { rules: [] },
+    })
     setBDialog(true)
   }
+
+  const editBarber = (b: any) => {
+    setForm({
+      id: b.id,
+      name: b.name,
+      commission_type: b.commission_type || 'percentage',
+      commission_value: b.commission_value || 0,
+      color: b.color || '#3b82f6',
+      work_level: b.work_level || 'autonomo',
+      payment_schedule_config: b.payment_schedule_config || { rules: [] },
+    })
+    setBDialog(true)
+  }
+
+  const DAYS = [
+    { value: 0, label: 'Dom' },
+    { value: 1, label: 'Seg' },
+    { value: 2, label: 'Ter' },
+    { value: 3, label: 'Qua' },
+    { value: 4, label: 'Qui' },
+    { value: 5, label: 'Sex' },
+    { value: 6, label: 'Sáb' },
+  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createBarber(form)
-      toast({ title: 'Profissional salvo!' })
+      if (form.id) {
+        await updateBarber(form.id, form)
+        toast({ title: 'Profissional atualizado!' })
+      } else {
+        await createBarber(form)
+        toast({ title: 'Profissional salvo!' })
+      }
       setBDialog(false)
       loadData()
     } catch {
@@ -259,6 +298,13 @@ export default function Staff() {
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={dateFilter === 'all_time' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDateFilter('all_time')}
+          >
+            Período Todo
+          </Button>
           <Button
             variant={dateFilter === 'this_month' ? 'default' : 'outline'}
             size="sm"
@@ -334,6 +380,7 @@ export default function Staff() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Nível</TableHead>
                 <TableHead>Pagos (Total)</TableHead>
                 <TableHead>Comissão Disponível</TableHead>
                 <TableHead>Comissão a Receber</TableHead>
@@ -356,7 +403,18 @@ export default function Staff() {
                 const totalReceber = available + pending
                 return (
                   <TableRow key={b.id}>
-                    <TableCell className="font-medium">{b.name}</TableCell>
+                    <TableCell
+                      className="font-medium cursor-pointer hover:underline text-blue-600"
+                      onClick={() => editBarber(b)}
+                      title="Clique para editar"
+                    >
+                      {b.name}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={b.work_level === 'socio' ? 'default' : 'outline'}>
+                        {b.work_level === 'socio' ? 'Sócio' : 'Autônomo'}
+                      </Badge>
+                    </TableCell>
                     <TableCell>R$ {paid.toFixed(2)}</TableCell>
                     <TableCell className="text-emerald-600 font-medium">
                       R$ {available.toFixed(2)}
@@ -528,28 +586,147 @@ export default function Staff() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Tipo Comissão Padrão</Label>
+              <Label>Nível de Trabalho</Label>
               <Select
-                value={form.commission_type}
-                onValueChange={(v) => setForm({ ...form, commission_type: v })}
+                value={form.work_level}
+                onValueChange={(v) => setForm({ ...form, work_level: v })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="percentage">Porcentagem (%)</SelectItem>
-                  <SelectItem value="fixed">Fixo (R$)</SelectItem>
+                  <SelectItem value="autonomo">Autônomo (Comissionado)</SelectItem>
+                  <SelectItem value="socio">Sócio (100% Repasse)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Valor</Label>
-              <Input
-                type="number"
-                required
-                value={form.commission_value}
-                onChange={(e) => setForm({ ...form, commission_value: Number(e.target.value) })}
-              />
+            {form.work_level !== 'socio' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Tipo Comissão Padrão</Label>
+                  <Select
+                    value={form.commission_type}
+                    onValueChange={(v) => setForm({ ...form, commission_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">Porcentagem (%)</SelectItem>
+                      <SelectItem value="fixed">Fixo (R$)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Valor</Label>
+                  <Input
+                    type="number"
+                    required
+                    value={form.commission_value}
+                    onChange={(e) => setForm({ ...form, commission_value: Number(e.target.value) })}
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="space-y-2 pt-2 border-t">
+              <Label className="text-base font-semibold">Ciclos de Pagamento</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Configure regras específicas de dias da semana para o repasse.
+              </p>
+              {form.payment_schedule_config?.rules?.map((rule: any, i: number) => (
+                <div
+                  key={i}
+                  className="flex flex-col gap-3 p-3 border rounded-md bg-slate-50 dark:bg-slate-900"
+                >
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">
+                      Dias trabalhados (Vendas/Serviços):
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {DAYS.map((d) => (
+                        <label
+                          key={d.value}
+                          className="flex items-center gap-1 text-sm cursor-pointer select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            className="rounded"
+                            checked={rule.days.includes(d.value)}
+                            onChange={(e) => {
+                              const newRules = [...form.payment_schedule_config.rules]
+                              if (e.target.checked) newRules[i].days.push(d.value)
+                              else
+                                newRules[i].days = newRules[i].days.filter(
+                                  (x: any) => x !== d.value,
+                                )
+                              setForm({ ...form, payment_schedule_config: { rules: newRules } })
+                            }}
+                          />
+                          {d.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-medium">Pagar na:</Label>
+                      <Select
+                        value={rule.payDay.toString()}
+                        onValueChange={(v) => {
+                          const newRules = [...form.payment_schedule_config.rules]
+                          newRules[i].payDay = Number(v)
+                          setForm({ ...form, payment_schedule_config: { rules: newRules } })
+                        }}
+                      >
+                        <SelectTrigger className="w-[120px] h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DAYS.map((d) => (
+                            <SelectItem key={d.value} value={d.value.toString()}>
+                              {d.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        const newRules = form.payment_schedule_config.rules.filter(
+                          (_: any, idx: number) => idx !== i,
+                        )
+                        setForm({ ...form, payment_schedule_config: { rules: newRules } })
+                      }}
+                      title="Remover regra"
+                    >
+                      <Trash className="size-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 border-dashed"
+                onClick={() => {
+                  setForm({
+                    ...form,
+                    payment_schedule_config: {
+                      ...form.payment_schedule_config,
+                      rules: [
+                        ...(form.payment_schedule_config?.rules || []),
+                        { days: [], payDay: 1 },
+                      ],
+                    },
+                  })
+                }}
+              >
+                <Plus className="size-4 mr-2" /> Adicionar Regra de Ciclo
+              </Button>
             </div>
             <DialogFooter>
               <Button type="submit">Salvar</Button>
