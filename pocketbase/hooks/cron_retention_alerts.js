@@ -81,6 +81,7 @@ cronAdd('retention_alerts_daily', '0 8 * * *', () => {
           'message',
           `O cliente ${clientName} não retorna há ${diffDays} dias (Último serviço: ${serviceName}). [ID: ${client.id}]`,
         )
+        n.set('type', 'retention')
         n.set('is_read', false)
         $app.save(n)
       }
@@ -100,6 +101,7 @@ cronAdd('retention_alerts_daily', '0 8 * * *', () => {
                 'message',
                 `O cliente ${clientName} não retorna há ${diffDays} dias (Último serviço: ${serviceName}). [ID: ${client.id}]`,
               )
+              n.set('type', 'retention')
               n.set('is_read', false)
               $app.save(n)
             }

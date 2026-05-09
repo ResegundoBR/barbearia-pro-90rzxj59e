@@ -142,11 +142,19 @@ export default function Settings() {
         const r = await pb.collection('settings').create(formData)
         setLogoConfigId(r.id)
       }
-      toast({ title: 'Logo atualizado com sucesso!' })
+      toast({
+        title: 'Logo atualizado com sucesso!',
+        description: 'O logotipo foi salvo e já está ativo.',
+      })
       setSelectedLogoFile(null)
       window.dispatchEvent(new Event('logo-updated'))
     } catch (err) {
-      toast({ title: 'Erro ao salvar logo', variant: 'destructive' })
+      console.error('Save logo error:', err)
+      toast({
+        title: 'Erro ao salvar logo',
+        description: 'Verifique se o arquivo é um PNG/JPG válido e tente novamente.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -323,12 +331,12 @@ export default function Settings() {
                   <TableRow key={r.id} className={!r.is_active ? 'opacity-50' : ''}>
                     <TableCell className="font-medium">
                       {r.event_type === 'new_appointment' && 'Novo Agendamento'}
-                      {r.event_type === 'cancellation' && 'Cancelamento'}
-                      {r.event_type === 'no_show' && 'Não Comparecimento'}
-                      {r.event_type === 'retention' && 'Retenção de Cliente'}
-                      {r.event_type === 'recorrencia_barba' && 'Recorrência Barba'}
-                      {r.event_type === 'recorrencia_cabelo' && 'Recorrência Cabelo'}
-                      {r.event_type === 'no_show_3dias' && 'No-show 3 dias'}
+                      {r.event_type === 'cancellation' && 'Cancelamento de Agendamento'}
+                      {r.event_type === 'no_show' && 'Não Comparecimento (No-Show)'}
+                      {r.event_type === 'retention' && 'Alerta de Retenção Geral'}
+                      {r.event_type === 'recorrencia_barba' && 'Alerta de Retenção (Barba)'}
+                      {r.event_type === 'recorrencia_cabelo' && 'Alerta de Retenção (Cabelo)'}
+                      {r.event_type === 'no_show_3dias' && 'No-show após 3 dias'}
                       {r.event_type === 'other' && 'Outros'}
                     </TableCell>
                     <TableCell>
@@ -393,12 +401,12 @@ export default function Settings() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="new_appointment">Novo Agendamento</SelectItem>
-                  <SelectItem value="cancellation">Cancelamento</SelectItem>
-                  <SelectItem value="no_show">Não Comparecimento</SelectItem>
-                  <SelectItem value="retention">Retenção de Cliente</SelectItem>
-                  <SelectItem value="recorrencia_barba">Recorrência Barba</SelectItem>
-                  <SelectItem value="recorrencia_cabelo">Recorrência Cabelo</SelectItem>
-                  <SelectItem value="no_show_3dias">No-show 3 dias</SelectItem>
+                  <SelectItem value="cancellation">Cancelamento de Agendamento</SelectItem>
+                  <SelectItem value="no_show">Não Comparecimento (No-Show)</SelectItem>
+                  <SelectItem value="retention">Alerta de Retenção Geral</SelectItem>
+                  <SelectItem value="recorrencia_barba">Alerta de Retenção (Barba)</SelectItem>
+                  <SelectItem value="recorrencia_cabelo">Alerta de Retenção (Cabelo)</SelectItem>
+                  <SelectItem value="no_show_3dias">No-show após 3 dias</SelectItem>
                   <SelectItem value="other">Outros</SelectItem>
                 </SelectContent>
               </Select>

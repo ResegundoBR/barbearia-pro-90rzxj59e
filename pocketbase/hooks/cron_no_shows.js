@@ -40,7 +40,7 @@ cronAdd('no_shows_daily', '0 0 * * *', () => {
       log.set('client_id', apt.getString('client_id'))
       log.set('appointment_id', apt.id)
       log.set('event_type', 'no_show')
-      log.set('details', `Automated: Client did not show for appointment on ${dateBr}`)
+      log.set('details', `Ausência não notificada no dia marcado - ${dateBr}`)
 
       $app.save(log)
 

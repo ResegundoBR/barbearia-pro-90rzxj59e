@@ -172,6 +172,10 @@ export default function Layout() {
     loadAlerts()
   })
 
+  useRealtime('notifications', () => {
+    loadAlerts()
+  })
+
   return (
     <SidebarProvider>
       <Sidebar variant="inset" className="hidden md:flex">
