@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Scissors,
   LayoutDashboard,
@@ -11,6 +11,7 @@ import {
   UserCircle,
   Crown,
   Settings,
+  LogOut,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -24,7 +25,16 @@ import {
   SidebarHeader,
   SidebarTrigger,
   SidebarInset,
+  SidebarFooter,
 } from '@/components/ui/sidebar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -52,8 +62,9 @@ const baseNavItems = [
 
 export default function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { state } = useMainStore()
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
 
   const navItems =
     user?.access_level === 'Admin'
@@ -66,6 +77,11 @@ export default function Layout() {
     if (user) {
       await pb.collection('users').update(user.id, { plan: v })
     }
+  }
+
+  const handleSignOut = () => {
+    signOut()
+    navigate('/')
   }
 
   return (
@@ -81,7 +97,7 @@ export default function Layout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {navItems.map((item) => {
+                {baseNavItems.map((item) => {
                   const isActive =
                     location.pathname === item.url ||
                     (item.url !== '/' && location.pathname.startsWith(item.url))
@@ -100,6 +116,30 @@ export default function Layout() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
+        <SidebarFooter>
+          <SidebarMenu>
+            {user?.access_level === 'Admin' && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname.startsWith('/settings')}
+                  tooltip="Configurações"
+                >
+                  <Link to="/settings">
+                    <Settings />
+                    <span>Configurações</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={handleSignOut} tooltip="Sair">
+                <LogOut />
+                <span>Sair</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
       </Sidebar>
 
       <SidebarInset className="pb-16 md:pb-0 h-[100dvh]">
@@ -143,13 +183,33 @@ export default function Layout() {
               <Bell className="size-5" />
               <span className="absolute top-2 right-2 size-2 bg-destructive rounded-full animate-pulse"></span>
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden sm:flex min-h-[44px] min-w-[44px]"
-            >
-              <UserCircle className="size-6" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden sm:flex min-h-[44px] min-w-[44px]"
+                >
+                  <UserCircle className="size-6" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {user?.access_level === 'Admin' && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings" className="cursor-pointer w-full flex items-center">
+                      <Settings className="mr-2 size-4" />
+                      Configurações
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                  <LogOut className="mr-2 size-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 animate-fade-in">
@@ -158,7 +218,7 @@ export default function Layout() {
       </SidebarInset>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-[72px] bg-card/95 backdrop-blur border-t border-border flex items-center justify-around px-1 pb-safe shadow-[0_-5px_15px_-10px_rgba(0,0,0,0.3)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-[72px] bg-card/95 backdrop-blur border-t border-border flex items-center px-1 pb-safe shadow-[0_-5px_15px_-10px_rgba(0,0,0,0.3)] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {navItems.map((item) => {
           const isActive =
             location.pathname === item.url ||
@@ -169,12 +229,12 @@ export default function Layout() {
               key={item.title}
               to={item.url}
               className={cn(
-                'flex flex-col items-center justify-center w-full h-full gap-1 transition-colors min-h-[44px]',
+                'flex flex-col items-center justify-center min-w-[72px] flex-1 h-full gap-1 transition-colors min-h-[44px]',
                 isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <item.icon className={cn('size-5', isActive && 'fill-primary/20')} />
-              <span className="text-[10px] font-medium leading-none">
+              <item.icon className={cn('size-5 shrink-0', isActive && 'fill-primary/20')} />
+              <span className="text-[10px] font-medium leading-none whitespace-nowrap">
                 {item.title.split(' ')[0]}
               </span>
             </Link>
