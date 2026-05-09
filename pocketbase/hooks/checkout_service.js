@@ -67,7 +67,8 @@ routerAdd(
         status = 'available'
         due_date = now
       } else {
-        const txDate = new Date()
+        const aptDateStr = apt ? apt.getString('date') : ''
+        const txDate = aptDateStr ? new Date(aptDateStr) : new Date()
         const day = txDate.getDay()
         let daysToAdd = 0
         if (day >= 0 && day <= 3) {

@@ -273,6 +273,9 @@ export default function Staff() {
       if (payload.work_level === 'socio') {
         payload.commission_type = 'percentage'
         payload.commission_value = 100
+      } else {
+        payload.commission_type = 'percentage'
+        payload.commission_value = 0
       }
       if (payload.id) {
         const { id, ...data } = payload
@@ -431,7 +434,7 @@ export default function Staff() {
                     <TableCell>
                       {b.work_level === 'socio' ? (
                         <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
-                          Pago na hora
+                          Recebido na hora
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">{displayPayDate}</span>
@@ -512,7 +515,7 @@ export default function Staff() {
                       <TableCell>
                         {selectedBarberDetailed?.work_level === 'socio' ? (
                           <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
-                            Pago na hora
+                            Recebido na hora
                           </Badge>
                         ) : (
                           <span className="font-medium text-amber-600">
@@ -557,6 +560,42 @@ export default function Staff() {
         </DialogContent>
       </Dialog>
 
+      <Card className="mt-8 border-none shadow-sm">
+        <CardHeader className="bg-muted/30 pb-4 border-b">
+          <CardTitle className="text-xl">Configurações Financeiras</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Regras automáticas de vencimento para comissões de profissionais Autônomos.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border rounded-lg p-4 bg-card">
+              <h4 className="font-semibold text-lg text-primary mb-1">Ciclo A (Seg - Qua)</h4>
+              <p className="text-sm text-muted-foreground">
+                Comissões geradas neste período têm vencimento marcado para a{' '}
+                <strong>Quinta-feira</strong> da mesma semana.
+              </p>
+            </div>
+            <div className="border rounded-lg p-4 bg-card">
+              <h4 className="font-semibold text-lg text-primary mb-1">Ciclo B (Qui - Sáb)</h4>
+              <p className="text-sm text-muted-foreground">
+                Comissões geradas neste período têm vencimento marcado para a{' '}
+                <strong>Segunda-feira</strong> da semana seguinte.
+              </p>
+            </div>
+          </div>
+          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-start gap-3">
+            <div className="mt-0.5">
+              <Badge className="bg-emerald-500 hover:bg-emerald-600">Sócio</Badge>
+            </div>
+            <p className="text-sm text-emerald-800 dark:text-emerald-200">
+              Profissionais com nível de trabalho configurado como "Sócio" são isentos dos ciclos
+              acima. O status de suas transações será sempre <strong>"Recebido na hora"</strong>.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <Dialog open={bDialog} onOpenChange={setBDialog}>
         <DialogContent>
           <DialogHeader>
@@ -586,34 +625,6 @@ export default function Staff() {
                 </SelectContent>
               </Select>
             </div>
-            {form.work_level !== 'socio' && (
-              <>
-                <div className="space-y-2">
-                  <Label>Tipo Comissão Padrão</Label>
-                  <Select
-                    value={form.commission_type}
-                    onValueChange={(v) => setForm({ ...form, commission_type: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="percentage">Porcentagem (%)</SelectItem>
-                      <SelectItem value="fixed">Fixo (R$)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Valor</Label>
-                  <Input
-                    type="number"
-                    required
-                    value={form.commission_value}
-                    onChange={(e) => setForm({ ...form, commission_value: Number(e.target.value) })}
-                  />
-                </div>
-              </>
-            )}
 
             <DialogFooter className="pt-4">
               <Button type="submit">Salvar</Button>

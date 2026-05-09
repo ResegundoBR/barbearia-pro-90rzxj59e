@@ -35,6 +35,7 @@ export function ProductsTab() {
   const [items, setItems] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [categories, setCategories] = useState<any[]>([])
+  const [showInactive, setShowInactive] = useState(false)
   const [form, setForm] = useState<any>({
     name: '',
     price: '',
@@ -110,13 +111,30 @@ export function ProductsTab() {
     }
   }
 
+  const displayedItems = items.filter((item) => showInactive || item.is_active !== false)
+
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h3 className="text-lg font-semibold">Controle de Estoque</h3>
-        <Button onClick={() => handleOpen()}>
-          <Plus className="size-4 mr-2" /> Novo Produto
-        </Button>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={showInactive}
+              onCheckedChange={setShowInactive}
+              id="show-inactive-stock"
+            />
+            <Label
+              htmlFor="show-inactive-stock"
+              className="cursor-pointer text-sm text-muted-foreground"
+            >
+              Mostrar inativos
+            </Label>
+          </div>
+          <Button onClick={() => handleOpen()}>
+            <Plus className="size-4 mr-2" /> Novo Produto
+          </Button>
+        </div>
       </div>
       <Card className="border-none shadow-sm">
         <Table>
@@ -132,8 +150,8 @@ export function ProductsTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id} className={!item.is_active ? 'opacity-60' : ''}>
+            {displayedItems.map((item) => (
+              <TableRow key={item.id} className={!item.is_active ? 'opacity-60 bg-muted/30' : ''}>
                 <TableCell className="font-medium">{item.name}</TableCell>
                 <TableCell>R$ {item.price?.toFixed(2)}</TableCell>
                 <TableCell>
@@ -173,7 +191,7 @@ export function ProductsTab() {
                 </TableCell>
               </TableRow>
             ))}
-            {items.length === 0 && (
+            {displayedItems.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                   Nenhum produto encontrado.

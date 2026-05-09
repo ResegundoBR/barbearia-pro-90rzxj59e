@@ -50,6 +50,7 @@ export function ProdutosTab() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [showInactive, setShowInactive] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -181,14 +182,24 @@ export function ProdutosTab() {
     }
   }
 
+  const displayedProducts = products.filter((p) => showInactive || p.is_active !== false)
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h2 className="text-lg font-semibold">Listagem de Produtos</h2>
-        <Button onClick={() => openDialog()}>
-          <Plus className="size-4 mr-2" />
-          Novo Produto
-        </Button>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Switch checked={showInactive} onCheckedChange={setShowInactive} id="show-inactive" />
+            <Label htmlFor="show-inactive" className="cursor-pointer text-sm text-muted-foreground">
+              Mostrar inativos
+            </Label>
+          </div>
+          <Button onClick={() => openDialog()}>
+            <Plus className="size-4 mr-2" />
+            Novo Produto
+          </Button>
+        </div>
       </div>
 
       <div className="border rounded-md">
@@ -210,15 +221,18 @@ export function ProdutosTab() {
                   Carregando...
                 </TableCell>
               </TableRow>
-            ) : products.length === 0 ? (
+            ) : displayedProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                   Nenhum produto encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              products.map((prod) => (
-                <TableRow key={prod.id}>
+              displayedProducts.map((prod) => (
+                <TableRow
+                  key={prod.id}
+                  className={prod.is_active === false ? 'opacity-60 bg-muted/30' : ''}
+                >
                   <TableCell className="font-medium">{prod.name}</TableCell>
                   <TableCell>{prod.expand?.category_id?.name || '-'}</TableCell>
                   <TableCell>
