@@ -33,11 +33,9 @@ import { Badge } from '@/components/ui/badge'
 
 export function PackagesTab() {
   const [items, setItems] = useState<any[]>([])
-  const [services, setServices] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [form, setForm] = useState<any>({
     name: '',
-    service_id: '',
     quantity: 1,
     price: '',
     duration_minutes: 30,
@@ -48,12 +46,8 @@ export function PackagesTab() {
   const { toast } = useToast()
 
   const loadData = async () => {
-    const [pkgs, svcs] = await Promise.all([
-      pb.collection('packages').getFullList({ sort: '-created', expand: 'service_id' }),
-      pb.collection('services').getFullList({ filter: 'is_active=true' }),
-    ])
+    const pkgs = await pb.collection('packages').getFullList({ sort: '-created' })
     setItems(pkgs)
-    setServices(svcs)
   }
 
   useEffect(() => {
@@ -67,7 +61,6 @@ export function PackagesTab() {
     } else {
       setForm({
         name: '',
-        service_id: '',
         quantity: 1,
         price: '',
         duration_minutes: 30,
@@ -123,7 +116,6 @@ export function PackagesTab() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>Serviço Vinculado</TableHead>
               <TableHead>Qtd. Usos</TableHead>
               <TableHead>Period.</TableHead>
               <TableHead>Preço Total</TableHead>
@@ -135,7 +127,6 @@ export function PackagesTab() {
             {items.map((item) => (
               <TableRow key={item.id} className={!item.is_active ? 'opacity-60' : ''}>
                 <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell>{item.expand?.service_id?.name || '-'}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell className="capitalize">{item.periodicity || '-'}</TableCell>
                 <TableCell>R$ {item.price?.toFixed(2)}</TableCell>
@@ -184,24 +175,6 @@ export function PackagesTab() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Ex: Pacote 5 Cortes"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Serviço Vinculado</Label>
-              <Select
-                value={form.service_id}
-                onValueChange={(v) => setForm({ ...form, service_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um serviço" />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

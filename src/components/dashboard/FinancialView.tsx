@@ -65,8 +65,9 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
 
   const normalizedCommissions = useMemo(() => {
     return commissions.map((c) => {
-      const effectiveStatus =
+      let effectiveStatus =
         c.payment_method === 'credito' || c.payment_method === 'credit_card' ? 'paid' : c.status
+      if (effectiveStatus === 'available') effectiveStatus = 'pending'
       return { ...c, status: effectiveStatus }
     })
   }, [commissions])
@@ -338,55 +339,57 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-[280px] justify-start text-left font-normal bg-card relative pr-8"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                  date.to ? (
-                    <>
-                      {format(date.from, 'dd/MM/yyyy')} - {format(date.to, 'dd/MM/yyyy')}
-                    </>
+          <div className="relative w-[280px]">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal bg-card pr-8"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date?.from ? (
+                    date.to ? (
+                      <>
+                        {format(date.from, 'dd/MM/yyyy')} - {format(date.to, 'dd/MM/yyyy')}
+                      </>
+                    ) : (
+                      format(date.from, 'dd/MM/yyyy')
+                    )
                   ) : (
-                    format(date.from, 'dd/MM/yyyy')
-                  )
-                ) : (
-                  <span>Selecione o período</span>
-                )}
-                {date?.from && (
-                  <div
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full cursor-pointer z-10 text-muted-foreground"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
+                    <span>Selecione o período</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={date?.from}
+                  selected={date}
+                  onSelect={(range: any) => {
+                    if (!range) {
                       setDate(undefined)
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </div>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={(range: any) => {
-                  if (!range) {
-                    setDate(undefined)
-                  } else {
-                    setDate({ from: range.from, to: range.to || range.from })
-                  }
+                    } else {
+                      setDate({ from: range.from, to: range.to || range.from })
+                    }
+                  }}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+            {date?.from && (
+              <div
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full cursor-pointer z-10 text-muted-foreground"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setDate(undefined)
                 }}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
+              >
+                <X className="h-4 w-4" />
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-wrap items-center gap-1 sm:ml-2">
             <Button
@@ -557,7 +560,7 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                 </TableHeader>
                 <TableBody>
                   {filteredCommissions
-                    .filter((c) => !c.is_advance && c.status === 'pending')
+                    .filter((c) => !c.is_advance)
                     .map((c) => (
                       <TableRow key={c.id}>
                         <TableCell>{format(new Date(c.date || c.created), 'dd/MM/yyyy')}</TableCell>
@@ -578,18 +581,19 @@ export function FinancialView({ commissions, isAdmin, onOpenAdvanceModal }: Fina
                           {c.expand?.barber_id?.name || '-'}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">A Vencer</Badge>
+                          <Badge variant={c.status === 'paid' ? 'default' : 'secondary'}>
+                            {c.status === 'paid' ? 'Pago' : 'A Vencer'}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right text-emerald-500 font-bold">
                           R$ {c.amount.toFixed(2)}
                         </TableCell>
                       </TableRow>
                     ))}
-                  {filteredCommissions.filter((c) => !c.is_advance && c.status === 'pending')
-                    .length === 0 && (
+                  {filteredCommissions.filter((c) => !c.is_advance).length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                        Nenhuma comissão a pagar no momento.
+                        Nenhuma comissão encontrada.
                       </TableCell>
                     </TableRow>
                   )}

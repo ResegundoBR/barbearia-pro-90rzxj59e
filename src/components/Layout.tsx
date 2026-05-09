@@ -72,9 +72,7 @@ export default function Layout() {
 
   const [expiringPackages, setExpiringPackages] = useState<any[]>([])
   const [isPackagesModalOpen, setIsPackagesModalOpen] = useState(false)
-  const [logoUrl, setLogoUrl] = useState(
-    'https://img.usecurling.com/i?q=barbershop+logo&shape=fill&color=gradient',
-  )
+  const [logoUrl, setLogoUrl] = useState('')
 
   const canAccessSettings = user?.access_level === 'Admin' || user?.access_level === 'Staff'
 
@@ -140,11 +138,15 @@ export default function Layout() {
     <SidebarProvider>
       <Sidebar variant="inset" className="hidden md:flex">
         <SidebarHeader className="p-4 flex flex-row items-center gap-3">
-          <img
-            src={logoUrl}
-            alt="Barbearia Pro Logo"
-            className="h-10 max-w-[200px] object-contain drop-shadow-md"
-          />
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="Barbearia Pro"
+              className="h-10 max-w-[200px] object-contain drop-shadow-md"
+            />
+          ) : (
+            <span className="text-xl font-bold tracking-tight text-primary">BARBEARIA PRO</span>
+          )}
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
@@ -186,11 +188,15 @@ export default function Layout() {
           <SidebarTrigger className="-ml-2 hidden md:flex min-h-[44px] min-w-[44px]" />
 
           <div className="md:hidden flex items-center gap-2 text-primary font-bold">
-            <img
-              src={logoUrl}
-              alt="Barbearia Pro Logo"
-              className="h-8 max-w-[120px] object-contain drop-shadow-md"
-            />
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Barbearia Pro"
+                className="h-8 max-w-[120px] object-contain drop-shadow-md"
+              />
+            ) : (
+              <span className="text-lg tracking-tight">BARBEARIA PRO</span>
+            )}
             <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">
               {currentPlan}
             </span>

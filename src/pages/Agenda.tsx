@@ -334,8 +334,15 @@ export default function Agenda() {
             const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
             const isCanceled = apt.status === 'Cancelado'
             const isCompleted = apt.status === 'Concluído'
-            const isPast =
-              new Date(apt.date || new Date()) < new Date(new Date().setHours(0, 0, 0, 0))
+            const aptDate = apt.date ? new Date(apt.date) : new Date()
+            const aptDateTime = new Date(
+              aptDate.getFullYear(),
+              aptDate.getMonth(),
+              aptDate.getDate(),
+              sH,
+              sM,
+            )
+            const isPast = aptDateTime < new Date()
             const isMissed = isPast && !isCompleted && !isCanceled
 
             return (
@@ -344,13 +351,13 @@ export default function Agenda() {
                 className={cn(
                   'absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] cursor-pointer',
                   isCanceled && 'opacity-50 grayscale',
-                  isCompleted && 'opacity-50',
+                  isCompleted && 'opacity-75',
                 )}
                 style={{
                   top,
                   height,
                   backgroundColor: isMissed ? 'black' : barberColor,
-                  color: isMissed ? 'white' : 'white',
+                  color: 'white',
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -419,8 +426,16 @@ export default function Agenda() {
                   {events.slice(0, 4).map((apt) => {
                     const isCompleted = apt.status === 'Concluído'
                     const isCanceled = apt.status === 'Cancelado'
-                    const isPast =
-                      new Date(apt.date || new Date()) < new Date(new Date().setHours(0, 0, 0, 0))
+                    const aptDate = apt.date ? new Date(apt.date) : new Date()
+                    const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
+                    const aptDateTime = new Date(
+                      aptDate.getFullYear(),
+                      aptDate.getMonth(),
+                      aptDate.getDate(),
+                      sH,
+                      sM,
+                    )
+                    const isPast = aptDateTime < new Date()
                     const isMissed = isPast && !isCompleted && !isCanceled
 
                     return (
@@ -429,13 +444,13 @@ export default function Agenda() {
                         className={cn(
                           'text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm',
                           isCanceled && 'opacity-50 grayscale',
-                          isCompleted && 'opacity-50',
+                          isCompleted && 'opacity-75',
                         )}
                         style={{
                           backgroundColor: isMissed
                             ? 'black'
                             : apt.expand?.barber_id?.color || 'hsl(var(--primary))',
-                          color: isMissed ? 'white' : 'white',
+                          color: 'white',
                         }}
                         onClick={(e) => {
                           e.stopPropagation()
