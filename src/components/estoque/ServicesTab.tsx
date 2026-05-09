@@ -23,6 +23,13 @@ import {
 import { Plus, Edit } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export function ServicesTab() {
   const [items, setItems] = useState<any[]>([])
