@@ -32,6 +32,17 @@ import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
 import { Badge } from '@/components/ui/badge'
+import pb from '@/lib/pocketbase/client'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export function ProdutosTab() {
   const [products, setProducts] = useState<any[]>([])
@@ -50,6 +61,7 @@ export function ProdutosTab() {
     is_active: true,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [disablePromptId, setDisablePromptId] = useState<string | null>(null)
 
   const { toast } = useToast()
 
@@ -136,12 +148,36 @@ export function ProdutosTab() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deseja realmente excluir este produto?')) return
     try {
+      const purchases = await pb
+        .collection('product_purchases')
+        .getList(1, 1, { filter: `product_id="${id}"` })
+      const rules = await pb
+        .collection('commission_rules')
+        .getList(1, 1, { filter: `item_id="${id}" && item_type="product"` })
+
+      if (purchases.totalItems > 0 || rules.totalItems > 0) {
+        setDisablePromptId(id)
+        return
+      }
+
+      if (!confirm('Deseja realmente excluir este produto?')) return
       await deleteProduct(id)
       toast({ title: 'Produto excluído' })
     } catch (err: any) {
       toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
+    }
+  }
+
+  const handleDisableProduct = async () => {
+    if (!disablePromptId) return
+    try {
+      await updateProduct(disablePromptId, { is_active: false })
+      toast({ title: 'Produto desativado com sucesso' })
+      setDisablePromptId(null)
+      loadData()
+    } catch (err: any) {
+      toast({ title: 'Erro ao desativar', description: err.message, variant: 'destructive' })
     }
   }
 
@@ -328,6 +364,23 @@ export function ProdutosTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!disablePromptId} onOpenChange={(v) => !v && setDisablePromptId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Produto possui histórico</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este produto está vinculado a vendas ou regras de comissão e não pode ser excluído
+              permanentemente para manter a integridade dos dados. Deseja apenas desativá-lo em vez
+              de excluir?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDisableProduct}>Sim, desativar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

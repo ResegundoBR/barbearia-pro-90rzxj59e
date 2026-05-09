@@ -36,7 +36,8 @@ import {
   startOfDay,
   endOfDay,
 } from 'date-fns'
-import { getBarbers, createBarber } from '@/services/barbers'
+import { getBarbers, createBarber, updateBarber } from '@/services/barbers'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 import {
   getCommissions,
   getAppointments,
@@ -268,17 +269,24 @@ export default function Staff() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      if (form.id) {
-        await updateBarber(form.id, form)
+      const payload = { ...form }
+      if (payload.work_level === 'socio') {
+        payload.commission_type = 'percentage'
+        payload.commission_value = 100
+      }
+      if (payload.id) {
+        const { id, ...data } = payload
+        await updateBarber(id, data)
         toast({ title: 'Profissional atualizado!' })
       } else {
-        await createBarber(form)
+        const { id, ...data } = payload
+        await createBarber(data)
         toast({ title: 'Profissional salvo!' })
       }
       setBDialog(false)
       loadData()
-    } catch {
-      toast({ title: 'Erro', variant: 'destructive' })
+    } catch (err) {
+      toast({ title: 'Erro ao salvar', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -376,20 +384,33 @@ export default function Staff() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Nível</TableHead>
-                <TableHead>Pagos (Total)</TableHead>
                 <TableHead>Comissão a Receber</TableHead>
+                <TableHead>A Pagar</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {barbers.map((b) => {
                 const bComms = filteredCommissions.filter((c) => c.barber_id === b.id)
-                const paid = bComms
-                  .filter((c) => c.status === 'paid')
-                  .reduce((acc, c) => acc + (c.amount || 0), 0)
-                const aReceber = bComms
-                  .filter((c) => c.status === 'available' || c.status === 'pending')
-                  .reduce((acc, c) => acc + (c.amount || 0), 0)
+                const pendingComms = bComms.filter(
+                  (c) => c.status === 'available' || c.status === 'pending',
+                )
+                const aReceber = pendingComms.reduce((acc, c) => acc + (c.amount || 0), 0)
+
+                const earliestDue = pendingComms.reduce(
+                  (earliest, c) => {
+                    const cDate = c.due_date
+                      ? new Date(c.due_date)
+                      : getNextPayDate(c.date ? new Date(c.date) : new Date(c.created))
+                    if (!earliest || cDate < earliest) return cDate
+                    return earliest
+                  },
+                  null as Date | null,
+                )
+                const displayPayDate = earliestDue
+                  ? format(earliestDue, 'dd/MM/yyyy')
+                  : format(getNextPayDate(new Date()), 'dd/MM/yyyy')
+
                 return (
                   <TableRow key={b.id}>
                     <TableCell
@@ -404,9 +425,17 @@ export default function Staff() {
                         {b.work_level === 'socio' ? 'Sócio' : 'Autônomo'}
                       </Badge>
                     </TableCell>
-                    <TableCell>R$ {paid.toFixed(2)}</TableCell>
                     <TableCell className="text-amber-600 font-bold">
                       R$ {aReceber.toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      {b.work_level === 'socio' ? (
+                        <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
+                          Pago na hora
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">{displayPayDate}</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -455,7 +484,7 @@ export default function Staff() {
                     <TableHead>Cliente</TableHead>
                     <TableHead>A Pagar</TableHead>
                     <TableHead className="text-right">Valor Venda</TableHead>
-                    <TableHead className="text-right">Comissão</TableHead>
+                    <TableHead className="text-right">Comissão a Receber</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -482,7 +511,9 @@ export default function Staff() {
                       <TableCell>{item.client}</TableCell>
                       <TableCell>
                         {selectedBarberDetailed?.work_level === 'socio' ? (
-                          <Badge className="bg-emerald-500 hover:bg-emerald-600">Imediato</Badge>
+                          <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
+                            Pago na hora
+                          </Badge>
                         ) : (
                           <span className="font-medium text-amber-600">
                             {item.dueDate
