@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-09T15:38:18.421Z",
+  "generatedAt": "2026-05-09T15:45:49.415Z",
   "collections": [
     {
       "name": "users",
@@ -29,21 +29,31 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "plan",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Free", "Basic", "Pro", "Platinum"]
+          "selectValues": [
+            "Free",
+            "Basic",
+            "Pro",
+            "Platinum"
+          ]
         },
         {
           "name": "specialties",
@@ -68,7 +78,11 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Admin", "Barber", "Staff"]
+          "selectValues": [
+            "Admin",
+            "Barber",
+            "Staff"
+          ]
         }
       ],
       "indexes": [
@@ -104,21 +118,29 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "commission_type",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["percentage", "fixed"]
+          "selectValues": [
+            "percentage",
+            "fixed"
+          ]
         },
         {
           "name": "commission_value",
@@ -137,7 +159,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["socio", "autonomo"]
+          "selectValues": [
+            "socio",
+            "autonomo"
+          ]
         },
         {
           "name": "payment_schedule_config",
@@ -182,14 +207,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "surname",
@@ -220,7 +250,12 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["passage", "nearby", "other_city", "mora_cidade"]
+          "selectValues": [
+            "passage",
+            "nearby",
+            "other_city",
+            "mora_cidade"
+          ]
         },
         {
           "name": "is_active",
@@ -285,14 +320,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "is_active",
@@ -371,14 +411,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "time",
@@ -452,28 +497,42 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "payment_method",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["cash", "pix", "debito", "credito"]
+          "selectValues": [
+            "cash",
+            "pix",
+            "debito",
+            "credito"
+          ]
         },
         {
           "name": "status",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["available", "pending", "paid"]
+          "selectValues": [
+            "available",
+            "pending",
+            "paid"
+          ]
         },
         {
           "name": "due_date",
@@ -531,14 +590,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "duration_minutes",
@@ -591,14 +655,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "barber_id",
@@ -608,7 +677,9 @@
           "collectionRef": "barbers"
         }
       ],
-      "indexes": ["CREATE INDEX `idx_client_packages_expires_at` ON `client_packages` (expires_at)"]
+      "indexes": [
+        "CREATE INDEX `idx_client_packages_expires_at` ON `client_packages` (expires_at)"
+      ]
     },
     {
       "name": "products",
@@ -644,14 +715,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "category",
@@ -741,14 +817,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "barber_id",
@@ -789,7 +870,12 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["service", "package", "product", "category"]
+          "selectValues": [
+            "service",
+            "package",
+            "product",
+            "category"
+          ]
         },
         {
           "name": "value",
@@ -802,21 +888,29 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["percentage", "fixed"]
+          "selectValues": [
+            "percentage",
+            "fixed"
+          ]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": []
@@ -837,7 +931,15 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["0", "1", "2", "3", "4", "5", "6"]
+          "selectValues": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ]
         },
         {
           "name": "open_time",
@@ -882,7 +984,10 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["service", "product"]
+          "selectValues": [
+            "service",
+            "product"
+          ]
         },
         {
           "name": "commission_percentage",
@@ -895,14 +1000,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": []
@@ -935,14 +1045,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": []
