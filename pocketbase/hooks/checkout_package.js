@@ -10,7 +10,7 @@ routerAdd(
       const barber = txApp.findRecordById('barbers', barber_id)
 
       const d = new Date()
-      d.setDate(d.getDate() + 90)
+      d.setDate(d.getDate() + 30)
       const expiresAt = d.toISOString().replace('T', ' ').substring(0, 19)
 
       const cpCol = txApp.findCollectionByNameOrId('client_packages')

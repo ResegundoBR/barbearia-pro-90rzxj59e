@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-09T16:09:53.189Z",
+  "generatedAt": "2026-05-09T16:43:54.450Z",
   "collections": [
     {
       "name": "users",
@@ -545,6 +545,13 @@
           "type": "number",
           "required": true,
           "system": false
+        },
+        {
+          "name": "periodicity",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["semanal", "quinzenal"]
         }
       ],
       "indexes": []

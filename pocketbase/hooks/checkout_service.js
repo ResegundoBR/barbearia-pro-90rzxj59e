@@ -48,6 +48,10 @@ routerAdd(
           txApp.save(cp)
         }
 
+        if (finalPackageId) {
+          finalServicePrice = 0
+        }
+
         apt.set('status', 'Concluído')
         apt.set('price', finalServicePrice)
         if (finalPackageId) apt.set('client_package_id', finalPackageId)

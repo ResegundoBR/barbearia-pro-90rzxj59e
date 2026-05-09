@@ -98,7 +98,12 @@ export default function Checkout() {
       setPackages(p)
       setAppointments(a)
       setProducts(prods.filter((prod) => prod.is_active !== false))
-      setClientPackages(cp.filter((pkg) => pkg.remaining_uses > 0))
+      setClientPackages(
+        cp.filter(
+          (pkg) =>
+            pkg.remaining_uses > 0 && (!pkg.expires_at || new Date(pkg.expires_at) >= new Date()),
+        ),
+      )
       setServices(svcs)
       setPaymentMethods(sett.value || ['cash', 'pix', 'debito', 'credito'])
     })
@@ -198,19 +203,15 @@ export default function Checkout() {
     let pkgIdToConsume = apt?.client_package_id || null
 
     if (apt?.expand?.client_package_id?.expand?.package_id) {
-      const pkg = apt.expand.client_package_id.expand.package_id
-      if (pkg.quantity > 0) price = (pkg.price / pkg.quantity).toFixed(2)
+      price = '0'
     } else if (apt) {
       const availablePkg = clientPackages.find(
         (cp) =>
           cp.client_id === apt.client_id && cp.expand?.package_id?.service_id === apt.service_id,
       )
       if (availablePkg && availablePkg.expand?.package_id) {
-        const pkg = availablePkg.expand.package_id
-        if (pkg.quantity > 0) {
-          price = (pkg.price / pkg.quantity).toFixed(2)
-          pkgIdToConsume = availablePkg.id
-        }
+        price = '0'
+        pkgIdToConsume = availablePkg.id
       }
     }
 

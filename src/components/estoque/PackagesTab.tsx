@@ -42,6 +42,7 @@ export function PackagesTab() {
     price: '',
     duration_minutes: 30,
     is_active: true,
+    periodicity: 'semanal',
   })
   const [editingId, setEditingId] = useState<string | null>(null)
   const { toast } = useToast()
@@ -61,7 +62,7 @@ export function PackagesTab() {
 
   const handleOpen = (item?: any) => {
     if (item) {
-      setForm({ ...item })
+      setForm({ ...item, periodicity: item.periodicity || 'semanal' })
       setEditingId(item.id)
     } else {
       setForm({
@@ -71,6 +72,7 @@ export function PackagesTab() {
         price: '',
         duration_minutes: 30,
         is_active: true,
+        periodicity: 'semanal',
       })
       setEditingId(null)
     }
@@ -123,6 +125,7 @@ export function PackagesTab() {
               <TableHead>Nome</TableHead>
               <TableHead>Serviço Vinculado</TableHead>
               <TableHead>Qtd. Usos</TableHead>
+              <TableHead>Period.</TableHead>
               <TableHead>Preço Total</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -134,6 +137,7 @@ export function PackagesTab() {
                 <TableCell className="font-medium">{item.name}</TableCell>
                 <TableCell>{item.expand?.service_id?.name || '-'}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
+                <TableCell className="capitalize">{item.periodicity || '-'}</TableCell>
                 <TableCell>R$ {item.price?.toFixed(2)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -210,6 +214,23 @@ export function PackagesTab() {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Periodicidade</Label>
+                <Select
+                  value={form.periodicity}
+                  onValueChange={(v) => setForm({ ...form, periodicity: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="semanal">Semanal</SelectItem>
+                    <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>Preço Total (R$)</Label>
                 <Input
                   type="number"
@@ -219,8 +240,6 @@ export function PackagesTab() {
                   placeholder="150.00"
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Duração Padrão (min)</Label>
                 <Input
@@ -230,13 +249,13 @@ export function PackagesTab() {
                   placeholder="30"
                 />
               </div>
-              <div className="flex items-center space-x-2 mt-8">
-                <Switch
-                  checked={form.is_active}
-                  onCheckedChange={(c) => setForm({ ...form, is_active: c })}
-                />
-                <Label>Pacote Ativo</Label>
-              </div>
+            </div>
+            <div className="flex items-center space-x-2 mt-4">
+              <Switch
+                checked={form.is_active}
+                onCheckedChange={(c) => setForm({ ...form, is_active: c })}
+              />
+              <Label>Pacote Ativo</Label>
             </div>
           </div>
           <DialogFooter>

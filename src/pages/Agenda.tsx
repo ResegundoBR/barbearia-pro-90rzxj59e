@@ -235,8 +235,7 @@ export default function Agenda() {
       await createAppointment(payload)
 
       if (isPkg && activePackage) {
-        await consumePackage(activePackage.id, { remaining_uses: activePackage.remaining_uses - 1 })
-        toast({ title: 'Agendamento salvo. Usado 1 crédito.' })
+        toast({ title: 'Agendamento salvo. 1 crédito será deduzido no checkout.' })
       } else {
         toast({ title: 'Agendamento salvo!' })
       }
@@ -290,7 +289,10 @@ export default function Agenda() {
   })
 
   const clientPkgs = data.packages.filter(
-    (p) => p.client_id === form.client_id && p.remaining_uses > 0,
+    (p) =>
+      p.client_id === form.client_id &&
+      p.remaining_uses > 0 &&
+      (!p.expires_at || new Date(p.expires_at) >= new Date()),
   )
 
   const getEventsForDay = (day: Date) => {
