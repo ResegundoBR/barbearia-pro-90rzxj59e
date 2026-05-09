@@ -63,16 +63,18 @@ export default function Settings() {
     }
   }
 
+  const canAccessSettings = user?.access_level === 'Admin' || user?.access_level === 'Staff'
+
   useEffect(() => {
-    if (user?.access_level === 'Admin') {
+    if (canAccessSettings) {
       loadData()
     }
-  }, [user])
+  }, [user, canAccessSettings])
 
-  if (user?.access_level !== 'Admin') {
+  if (!canAccessSettings) {
     return (
       <div className="p-8 text-center text-muted-foreground">
-        Acesso Restrito. Apenas administradores podem acessar esta página.
+        Acesso Restrito. Apenas administradores e staff podem acessar esta página.
       </div>
     )
   }

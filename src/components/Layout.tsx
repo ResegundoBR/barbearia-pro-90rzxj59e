@@ -66,10 +66,11 @@ export default function Layout() {
   const { state } = useMainStore()
   const { user, signOut } = useAuth()
 
-  const navItems =
-    user?.access_level === 'Admin'
-      ? [...baseNavItems, { title: 'Configurações', url: '/settings', icon: Settings }]
-      : baseNavItems
+  const canAccessSettings = user?.access_level === 'Admin' || user?.access_level === 'Staff'
+
+  const navItems = canAccessSettings
+    ? [...baseNavItems, { title: 'Configurações', url: '/settings', icon: Settings }]
+    : baseNavItems
 
   const currentPlan = user?.plan || 'Free'
 
@@ -97,7 +98,7 @@ export default function Layout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {baseNavItems.map((item) => {
+                {navItems.map((item) => {
                   const isActive =
                     location.pathname === item.url ||
                     (item.url !== '/' && location.pathname.startsWith(item.url))
@@ -118,20 +119,6 @@ export default function Layout() {
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
-            {user?.access_level === 'Admin' && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location.pathname.startsWith('/settings')}
-                  tooltip="Configurações"
-                >
-                  <Link to="/settings">
-                    <Settings />
-                    <span>Configurações</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
             <SidebarMenuItem>
               <SidebarMenuButton onClick={handleSignOut} tooltip="Sair">
                 <LogOut />
@@ -196,7 +183,7 @@ export default function Layout() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {user?.access_level === 'Admin' && (
+                {canAccessSettings && (
                   <DropdownMenuItem asChild>
                     <Link to="/settings" className="cursor-pointer w-full flex items-center">
                       <Settings className="mr-2 size-4" />
