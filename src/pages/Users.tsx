@@ -70,7 +70,13 @@ export default function UsersPage() {
 
   const loadData = async () => {
     try {
-      const list = await pb.collection('users').getFullList({ sort: '-created' })
+      let list = []
+      try {
+        list = await pb.send('/backend/v1/users', { method: 'GET' })
+      } catch (err) {
+        // Fallback in case the hook isn't deployed yet
+        list = await pb.collection('users').getFullList({ sort: '-created' })
+      }
       setUsers(list)
 
       const perms = await pb

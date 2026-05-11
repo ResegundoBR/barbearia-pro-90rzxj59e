@@ -115,18 +115,19 @@ export function ConsultasTab() {
               <TableHead>Último Fornecedor</TableHead>
               <TableHead>Data da Compra</TableHead>
               <TableHead className="text-right">Preço Unit. Pago</TableHead>
+              <TableHead className="text-right">Total da Compra</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-6">
+                <TableCell colSpan={6} className="text-center py-6">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                   Nenhum produto encontrado.
                 </TableCell>
               </TableRow>
@@ -146,6 +147,13 @@ export function ConsultasTab() {
                         ? lastPurch.unit_price
                           ? `R$ ${lastPurch.unit_price.toFixed(2)}`
                           : `R$ ${(lastPurch.price_paid / lastPurch.quantity).toFixed(2)}`
+                        : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {lastPurch
+                        ? lastPurch.price_paid
+                          ? `R$ ${lastPurch.price_paid.toFixed(2)}`
+                          : `R$ ${(lastPurch.unit_price * lastPurch.quantity).toFixed(2)}`
                         : '-'}
                     </TableCell>
                   </TableRow>
