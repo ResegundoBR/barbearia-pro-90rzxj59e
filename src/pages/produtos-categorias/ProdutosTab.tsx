@@ -4,6 +4,7 @@ import { getProducts, createProduct, updateProduct, deleteProduct } from '@/serv
 import { getCategories } from '@/services/categories'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -52,10 +53,16 @@ export function ProdutosTab() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showInactive, setShowInactive] = useState(false)
 
+  const [suppliers, setSuppliers] = useState<any[]>([])
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [inventoryPurchases, setInventoryPurchases] = useState<any[]>([])
+
   const [formData, setFormData] = useState({
     name: '',
     price: '',
+    cost_price: '',
     category_id: '',
+    supplier_ids: [] as string[],
     stock_quantity: '',
     min_stock: '',
     reorder_point: '',
@@ -68,9 +75,18 @@ export function ProdutosTab() {
 
   const loadData = async () => {
     try {
-      const [prodData, catData] = await Promise.all([getProducts(), getCategories()])
+      const [prodData, catData, supData, invData] = await Promise.all([
+        getProducts(),
+        getCategories(),
+        pb.collection('suppliers').getFullList({ sort: 'name' }),
+        pb
+          .collection('inventory_purchases')
+          .getFullList({ sort: '-purchase_date', expand: 'supplier_id' }),
+      ])
       setProducts(prodData)
       setCategories(catData.filter((c) => c.type === 'product'))
+      setSuppliers(supData)
+      setInventoryPurchases(invData)
     } catch (e) {
       console.error(e)
     } finally {
@@ -96,7 +112,9 @@ export function ProdutosTab() {
       setFormData({
         name: prod.name || '',
         price: prod.price?.toString() || '',
+        cost_price: prod.cost_price?.toString() || '',
         category_id: prod.category_id || '',
+        supplier_ids: prod.supplier_ids || [],
         stock_quantity: prod.stock_quantity?.toString() || '',
         min_stock: prod.min_stock?.toString() || '',
         reorder_point: prod.reorder_point?.toString() || '',
@@ -107,7 +125,9 @@ export function ProdutosTab() {
       setFormData({
         name: '',
         price: '',
+        cost_price: '',
         category_id: '',
+        supplier_ids: [],
         stock_quantity: '',
         min_stock: '',
         reorder_point: '',
@@ -123,7 +143,9 @@ export function ProdutosTab() {
       const payload = {
         name: formData.name,
         price: formData.price ? Number(formData.price) : 0,
+        cost_price: formData.cost_price ? Number(formData.cost_price) : 0,
         category_id: formData.category_id || null,
+        supplier_ids: formData.supplier_ids,
         stock_quantity: formData.stock_quantity ? Number(formData.stock_quantity) : 0,
         min_stock: formData.min_stock ? Number(formData.min_stock) : 0,
         reorder_point: formData.reorder_point ? Number(formData.reorder_point) : 0,
@@ -182,13 +204,28 @@ export function ProdutosTab() {
     }
   }
 
-  const displayedProducts = products.filter((p) => showInactive || p.is_active !== false)
+  const displayedProducts = products
+    .filter((p) => showInactive || p.is_active !== false)
+    .filter((p) => categoryFilter === 'all' || p.category_id === categoryFilter)
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h2 className="text-lg font-semibold">Listagem de Produtos</h2>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Todas as categorias" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex items-center space-x-2">
             <Switch checked={showInactive} onCheckedChange={setShowInactive} id="show-inactive" />
             <Label htmlFor="show-inactive" className="cursor-pointer text-sm text-muted-foreground">
@@ -202,13 +239,16 @@ export function ProdutosTab() {
         </div>
       </div>
 
-      <div className="border rounded-md">
+      <div className="border rounded-md overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Preço</TableHead>
+              <TableHead>Preço Venda</TableHead>
+              <TableHead>Custo</TableHead>
+              <TableHead>Margem</TableHead>
+              <TableHead>Última Compra</TableHead>
               <TableHead>Estoque</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -217,47 +257,82 @@ export function ProdutosTab() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : displayedProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
                   Nenhum produto encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              displayedProducts.map((prod) => (
-                <TableRow
-                  key={prod.id}
-                  className={prod.is_active === false ? 'opacity-60 bg-muted/30' : ''}
-                >
-                  <TableCell className="font-medium">{prod.name}</TableCell>
-                  <TableCell>{prod.expand?.category_id?.name || '-'}</TableCell>
-                  <TableCell>
-                    {prod.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </TableCell>
-                  <TableCell>{prod.stock_quantity ?? 0}</TableCell>
-                  <TableCell>
-                    {prod.is_active ? (
-                      <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 shadow-none border-green-200">
-                        Ativo
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">Inativo</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => openDialog(prod)}>
-                      <Pencil className="size-4 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(prod.id)}>
-                      <Trash2 className="size-4 text-destructive/80 hover:text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              displayedProducts.map((prod) => {
+                const marginCurrency = (prod.price || 0) - (prod.cost_price || 0)
+                const marginPercent = prod.price ? (marginCurrency / prod.price) * 100 : 0
+                const lastPurchase = inventoryPurchases.find((p) => p.product_id === prod.id)
+
+                return (
+                  <TableRow
+                    key={prod.id}
+                    className={prod.is_active === false ? 'opacity-60 bg-muted/30' : ''}
+                  >
+                    <TableCell className="font-medium whitespace-nowrap">{prod.name}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {prod.expand?.category_id?.name || '-'}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {prod.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {prod.cost_price?.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      })}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <span className={marginCurrency > 0 ? 'text-green-600' : 'text-red-600'}>
+                        R$ {marginCurrency.toFixed(2)} ({marginPercent.toFixed(1)}%)
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {lastPurchase ? (
+                        <div className="text-xs whitespace-nowrap">
+                          {lastPurchase.price_paid?.toLocaleString('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          })}
+                          <br />
+                          <span className="text-muted-foreground">
+                            {lastPurchase.expand?.supplier_id?.name}
+                          </span>
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
+                    <TableCell>{prod.stock_quantity ?? 0}</TableCell>
+                    <TableCell>
+                      {prod.is_active ? (
+                        <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 shadow-none border-green-200">
+                          Ativo
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Inativo</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right space-x-2 whitespace-nowrap">
+                      <Button variant="ghost" size="icon" onClick={() => openDialog(prod)}>
+                        <Pencil className="size-4 text-muted-foreground" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(prod.id)}>
+                        <Trash2 className="size-4 text-destructive/80 hover:text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>
@@ -279,9 +354,9 @@ export function ProdutosTab() {
               {errors.name && <p className="text-sm text-destructive font-medium">{errors.name}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Preço *</Label>
+                <Label>Preço Venda *</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -291,6 +366,15 @@ export function ProdutosTab() {
                 {errors.price && (
                   <p className="text-sm text-destructive font-medium">{errors.price}</p>
                 )}
+              </div>
+              <div className="space-y-2">
+                <Label>Preço Custo</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.cost_price}
+                  onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Categoria</Label>
@@ -318,6 +402,37 @@ export function ProdutosTab() {
                 {errors.category_id && (
                   <p className="text-sm text-destructive font-medium">{errors.category_id}</p>
                 )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fornecedores</Label>
+              <div className="flex flex-wrap gap-4 border p-3 rounded-md">
+                {suppliers.length === 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    Nenhum fornecedor cadastrado.
+                  </span>
+                )}
+                {suppliers.map((sup) => (
+                  <label key={sup.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={formData.supplier_ids.includes(sup.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked)
+                          setFormData({
+                            ...formData,
+                            supplier_ids: [...formData.supplier_ids, sup.id],
+                          })
+                        else
+                          setFormData({
+                            ...formData,
+                            supplier_ids: formData.supplier_ids.filter((id) => id !== sup.id),
+                          })
+                      }}
+                    />
+                    <span className="text-sm">{sup.name}</span>
+                  </label>
+                ))}
               </div>
             </div>
 

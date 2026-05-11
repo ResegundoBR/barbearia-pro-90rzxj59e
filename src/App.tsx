@@ -13,6 +13,8 @@ import Settings from './pages/Settings'
 import UsersPage from './pages/Users'
 import Financeiro from './pages/Financeiro'
 import ProdutosCategorias from './pages/ProdutosCategorias'
+import Fornecedores from './pages/Fornecedores'
+import FornecedorDetail from './pages/FornecedorDetail'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
@@ -56,6 +58,8 @@ const App = () => (
               <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/produtos-categorias" element={<ProdutosCategorias />} />
+              <Route path="/fornecedores" element={<Fornecedores />} />
+              <Route path="/fornecedores/:id" element={<FornecedorDetail />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/users" element={<UsersPage />} />
             </Route>

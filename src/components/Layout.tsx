@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   Wallet,
   Check,
+  Truck,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -92,6 +93,7 @@ export default function Layout() {
       url: '/produtos-categorias',
       icon: ShoppingBag,
     },
+    { id: 'fornecedores', title: 'Fornecedores', url: '/fornecedores', icon: Truck },
     { id: 'staff', title: 'Equipe & Comissões', url: '/staff', icon: Users },
     { id: 'checkout', title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign },
     { id: 'financeiro', title: 'Financeiro', url: '/financeiro', icon: Wallet },

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-09T21:25:42.151Z",
+  "generatedAt": "2026-05-11T15:37:12.326Z",
   "collections": [
     {
       "name": "users",
@@ -726,6 +726,19 @@
           "required": false,
           "system": false,
           "collectionRef": "categories"
+        },
+        {
+          "name": "cost_price",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "supplier_ids",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "suppliers"
         }
       ],
       "indexes": []
@@ -1067,7 +1080,7 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["no_show", "reschedule", "other"]
+          "selectValues": ["no_show", "reschedule", "other", "manual_entry"]
         },
         {
           "name": "details",
@@ -1088,6 +1101,20 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "barber_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "barbers"
+        },
+        {
+          "name": "sentiment",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["positive", "negative", "neutral"]
         }
       ],
       "indexes": []
@@ -1212,6 +1239,137 @@
           "required": false,
           "system": false,
           "selectValues": ["hours_minutes", "days"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "suppliers",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "document",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "whatsapp",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "contact_person",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "category_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "categories"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX `idx_suppliers_document` ON `suppliers` (document)"]
+    },
+    {
+      "name": "inventory_purchases",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "product_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "products"
+        },
+        {
+          "name": "supplier_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "suppliers"
+        },
+        {
+          "name": "price_paid",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "quantity",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "purchase_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": []
