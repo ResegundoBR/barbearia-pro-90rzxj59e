@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-11T17:40:03.193Z",
+  "generatedAt": "2026-05-11T18:15:28.325Z",
   "collections": [
     {
       "name": "users",
@@ -344,8 +344,8 @@
       "name": "appointments",
       "type": "base",
       "apiRules": {
-        "list": "",
-        "view": "",
+        "list": "@request.auth.id != '' && (((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && (barber_id = '' || barber_id.name = @request.auth.name || barber_id.work_level = 'autonomo')) || (@request.auth.access_level = 'Autonomo' && barber_id.name = @request.auth.name))",
+        "view": "@request.auth.id != '' && (((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && (barber_id = '' || barber_id.name = @request.auth.name || barber_id.work_level = 'autonomo')) || (@request.auth.access_level = 'Autonomo' && barber_id.name = @request.auth.name))",
         "create": "",
         "update": "",
         "delete": ""
@@ -433,8 +433,8 @@
       "name": "commissions",
       "type": "base",
       "apiRules": {
-        "list": "",
-        "view": "",
+        "list": "@request.auth.id != '' && (((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && (barber_id = '' || barber_id.name = @request.auth.name || barber_id.work_level = 'autonomo')) || (@request.auth.access_level = 'Autonomo' && barber_id.name = @request.auth.name))",
+        "view": "@request.auth.id != '' && (((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && (barber_id = '' || barber_id.name = @request.auth.name || barber_id.work_level = 'autonomo')) || (@request.auth.access_level = 'Autonomo' && barber_id.name = @request.auth.name))",
         "create": "",
         "update": "",
         "delete": ""
@@ -584,8 +584,8 @@
       "name": "client_packages",
       "type": "base",
       "apiRules": {
-        "list": "",
-        "view": "",
+        "list": "@request.auth.id != '' && (((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && (barber_id = '' || barber_id.name = @request.auth.name || barber_id.work_level = 'autonomo')) || (@request.auth.access_level = 'Autonomo' && barber_id.name = @request.auth.name))",
+        "view": "@request.auth.id != '' && (((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && (barber_id = '' || barber_id.name = @request.auth.name || barber_id.work_level = 'autonomo')) || (@request.auth.access_level = 'Autonomo' && barber_id.name = @request.auth.name))",
         "create": "",
         "update": "",
         "delete": ""
@@ -747,8 +747,8 @@
       "name": "product_purchases",
       "type": "base",
       "apiRules": {
-        "list": "",
-        "view": "",
+        "list": "@request.auth.id != '' && (((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && (barber_id = '' || barber_id.name = @request.auth.name || barber_id.work_level = 'autonomo')) || (@request.auth.access_level = 'Autonomo' && barber_id.name = @request.auth.name))",
+        "view": "@request.auth.id != '' && (((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && (barber_id = '' || barber_id.name = @request.auth.name || barber_id.work_level = 'autonomo')) || (@request.auth.access_level = 'Autonomo' && barber_id.name = @request.auth.name))",
         "create": "",
         "update": "",
         "delete": ""

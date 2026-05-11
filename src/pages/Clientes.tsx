@@ -146,6 +146,7 @@ export default function Clientes() {
                 <Label>Nome</Label>
                 <Input
                   required
+                  className="min-h-[44px]"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
@@ -153,6 +154,7 @@ export default function Clientes() {
               <div className="space-y-2">
                 <Label>Sobrenome</Label>
                 <Input
+                  className="min-h-[44px]"
                   value={formData.surname}
                   onChange={(e) => setFormData({ ...formData, surname: e.target.value })}
                 />
@@ -164,6 +166,7 @@ export default function Clientes() {
                 <Label>Celular Principal</Label>
                 <Input
                   required
+                  className="min-h-[44px]"
                   value={formData.phone}
                   onChange={(e) =>
                     setFormData({ ...formData, phone: applyPhoneMask(e.target.value) })
@@ -174,6 +177,7 @@ export default function Clientes() {
               <div className="space-y-2">
                 <Label>Celular Secundário</Label>
                 <Input
+                  className="min-h-[44px]"
                   value={formData.phone_secondary}
                   onChange={(e) =>
                     setFormData({ ...formData, phone_secondary: applyPhoneMask(e.target.value) })
@@ -188,6 +192,7 @@ export default function Clientes() {
                 <Label>Nascimento</Label>
                 <Input
                   type="date"
+                  className="min-h-[44px]"
                   value={formData.birthday?.split('T')[0] || ''}
                   onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
                 />
@@ -198,7 +203,7 @@ export default function Clientes() {
                   value={formData.preferred_barber_id || 'none'}
                   onValueChange={(v) => setFormData({ ...formData, preferred_barber_id: v })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="min-h-[44px]">
                     <SelectValue placeholder="Nenhum" />
                   </SelectTrigger>
                   <SelectContent>
@@ -249,7 +254,7 @@ export default function Clientes() {
 
       <Card>
         <CardContent className="p-0 overflow-x-auto">
-          <Table>
+          <Table className="min-w-[600px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>

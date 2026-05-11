@@ -157,8 +157,8 @@ export default function Financeiro() {
             <Plus className="size-4 mr-2" /> Novo Método
           </Button>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="p-0 md:p-6 overflow-x-auto">
+          <Table className="min-w-[600px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
@@ -216,6 +216,7 @@ export default function Financeiro() {
             <div className="space-y-2">
               <Label>Nome do Método</Label>
               <Input
+                className="min-h-[44px]"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Ex: Cartão de Crédito - Visa"
@@ -225,7 +226,7 @@ export default function Financeiro() {
               <div className="space-y-2">
                 <Label>Tipo</Label>
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="min-h-[44px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -241,6 +242,7 @@ export default function Financeiro() {
                 <Label>Taxa / Fee (%)</Label>
                 <Input
                   type="number"
+                  className="min-h-[44px]"
                   min="0"
                   step="0.01"
                   value={form.fee_percentage}

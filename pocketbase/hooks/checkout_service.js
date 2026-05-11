@@ -8,6 +8,16 @@ routerAdd(
     let finalServicePrice = Number(svcForm.service_price) || 0
 
     $app.runInTransaction((txApp) => {
+      let feePerc = 0
+      try {
+        if (svcForm.payment_method) {
+          const pm = txApp.findRecordById('payment_methods', svcForm.payment_method)
+          feePerc = pm.getFloat('fee_percentage') || 0
+        }
+      } catch (_) {}
+      const feeMultiplier = 1 - feePerc / 100
+      const netServicePrice = finalServicePrice * feeMultiplier
+
       let apt
       let clientId = ''
       let barberId = ''
@@ -90,7 +100,7 @@ routerAdd(
         let commAmount = 0
 
         if (workLevel === 'socio') {
-          commAmount = finalServicePrice
+          commAmount = netServicePrice
         } else {
           const svcId = apt.getString('service_id')
           if (svcId) {
@@ -99,12 +109,12 @@ routerAdd(
             if (catId) {
               const cat = txApp.findRecordById('categories', catId)
               const perc = cat.getFloat('commission_percentage') || 0
-              commAmount = finalServicePrice * (perc / 100)
+              commAmount = netServicePrice * (perc / 100)
             } else {
               commAmount =
                 barber.getString('commission_type') === 'percentage'
-                  ? finalServicePrice * (barber.getFloat('commission_value') / 100)
-                  : barber.getFloat('commission_value')
+                  ? netServicePrice * (barber.getFloat('commission_value') / 100)
+                  : Math.min(netServicePrice, barber.getFloat('commission_value'))
             }
           }
         }
@@ -145,22 +155,21 @@ routerAdd(
           txApp.save(purch)
 
           let prodComm = 0
+          const netProductPrice = prod.getFloat('price') * sp.quantity * feeMultiplier
 
           if (workLevel === 'socio') {
-            prodComm = prod.getFloat('price') * sp.quantity
+            prodComm = netProductPrice
           } else {
             const catId = prod.getString('category_id')
             if (catId) {
               const cat = txApp.findRecordById('categories', catId)
               const perc = cat.getFloat('commission_percentage') || 0
-              prodComm = prod.getFloat('price') * sp.quantity * (perc / 100)
+              prodComm = netProductPrice * (perc / 100)
             } else {
               prodComm =
                 barber.getString('commission_type') === 'percentage'
-                  ? prod.getFloat('price') *
-                    sp.quantity *
-                    (barber.getFloat('commission_value') / 100)
-                  : barber.getFloat('commission_value') * sp.quantity
+                  ? netProductPrice * (barber.getFloat('commission_value') / 100)
+                  : Math.min(netProductPrice, barber.getFloat('commission_value') * sp.quantity)
             }
           }
 

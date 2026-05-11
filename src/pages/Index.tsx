@@ -828,36 +828,38 @@ export default function Index() {
           <DialogHeader>
             <DialogTitle>Produtos com Estoque Baixo</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="text-right">Estoque Atual</TableHead>
-                  <TableHead className="text-right">Estoque Mínimo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lowStockProductsList.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>{p.name}</TableCell>
-                    <TableCell className="text-right text-red-500 font-bold">
-                      {p.stock_quantity || 0}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {p.min_stock || p.reorder_point || 0}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {lowStockProductsList.length === 0 && (
+          <ScrollArea className="flex-1 w-full mt-4">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[500px]">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
-                      Nenhum produto com estoque baixo.
-                    </TableCell>
+                    <TableHead>Produto</TableHead>
+                    <TableHead className="text-right">Estoque Atual</TableHead>
+                    <TableHead className="text-right">Estoque Mínimo</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {lowStockProductsList.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell className="text-right text-red-500 font-bold">
+                        {p.stock_quantity || 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {p.min_stock || p.reorder_point || 0}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {lowStockProductsList.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                        Nenhum produto com estoque baixo.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
@@ -867,38 +869,40 @@ export default function Index() {
           <DialogHeader>
             <DialogTitle>Pacotes com 1 uso restante</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Pacote</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead className="text-right">Usos Restantes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lowUsesPackagesList.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>{p.expand?.client_id?.name || '-'}</TableCell>
-                    <TableCell>{p.expand?.package_id?.name || '-'}</TableCell>
-                    <TableCell>
-                      {p.expires_at ? format(new Date(p.expires_at), 'dd/MM/yyyy') : '-'}
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-amber-500">
-                      {p.remaining_uses}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {lowUsesPackagesList.length === 0 && (
+          <ScrollArea className="flex-1 w-full mt-4">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[500px]">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                      Nenhum pacote com 1 uso restante.
-                    </TableCell>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Pacote</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead className="text-right">Usos Restantes</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {lowUsesPackagesList.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell>{p.expand?.client_id?.name || '-'}</TableCell>
+                      <TableCell>{p.expand?.package_id?.name || '-'}</TableCell>
+                      <TableCell>
+                        {p.expires_at ? format(new Date(p.expires_at), 'dd/MM/yyyy') : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-amber-500">
+                        {p.remaining_uses}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {lowUsesPackagesList.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                        Nenhum pacote com 1 uso restante.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
@@ -908,49 +912,51 @@ export default function Index() {
           <DialogHeader>
             <DialogTitle>Agendamentos para Amanhã</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Horário</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Profissional</TableHead>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {aptsTomorrowList.map((a) => {
-                  let price = a.price || a.expand?.service_id?.price || 0
-                  if (a.expand?.client_package_id?.expand?.package_id) {
-                    const pkg = a.expand.client_package_id.expand.package_id
-                    if (pkg.quantity > 0) price = pkg.price / pkg.quantity
-                  }
-                  return (
-                    <TableRow key={a.id}>
-                      <TableCell>{a.time}</TableCell>
-                      <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
-                      <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
-                      <TableCell>{a.expand?.service_id?.name || '-'}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        R$ {price.toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{a.status}</Badge>
+          <ScrollArea className="flex-1 w-full mt-4">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Horário</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {aptsTomorrowList.map((a) => {
+                    let price = a.price || a.expand?.service_id?.price || 0
+                    if (a.expand?.client_package_id?.expand?.package_id) {
+                      const pkg = a.expand.client_package_id.expand.package_id
+                      if (pkg.quantity > 0) price = pkg.price / pkg.quantity
+                    }
+                    return (
+                      <TableRow key={a.id}>
+                        <TableCell>{a.time}</TableCell>
+                        <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
+                        <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
+                        <TableCell>{a.expand?.service_id?.name || '-'}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          R$ {price.toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{a.status}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {aptsTomorrowList.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                        Nenhum agendamento para amanhã.
                       </TableCell>
                     </TableRow>
-                  )
-                })}
-                {aptsTomorrowList.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                      Nenhum agendamento para amanhã.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
@@ -964,152 +970,155 @@ export default function Index() {
               {dashboardModal === 'new_clients' && 'Novos Clientes'}
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 mt-4">
-            {dashboardModal === 'revenue' && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Profissional</TableHead>
-                    <TableHead>Método de Pagamento</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {completedPeriod.map((a) => {
-                    const comm = commissions.find(
-                      (c) =>
-                        c.barber_id === a.barber_id &&
-                        c.type === 'service' &&
-                        Math.abs(new Date(c.created).getTime() - new Date(a.updated).getTime()) <
-                          15000,
-                    )
-                    return (
-                      <TableRow key={`apt_${a.id}`}>
+          <ScrollArea className="flex-1 w-full mt-4">
+            <div className="overflow-x-auto">
+              {dashboardModal === 'revenue' && (
+                <Table className="min-w-[600px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Profissional</TableHead>
+                      <TableHead>Método de Pagamento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {completedPeriod.map((a) => {
+                      const comm = commissions.find(
+                        (c) =>
+                          c.barber_id === a.barber_id &&
+                          c.type === 'service' &&
+                          Math.abs(new Date(c.created).getTime() - new Date(a.updated).getTime()) <
+                            15000,
+                      )
+                      return (
+                        <TableRow key={`apt_${a.id}`}>
+                          <TableCell>
+                            {a.date ? format(new Date(a.date), 'dd/MM/yyyy') : ''}
+                          </TableCell>
+                          <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
+                          <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
+                          <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
+                          <TableCell className="text-right">
+                            R$ {(a.price || a.expand?.service_id?.price || 0).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {productPurchasesPeriod.map((p) => {
+                      const comm = commissions.find(
+                        (c) =>
+                          c.type === 'product' &&
+                          Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) <
+                            15000,
+                      )
+                      return (
+                        <TableRow key={`prod_${p.id}`}>
+                          <TableCell>
+                            {p.date ? format(new Date(p.date), 'dd/MM/yyyy') : ''}
+                          </TableCell>
+                          <TableCell>{p.expand?.client_id?.name || 'Avulso'}</TableCell>
+                          <TableCell>{p.expand?.barber_id?.name || '-'}</TableCell>
+                          <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
+                          <TableCell className="text-right">
+                            R$ {(p.price_at_sale || 0).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {packagesPeriod.map((pkg) => {
+                      const comm = commissions.find(
+                        (c) =>
+                          c.type === 'package' &&
+                          Math.abs(
+                            new Date(c.created).getTime() - new Date(pkg.created).getTime(),
+                          ) < 15000,
+                      )
+                      return (
+                        <TableRow key={`pkg_${pkg.id}`}>
+                          <TableCell>{format(new Date(pkg.created), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell>{pkg.expand?.client_id?.name || 'Avulso'}</TableCell>
+                          <TableCell>{pkg.expand?.barber_id?.name || '-'}</TableCell>
+                          <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
+                          <TableCell className="text-right">
+                            R$ {(pkg.expand?.package_id?.price || 0).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {completedPeriod.length === 0 &&
+                      productPurchasesPeriod.length === 0 &&
+                      packagesPeriod.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                            Nenhuma venda no período.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                  </TableBody>
+                </Table>
+              )}
+              {dashboardModal === 'clients' && (
+                <Table className="min-w-[500px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Profissional(is)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clientsServed.map((data, i) => (
+                      <TableRow key={i}>
                         <TableCell>
-                          {a.date ? format(new Date(a.date), 'dd/MM/yyyy') : ''}
+                          {data.client?.name} {data.client?.surname}
                         </TableCell>
-                        <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
-                        <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
-                        <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
-                        <TableCell className="text-right">
-                          R$ {(a.price || a.expand?.service_id?.price || 0).toFixed(2)}
-                        </TableCell>
+                        <TableCell>{data.barbers}</TableCell>
                       </TableRow>
-                    )
-                  })}
-                  {productPurchasesPeriod.map((p) => {
-                    const comm = commissions.find(
-                      (c) =>
-                        c.type === 'product' &&
-                        Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) <
-                          15000,
-                    )
-                    return (
-                      <TableRow key={`prod_${p.id}`}>
-                        <TableCell>
-                          {p.date ? format(new Date(p.date), 'dd/MM/yyyy') : ''}
-                        </TableCell>
-                        <TableCell>{p.expand?.client_id?.name || 'Avulso'}</TableCell>
-                        <TableCell>{p.expand?.barber_id?.name || '-'}</TableCell>
-                        <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
-                        <TableCell className="text-right">
-                          R$ {(p.price_at_sale || 0).toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                  {packagesPeriod.map((pkg) => {
-                    const comm = commissions.find(
-                      (c) =>
-                        c.type === 'package' &&
-                        Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) <
-                          15000,
-                    )
-                    return (
-                      <TableRow key={`pkg_${pkg.id}`}>
-                        <TableCell>{format(new Date(pkg.created), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell>{pkg.expand?.client_id?.name || 'Avulso'}</TableCell>
-                        <TableCell>{pkg.expand?.barber_id?.name || '-'}</TableCell>
-                        <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
-                        <TableCell className="text-right">
-                          R$ {(pkg.expand?.package_id?.price || 0).toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                  {completedPeriod.length === 0 &&
-                    productPurchasesPeriod.length === 0 &&
-                    packagesPeriod.length === 0 && (
+                    ))}
+                    {clientsServed.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                          Nenhuma venda no período.
+                        <TableCell colSpan={2} className="text-center py-6 text-muted-foreground">
+                          Nenhum cliente no período.
                         </TableCell>
                       </TableRow>
                     )}
-                </TableBody>
-              </Table>
-            )}
-            {dashboardModal === 'clients' && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Profissional(is)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clientsServed.map((data, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        {data.client?.name} {data.client?.surname}
-                      </TableCell>
-                      <TableCell>{data.barbers}</TableCell>
-                    </TableRow>
-                  ))}
-                  {clientsServed.length === 0 && (
+                  </TableBody>
+                </Table>
+              )}
+              {dashboardModal === 'new_clients' && (
+                <Table className="min-w-[500px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={2} className="text-center py-6 text-muted-foreground">
-                        Nenhum cliente no período.
-                      </TableCell>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Data Cadastro</TableHead>
+                      <TableHead>Atendido por</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-            {dashboardModal === 'new_clients' && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Data Cadastro</TableHead>
-                    <TableHead>Atendido por</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clientsCreatedInPeriod.map((c) => {
-                    const firstApt = appointments.find((a) => a.client_id === c.id)
-                    return (
-                      <TableRow key={c.id}>
-                        <TableCell>
-                          {c.name} {c.surname}
+                  </TableHeader>
+                  <TableBody>
+                    {clientsCreatedInPeriod.map((c) => {
+                      const firstApt = appointments.find((a) => a.client_id === c.id)
+                      return (
+                        <TableRow key={c.id}>
+                          <TableCell>
+                            {c.name} {c.surname}
+                          </TableCell>
+                          <TableCell>{format(new Date(c.created), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell>{firstApt?.expand?.barber_id?.name || '-'}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {clientsCreatedInPeriod.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                          Nenhum novo cliente no período.
                         </TableCell>
-                        <TableCell>{format(new Date(c.created), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell>{firstApt?.expand?.barber_id?.name || '-'}</TableCell>
                       </TableRow>
-                    )
-                  })}
-                  {clientsCreatedInPeriod.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
-                        Nenhum novo cliente no período.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
@@ -1123,58 +1132,60 @@ export default function Index() {
               {forecastModal === 'month' && 'Previsão de Recebimento - Restante do Mês'}
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data/Hora</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Serviço/Pacote</TableHead>
-                  <TableHead>Profissional</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingAppointments
-                  .filter((a) => {
+          <ScrollArea className="flex-1 w-full mt-4">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Serviço/Pacote</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingAppointments
+                    .filter((a) => {
+                      const d = new Date(a.date)
+                      if (forecastModal === 'tomorrow') return d >= tomorrow && d <= tomorrowEnd
+                      if (forecastModal === 'week') return d > tomorrowEnd && d <= weekEnd
+                      if (forecastModal === 'month') return d > tomorrowEnd && d <= monthEnd
+                      return false
+                    })
+                    .map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell>
+                          {a.date ? format(new Date(a.date), 'dd/MM/yyyy') : ''} {a.time}
+                        </TableCell>
+                        <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
+                        <TableCell>
+                          {a.expand?.client_package_id
+                            ? a.expand.client_package_id.expand?.package_id?.name
+                            : a.expand?.service_id?.name || '-'}
+                        </TableCell>
+                        <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
+                        <TableCell className="text-right font-medium text-emerald-500">
+                          R$ {calcApptRevenue(a).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {pendingAppointments.filter((a) => {
                     const d = new Date(a.date)
                     if (forecastModal === 'tomorrow') return d >= tomorrow && d <= tomorrowEnd
                     if (forecastModal === 'week') return d > tomorrowEnd && d <= weekEnd
                     if (forecastModal === 'month') return d > tomorrowEnd && d <= monthEnd
                     return false
-                  })
-                  .map((a) => (
-                    <TableRow key={a.id}>
-                      <TableCell>
-                        {a.date ? format(new Date(a.date), 'dd/MM/yyyy') : ''} {a.time}
-                      </TableCell>
-                      <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
-                      <TableCell>
-                        {a.expand?.client_package_id
-                          ? a.expand.client_package_id.expand?.package_id?.name
-                          : a.expand?.service_id?.name || '-'}
-                      </TableCell>
-                      <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
-                      <TableCell className="text-right font-medium text-emerald-500">
-                        R$ {calcApptRevenue(a).toFixed(2)}
+                  }).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                        Nenhum agendamento previsto para este período.
                       </TableCell>
                     </TableRow>
-                  ))}
-                {pendingAppointments.filter((a) => {
-                  const d = new Date(a.date)
-                  if (forecastModal === 'tomorrow') return d >= tomorrow && d <= tomorrowEnd
-                  if (forecastModal === 'week') return d > tomorrowEnd && d <= weekEnd
-                  if (forecastModal === 'month') return d > tomorrowEnd && d <= monthEnd
-                  return false
-                }).length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                      Nenhum agendamento previsto para este período.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>

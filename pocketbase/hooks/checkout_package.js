@@ -9,6 +9,16 @@ routerAdd(
       const pkg = txApp.findRecordById('packages', package_id)
       const barber = txApp.findRecordById('barbers', barber_id)
 
+      let feePerc = 0
+      try {
+        if (payment_method) {
+          const pm = txApp.findRecordById('payment_methods', payment_method)
+          feePerc = pm.getFloat('fee_percentage') || 0
+        }
+      } catch (_) {}
+      const feeMultiplier = 1 - feePerc / 100
+      const netPackagePrice = pkg.getFloat('price') * feeMultiplier
+
       const d = new Date()
       d.setDate(d.getDate() + 30)
       const expiresAt = d.toISOString().replace('T', ' ').substring(0, 19)
@@ -30,18 +40,18 @@ routerAdd(
         if (catId) {
           const cat = txApp.findRecordById('categories', catId)
           const perc = cat.getFloat('commission_percentage') || 0
-          commAmount = pkg.getFloat('price') * (perc / 100)
+          commAmount = netPackagePrice * (perc / 100)
         } else {
           commAmount =
             barber.getString('commission_type') === 'percentage'
-              ? pkg.getFloat('price') * (barber.getFloat('commission_value') / 100)
-              : barber.getFloat('commission_value')
+              ? netPackagePrice * (barber.getFloat('commission_value') / 100)
+              : Math.min(netPackagePrice, barber.getFloat('commission_value'))
         }
       } else {
         commAmount =
           barber.getString('commission_type') === 'percentage'
-            ? pkg.getFloat('price') * (barber.getFloat('commission_value') / 100)
-            : barber.getFloat('commission_value')
+            ? netPackagePrice * (barber.getFloat('commission_value') / 100)
+            : Math.min(netPackagePrice, barber.getFloat('commission_value'))
       }
 
       if (commAmount > 0) {

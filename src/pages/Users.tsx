@@ -174,6 +174,7 @@ export default function UsersPage() {
         address: formData.address,
         access_level: formData.access_level,
         specialties: JSON.stringify(specialties),
+        emailVisibility: true,
       }
 
       if (formData.password) {
@@ -302,8 +303,8 @@ export default function UsersPage() {
               <Plus className="size-4 mr-2" /> Novo Usuário
             </Button>
           </div>
-          <Card className="border-border shadow-sm">
-            <Table>
+          <Card className="border-border shadow-sm overflow-x-auto">
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
@@ -368,44 +369,46 @@ export default function UsersPage() {
             </CardHeader>
             <CardContent className="px-0">
               {permissionGroups.map((group) => (
-                <div key={group.title} className="mb-6 px-6">
+                <div key={group.title} className="mb-6 px-4 md:px-6">
                   <h4 className="font-semibold text-sm bg-muted p-2 rounded-md mb-2">
                     {group.title}
                   </h4>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Permissão</TableHead>
-                        <TableHead className="text-center w-24">Sócio</TableHead>
-                        <TableHead className="text-center w-24">Autônomo</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {group.items.map((mod) => (
-                        <TableRow key={mod.id}>
-                          <TableCell className="text-sm">{mod.label}</TableCell>
-                          <TableCell className="text-center">
-                            <Checkbox
-                              checked={
-                                rolePerms['Socio']?.includes(mod.id) ||
-                                rolePerms['Socio']?.includes('*')
-                              }
-                              onCheckedChange={(c) => toggleModule('Socio', mod.id, !!c)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Checkbox
-                              checked={
-                                rolePerms['Autonomo']?.includes(mod.id) ||
-                                rolePerms['Autonomo']?.includes('*')
-                              }
-                              onCheckedChange={(c) => toggleModule('Autonomo', mod.id, !!c)}
-                            />
-                          </TableCell>
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[600px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Permissão</TableHead>
+                          <TableHead className="text-center w-24">Sócio</TableHead>
+                          <TableHead className="text-center w-24">Autônomo</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {group.items.map((mod) => (
+                          <TableRow key={mod.id}>
+                            <TableCell className="text-sm">{mod.label}</TableCell>
+                            <TableCell className="text-center">
+                              <Checkbox
+                                checked={
+                                  rolePerms['Socio']?.includes(mod.id) ||
+                                  rolePerms['Socio']?.includes('*')
+                                }
+                                onCheckedChange={(c) => toggleModule('Socio', mod.id, !!c)}
+                              />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Checkbox
+                                checked={
+                                  rolePerms['Autonomo']?.includes(mod.id) ||
+                                  rolePerms['Autonomo']?.includes('*')
+                                }
+                                onCheckedChange={(c) => toggleModule('Autonomo', mod.id, !!c)}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -422,6 +425,7 @@ export default function UsersPage() {
             <div className="space-y-2">
               <Label>Nome *</Label>
               <Input
+                className="min-h-[44px]"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
@@ -429,6 +433,7 @@ export default function UsersPage() {
             <div className="space-y-2">
               <Label>Sobrenome *</Label>
               <Input
+                className="min-h-[44px]"
                 value={formData.surname}
                 onChange={(e) => setFormData({ ...formData, surname: e.target.value })}
               />
@@ -437,6 +442,7 @@ export default function UsersPage() {
               <Label>Email *</Label>
               <Input
                 type="email"
+                className="min-h-[44px]"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
@@ -447,7 +453,7 @@ export default function UsersPage() {
                 value={formData.access_level}
                 onValueChange={(v) => setFormData({ ...formData, access_level: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="min-h-[44px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -460,6 +466,7 @@ export default function UsersPage() {
             <div className="space-y-2">
               <Label>WhatsApp</Label>
               <Input
+                className="min-h-[44px]"
                 value={formData.whatsapp}
                 onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
                 placeholder="(00) 00000-0000"
@@ -468,6 +475,7 @@ export default function UsersPage() {
             <div className="space-y-2">
               <Label>Telefone Secundário</Label>
               <Input
+                className="min-h-[44px]"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
@@ -475,6 +483,7 @@ export default function UsersPage() {
             <div className="space-y-2 md:col-span-2">
               <Label>Endereço</Label>
               <Input
+                className="min-h-[44px]"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               />
@@ -485,6 +494,7 @@ export default function UsersPage() {
               </Label>
               <Input
                 type="password"
+                className="min-h-[44px]"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="Mínimo 8 caracteres, com letras, números e símbolos (@$!%*#?&)"

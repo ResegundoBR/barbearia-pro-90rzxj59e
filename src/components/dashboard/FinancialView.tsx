@@ -655,9 +655,9 @@ export function FinancialView({
               {modalType === 'recebimentos' && 'Recebimentos (Detalhado)'}
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto mt-2">
+          <div className="max-h-[60vh] overflow-y-auto overflow-x-auto mt-2">
             {modalType === 'comissoes' && (
-              <Table>
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data Serv/Venda</TableHead>
@@ -710,7 +710,7 @@ export function FinancialView({
               </Table>
             )}
             {modalType === 'recebimentos' && (
-              <Table>
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
@@ -751,7 +751,7 @@ export function FinancialView({
               </Table>
             )}
             {modalType === 'adiantamentos' && (
-              <Table>
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
@@ -788,7 +788,7 @@ export function FinancialView({
               </Table>
             )}
             {modalType === 'totalLiquido' && (
-              <Table>
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Profissional</TableHead>
@@ -840,108 +840,114 @@ export function FinancialView({
 
       <Card className="bg-glass border-none">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10"></TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Cliente / Profissional</TableHead>
-                <TableHead>Itens</TableHead>
-                <TableHead>Método</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Valores</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.map((t) => (
-                <React.Fragment key={t.id}>
-                  <TableRow
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => toggleRow(t.id)}
-                  >
-                    <TableCell className="w-10">
-                      {t.type !== 'advance' && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6">
-                          {expandedRows[t.id] ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
-                    </TableCell>
-                    <TableCell>{format(new Date(t.date), 'dd/MM/yyyy HH:mm')}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{t.client?.name || 'Avulso'}</div>
-                      <div className="text-xs text-muted-foreground">{t.barber?.name || '-'}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm truncate max-w-[150px]">{t.items.join(', ')}</div>
-                    </TableCell>
-                    <TableCell className="capitalize">
-                      {translatePayment(t.payment_method)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={t.status === 'paid' ? 'default' : 'secondary'}>
-                        {t.status === 'pending' ? 'A Vencer' : 'Pago'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {t.type === 'advance' ? (
-                        <span className="text-red-500 font-medium">
-                          - R$ {Math.abs(t.grossAmount).toFixed(2)}
-                        </span>
-                      ) : (
-                        <div className="flex flex-col items-end">
-                          <span className="text-emerald-500 font-bold">
-                            R$ {t.grossAmount.toFixed(2)}
+          <div className="overflow-x-auto">
+            <Table className="min-w-[800px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Cliente / Profissional</TableHead>
+                  <TableHead>Itens</TableHead>
+                  <TableHead>Método</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Valores</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((t) => (
+                  <React.Fragment key={t.id}>
+                    <TableRow
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleRow(t.id)}
+                    >
+                      <TableCell className="w-10">
+                        {t.type !== 'advance' && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            {expandedRows[t.id] ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      </TableCell>
+                      <TableCell>{format(new Date(t.date), 'dd/MM/yyyy HH:mm')}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{t.client?.name || 'Avulso'}</div>
+                        <div className="text-xs text-muted-foreground">{t.barber?.name || '-'}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm truncate max-w-[150px]">{t.items.join(', ')}</div>
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {translatePayment(t.payment_method)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={t.status === 'paid' ? 'default' : 'secondary'}>
+                          {t.status === 'pending' ? 'A Vencer' : 'Pago'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {t.type === 'advance' ? (
+                          <span className="text-red-500 font-medium">
+                            - R$ {Math.abs(t.grossAmount).toFixed(2)}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            Comissão: R$ {t.commissionAmount.toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                  {expandedRows[t.id] && t.type !== 'advance' && (
-                    <TableRow className="bg-muted/30">
-                      <TableCell colSpan={7} className="p-0 border-b">
-                        <div className="flex flex-wrap items-center justify-between p-4 text-sm gap-4">
-                          <div className="flex flex-col">
-                            <span className="text-muted-foreground text-xs">Serviços/Pacotes</span>
-                            <span className="font-medium">R$ {t.serviceAmount.toFixed(2)}</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-muted-foreground text-xs">Produtos</span>
-                            <span className="font-medium">R$ {t.productAmount.toFixed(2)}</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-muted-foreground text-xs">
-                              Comissão Profissional
-                            </span>
-                            <span className="font-medium">R$ {t.commissionAmount.toFixed(2)}</span>
-                          </div>
+                        ) : (
                           <div className="flex flex-col items-end">
-                            <span className="text-muted-foreground text-xs">Total da Venda</span>
-                            <span className="font-bold text-emerald-500">
+                            <span className="text-emerald-500 font-bold">
                               R$ {t.grossAmount.toFixed(2)}
                             </span>
+                            <span className="text-xs text-muted-foreground">
+                              Comissão: R$ {t.commissionAmount.toFixed(2)}
+                            </span>
                           </div>
-                        </div>
+                        )}
                       </TableCell>
                     </TableRow>
-                  )}
-                </React.Fragment>
-              ))}
-              {transactions.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                    Nenhuma transação encontrada no período e filtros selecionados.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                    {expandedRows[t.id] && t.type !== 'advance' && (
+                      <TableRow className="bg-muted/30">
+                        <TableCell colSpan={7} className="p-0 border-b">
+                          <div className="flex flex-wrap items-center justify-between p-4 text-sm gap-4">
+                            <div className="flex flex-col">
+                              <span className="text-muted-foreground text-xs">
+                                Serviços/Pacotes
+                              </span>
+                              <span className="font-medium">R$ {t.serviceAmount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-muted-foreground text-xs">Produtos</span>
+                              <span className="font-medium">R$ {t.productAmount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-muted-foreground text-xs">
+                                Comissão Profissional
+                              </span>
+                              <span className="font-medium">
+                                R$ {t.commissionAmount.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-muted-foreground text-xs">Total da Venda</span>
+                              <span className="font-bold text-emerald-500">
+                                R$ {t.grossAmount.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                ))}
+                {transactions.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                      Nenhuma transação encontrada no período e filtros selecionados.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
