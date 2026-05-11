@@ -303,6 +303,7 @@ export default function UsersPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Perfil</TableHead>
+                  <TableHead>Plano</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -325,6 +326,9 @@ export default function UsersPage() {
                       >
                         {u.access_level}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {u.plan ? <Badge variant="outline">{u.plan}</Badge> : '-'}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => handleOpenUser(u)}>

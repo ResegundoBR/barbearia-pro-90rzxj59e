@@ -33,10 +33,46 @@ export default function FornecedorDetail() {
   const [purchaseForm, setPurchaseForm] = useState({
     product_id: '',
     quantity: '1',
+    unit_price: '',
     price_paid: '',
     purchase_date: new Date().toISOString().split('T')[0],
   })
+  const [lastPurchase, setLastPurchase] = useState<any>(null)
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (purchaseForm.product_id) {
+      pb.collection('inventory_purchases')
+        .getFirstListItem(`product_id="${purchaseForm.product_id}"`, {
+          sort: '-purchase_date',
+          expand: 'supplier_id',
+        })
+        .then((res) => setLastPurchase(res))
+        .catch(() => setLastPurchase(null))
+    } else {
+      setLastPurchase(null)
+    }
+  }, [purchaseForm.product_id])
+
+  const handleQuantityChange = (val: string) => {
+    const q = Number(val) || 0
+    const u = Number(purchaseForm.unit_price) || 0
+    setPurchaseForm({
+      ...purchaseForm,
+      quantity: val,
+      price_paid: q * u > 0 ? (q * u).toFixed(2) : purchaseForm.price_paid,
+    })
+  }
+
+  const handleUnitPriceChange = (val: string) => {
+    const u = Number(val) || 0
+    const q = Number(purchaseForm.quantity) || 0
+    setPurchaseForm({
+      ...purchaseForm,
+      unit_price: val,
+      price_paid: q * u > 0 ? (q * u).toFixed(2) : purchaseForm.price_paid,
+    })
+  }
 
   const loadData = async () => {
     if (!id) return
@@ -73,12 +109,19 @@ export default function FornecedorDetail() {
         supplier_id: id,
         product_id: purchaseForm.product_id,
         quantity: Number(purchaseForm.quantity) || 1,
+        unit_price: Number(purchaseForm.unit_price) || 0,
         price_paid: Number(purchaseForm.price_paid) || 0,
         purchase_date: new Date(purchaseForm.purchase_date).toISOString(),
       })
       toast({ title: 'Compra registrada' })
       setPurchaseDialogOpen(false)
-      setPurchaseForm({ ...purchaseForm, price_paid: '', product_id: '' })
+      setPurchaseForm({
+        ...purchaseForm,
+        price_paid: '',
+        unit_price: '',
+        product_id: '',
+        quantity: '1',
+      })
     } catch (e: any) {
       toast({ title: 'Erro ao registrar', description: e.message, variant: 'destructive' })
     }
@@ -169,6 +212,11 @@ export default function FornecedorDetail() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-sm">R$ {purch.price_paid?.toFixed(2)}</p>
+                      {purch.unit_price && (
+                        <p className="text-xs text-muted-foreground">
+                          Unit: R$ {purch.unit_price.toFixed(2)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -202,13 +250,37 @@ export default function FornecedorDetail() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            {lastPurchase && (
+              <div className="bg-muted/50 p-3 rounded-md text-sm">
+                <p className="font-semibold text-muted-foreground mb-1">
+                  Última Compra do Produto:
+                </p>
+                <p>Fornecedor: {lastPurchase.expand?.supplier_id?.name || 'Desconhecido'}</p>
+                <p>
+                  Preço Unitário: R${' '}
+                  {lastPurchase.unit_price
+                    ? lastPurchase.unit_price.toFixed(2)
+                    : (lastPurchase.price_paid / lastPurchase.quantity).toFixed(2)}
+                </p>
+                <p>Data: {format(new Date(lastPurchase.purchase_date), 'dd/MM/yyyy')}</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label>Qtd</Label>
                 <Input
                   type="number"
                   value={purchaseForm.quantity}
-                  onChange={(e) => setPurchaseForm({ ...purchaseForm, quantity: e.target.value })}
+                  onChange={(e) => handleQuantityChange(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Preço Unit.</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={purchaseForm.unit_price}
+                  onChange={(e) => handleUnitPriceChange(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
