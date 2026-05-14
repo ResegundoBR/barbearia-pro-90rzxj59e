@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -18,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -27,518 +25,291 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Trash2, Edit, X } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth'
-import { useRealtime } from '@/hooks/use-realtime'
+import { extractFieldErrors } from '@/lib/pocketbase/errors'
 import pb from '@/lib/pocketbase/client'
+import { toast } from 'sonner'
+import { Loader2, Plus, Edit2, Trash2, Mail } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function UsersPage() {
-  const { user } = useAuth()
-  const { toast } = useToast()
-
-  const isAdmin =
-    user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
-
   const [users, setUsers] = useState<any[]>([])
-  const [rolePerms, setRolePerms] = useState<any>({
-    Admin: ['*'],
-    Socio: ['agenda', 'clientes', 'checkout'],
-    Autonomo: ['agenda'],
-  })
-  const [rolePermsId, setRolePermsId] = useState<string | null>(null)
-
-  const [isUserOpen, setIsUserOpen] = useState(false)
-  const [editingUserId, setEditingUserId] = useState<string | null>(null)
-
+  const [loading, setLoading] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
   const [formData, setFormData] = useState({
+    id: '',
     name: '',
-    surname: '',
     email: '',
-    whatsapp: '',
-    phone: '',
-    address: '',
     password: '',
+    passwordConfirm: '',
     access_level: 'Autonomo',
+    plan: 'Free',
   })
+  const [saving, setSaving] = useState(false)
+  const { user: currentUser } = useAuth()
 
-  const [specialties, setSpecialties] = useState<string[]>([])
-  const [newSpec, setNewSpec] = useState('')
-
-  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/
-
-  const loadData = async () => {
+  const loadUsers = async () => {
     try {
-      let list = []
-      try {
-        list = await pb.send('/backend/v1/users', { method: 'GET' })
-      } catch (err) {
-        // Fallback in case the hook isn't deployed yet
-        list = await pb.collection('users').getFullList({ sort: '-created' })
-      }
-      setUsers(list)
-
-      const perms = await pb
-        .collection('settings')
-        .getFullList({ filter: 'key="role_permissions"' })
-      if (perms.length > 0) {
-        setRolePermsId(perms[0].id)
-        setRolePerms(perms[0].value)
-      }
-    } catch (e) {
-      console.error(e)
+      setLoading(true)
+      const res = await pb.collection('users').getFullList({ sort: '-created' })
+      setUsers(res)
+    } catch (err) {
+      toast.error('Erro ao carregar usuários')
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
-    if (isAdmin) {
-      loadData()
-    }
-  }, [isAdmin])
+    loadUsers()
+  }, [])
 
-  useRealtime('users', () => {
-    if (isAdmin) loadData()
-  })
-
-  if (!isAdmin) {
-    return (
-      <div className="p-8 text-center text-muted-foreground">
-        Acesso Restrito a Administradores.
-      </div>
-    )
-  }
-
-  const handleOpenUser = (u?: any) => {
-    if (u) {
-      setFormData({
-        name: u.name || '',
-        surname: u.surname || '',
-        email: u.email || '',
-        whatsapp: u.whatsapp || '',
-        phone: u.phone || '',
-        address: u.address || '',
-        password: '',
-        access_level: u.access_level || 'Autonomo',
-      })
-      setSpecialties(
-        u.specialties
-          ? u.specialties.includes('[')
-            ? JSON.parse(u.specialties)
-            : u.specialties.split('\n').filter(Boolean)
-          : [],
-      )
-      setEditingUserId(u.id)
-    } else {
-      setFormData({
-        name: '',
-        surname: '',
-        email: '',
-        whatsapp: '',
-        phone: '',
-        address: '',
-        password: '',
-        access_level: 'Autonomo',
-      })
-      setSpecialties([])
-      setEditingUserId(null)
-    }
-    setIsUserOpen(true)
-  }
-
-  const handleSaveUser = async () => {
-    if (!editingUserId && !passwordRegex.test(formData.password)) {
-      toast({
-        title: 'Senha inválida',
-        description: 'Mínimo 8 caracteres, letras, números e um caractere especial.',
-        variant: 'destructive',
-      })
-      return
-    }
-    if (editingUserId && formData.password && !passwordRegex.test(formData.password)) {
-      toast({
-        title: 'Senha inválida',
-        description: 'Mínimo 8 caracteres, letras, números e um caractere especial.',
-        variant: 'destructive',
-      })
-      return
-    }
-
+  const handleSave = async () => {
     try {
-      const payload: any = {
-        name: formData.name,
-        surname: formData.surname,
-        email: formData.email,
-        whatsapp: formData.whatsapp,
-        phone: formData.phone,
-        address: formData.address,
-        access_level: formData.access_level,
-        specialties: JSON.stringify(specialties),
-        emailVisibility: true,
-      }
-
-      if (formData.password) {
-        payload.password = formData.password
-        payload.passwordConfirm = formData.password
-      }
-
-      if (editingUserId) {
-        await pb.collection('users').update(editingUserId, payload)
-        toast({ title: 'Usuário atualizado!' })
+      setSaving(true)
+      if (formData.id) {
+        const data: any = {
+          name: formData.name,
+          access_level: formData.access_level,
+          plan: formData.plan,
+        }
+        if (formData.password) {
+          data.password = formData.password
+          data.passwordConfirm = formData.passwordConfirm
+        }
+        data.email = formData.email
+        await pb.collection('users').update(formData.id, data)
+        toast.success('Usuário atualizado com sucesso')
       } else {
-        await pb.collection('users').create(payload)
-        toast({ title: 'Usuário criado!' })
+        await pb.collection('users').create(formData)
+        toast.success('Usuário criado com sucesso')
       }
-      setIsUserOpen(false)
-      loadData()
+      setModalOpen(false)
+      loadUsers()
     } catch (err: any) {
-      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' })
-    }
-  }
-
-  const handleDeleteUser = async (id: string) => {
-    if (confirm('Tem certeza que deseja remover este usuário?')) {
-      try {
-        await pb.collection('users').delete(id)
-        toast({ title: 'Usuário removido' })
-        loadData()
-      } catch (err) {
-        toast({ title: 'Erro ao remover', variant: 'destructive' })
-      }
-    }
-  }
-
-  const addSpecialty = () => {
-    if (newSpec.trim() && !specialties.includes(newSpec.trim())) {
-      setSpecialties([...specialties, newSpec.trim()])
-      setNewSpec('')
-    }
-  }
-
-  const permissionGroups = [
-    {
-      title: 'Módulos Principais',
-      items: [
-        { id: 'dashboard', label: 'Dashboard (Acesso Geral)' },
-        { id: 'agenda', label: 'Agenda' },
-        { id: 'clientes', label: 'Clientes' },
-        { id: 'estoque', label: 'Serviços & Pacotes' },
-        { id: 'produtos', label: 'Produtos e Categorias' },
-        { id: 'staff_view', label: 'Equipes e Comissões (Visualização)' },
-        { id: 'staff_edit', label: 'Equipes e Comissões (Edição)' },
-        { id: 'checkout', label: 'Checkout (POS)' },
-        { id: 'financeiro', label: 'Financeiro' },
-        { id: 'action_delete', label: 'Ação: Excluir Registros' },
-        { id: 'action_reports', label: 'Ação: Visualizar Relatórios' },
-      ],
-    },
-    {
-      title: 'Dashboard - Abas',
-      items: [
-        { id: 'dash_tab_overview', label: 'Aba: Visão Geral' },
-        { id: 'dash_tab_financial', label: 'Aba: Financeiro' },
-        { id: 'dash_tab_packages', label: 'Aba: Pacotes Ativos' },
-      ],
-    },
-    {
-      title: 'Dashboard - Blocos (Visão Geral)',
-      items: [
-        { id: 'dash_block_revenue', label: 'Bloco: Faturamento' },
-        { id: 'dash_block_clients', label: 'Bloco: Clientes Atendidos' },
-        { id: 'dash_block_new_clients', label: 'Bloco: Novos Clientes' },
-        { id: 'dash_block_ticket_serv', label: 'Bloco: Ticket Médio - Serviços' },
-        { id: 'dash_block_ticket_prod', label: 'Bloco: Ticket Médio - Produtos' },
-        { id: 'dash_block_peak', label: 'Gráfico: Horários de Pico' },
-        { id: 'dash_block_history', label: 'Gráfico: Histórico de Vendas' },
-        { id: 'dash_block_top_sellers', label: 'Tabela: Itens Mais Vendidos' },
-        { id: 'dash_block_forecast', label: 'Bloco: Previsão de Recebimento' },
-        { id: 'dash_block_alerts', label: 'Bloco: Alertas' },
-      ],
-    },
-  ]
-
-  const toggleModule = async (role: string, modId: string, checked: boolean) => {
-    const current = rolePerms[role] || []
-    let updated = []
-    if (checked) {
-      updated = [...current, modId]
-    } else {
-      updated = current.filter((m: string) => m !== modId)
-    }
-
-    const newPerms = { ...rolePerms, [role]: updated }
-    setRolePerms(newPerms)
-
-    try {
-      if (rolePermsId) {
-        await pb.collection('settings').update(rolePermsId, { value: newPerms })
+      const errs = extractFieldErrors(err)
+      if (Object.keys(errs).length > 0) {
+        toast.error('Erro: ' + Object.values(errs)[0])
       } else {
-        const r = await pb
-          .collection('settings')
-          .create({ key: 'role_permissions', value: newPerms })
-        setRolePermsId(r.id)
+        toast.error(
+          'Erro ao salvar usuário. Verifique se as senhas coincidem e se o email já está em uso.',
+        )
       }
-      toast({ title: 'Permissões atualizadas' })
-    } catch {
-      /* intentionally ignored */
+    } finally {
+      setSaving(false)
     }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Deseja excluir este usuário? Esta ação é irreversível.')) return
+    try {
+      await pb.collection('users').delete(id)
+      toast.success('Excluído com sucesso')
+      loadUsers()
+    } catch (err) {
+      toast.error('Erro ao excluir')
+    }
+  }
+
+  const openNew = () => {
+    setFormData({
+      id: '',
+      name: '',
+      email: '',
+      password: '',
+      passwordConfirm: '',
+      access_level: 'Autonomo',
+      plan: 'Free',
+    })
+    setModalOpen(true)
+  }
+
+  const openEdit = (u: any) => {
+    setFormData({
+      id: u.id,
+      name: u.name || '',
+      email: u.email || '',
+      password: '',
+      passwordConfirm: '',
+      access_level: u.access_level || 'Autonomo',
+      plan: u.plan || 'Free',
+    })
+    setModalOpen(true)
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-10 animate-fade-in">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Usuários e Acessos</h2>
-        <p className="text-muted-foreground">Gerencie a equipe, perfis de acesso e permissões.</p>
+    <div className="space-y-6 animate-fade-in pb-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Usuários e Acessos</h2>
+          <p className="text-muted-foreground text-sm">Gerencie quem tem acesso ao sistema</p>
+        </div>
+        <Button onClick={openNew} className="w-full sm:w-auto">
+          <Plus className="mr-2 h-4 w-4" /> Novo Usuário
+        </Button>
       </div>
 
-      <Tabs defaultValue="users" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="users">Usuários</TabsTrigger>
-          <TabsTrigger value="permissions">Acessos por Perfil</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="users" className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => handleOpenUser()}>
-              <Plus className="size-4 mr-2" /> Novo Usuário
-            </Button>
-          </div>
-          <Card className="border-border shadow-sm overflow-x-auto">
-            <Table className="min-w-[700px]">
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto w-full">
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Perfil</TableHead>
+                  <TableHead>E-mail</TableHead>
+                  <TableHead>Nível</TableHead>
                   <TableHead>Plano</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">
-                      {u.name} {u.surname}
-                    </TableCell>
-                    <TableCell>{u.email}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          u.access_level === 'Admin'
-                            ? 'destructive'
-                            : u.access_level === 'Socio'
-                              ? 'default'
-                              : 'secondary'
-                        }
-                      >
-                        {u.access_level}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {u.plan ? <Badge variant="outline">{u.plan}</Badge> : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenUser(u)}>
-                        <Edit className="size-4" />
-                      </Button>
-                      {u.id !== user?.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDeleteUser(u.id)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  users.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-medium">{u.name || 'Sem nome'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="truncate max-w-[150px] sm:max-w-xs">
+                            {u.email || (
+                              <span className="text-muted-foreground italic">Oculto</span>
+                            )}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{u.access_level || 'Autonomo'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{u.plan || 'Free'}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(u)}
+                            title="Editar"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(u.id)}
+                            disabled={u.id === currentUser?.id}
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+                {!loading && users.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                      Nenhum usuário encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
-          </Card>
-        </TabsContent>
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="permissions" className="space-y-4">
-          <Card className="border-border shadow-sm">
-            <CardHeader>
-              <CardTitle>Controle de Acesso</CardTitle>
-              <CardDescription>
-                Defina quais módulos cada perfil pode acessar. (Admin tem acesso total sempre)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-0">
-              {permissionGroups.map((group) => (
-                <div key={group.title} className="mb-6 px-4 md:px-6">
-                  <h4 className="font-semibold text-sm bg-muted p-2 rounded-md mb-2">
-                    {group.title}
-                  </h4>
-                  <div className="overflow-x-auto">
-                    <Table className="min-w-[600px]">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Permissão</TableHead>
-                          <TableHead className="text-center w-24">Sócio</TableHead>
-                          <TableHead className="text-center w-24">Autônomo</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {group.items.map((mod) => (
-                          <TableRow key={mod.id}>
-                            <TableCell className="text-sm">{mod.label}</TableCell>
-                            <TableCell className="text-center">
-                              <Checkbox
-                                checked={
-                                  rolePerms['Socio']?.includes(mod.id) ||
-                                  rolePerms['Socio']?.includes('*')
-                                }
-                                onCheckedChange={(c) => toggleModule('Socio', mod.id, !!c)}
-                              />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Checkbox
-                                checked={
-                                  rolePerms['Autonomo']?.includes(mod.id) ||
-                                  rolePerms['Autonomo']?.includes('*')
-                                }
-                                onCheckedChange={(c) => toggleModule('Autonomo', mod.id, !!c)}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <Dialog open={isUserOpen} onOpenChange={setIsUserOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingUserId ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
+            <DialogTitle>{formData.id ? 'Editar' : 'Novo'} Usuário</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto px-1">
             <div className="space-y-2">
-              <Label>Nome *</Label>
+              <label className="text-sm font-medium">Nome</label>
               <Input
-                className="min-h-[44px]"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Nome completo"
               />
             </div>
             <div className="space-y-2">
-              <Label>Sobrenome *</Label>
-              <Input
-                className="min-h-[44px]"
-                value={formData.surname}
-                onChange={(e) => setFormData({ ...formData, surname: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Email *</Label>
+              <label className="text-sm font-medium">E-mail</label>
               <Input
                 type="email"
-                className="min-h-[44px]"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="exemplo@email.com"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Perfil de Acesso *</Label>
-              <Select
-                value={formData.access_level}
-                onValueChange={(v) => setFormData({ ...formData, access_level: v })}
-              >
-                <SelectTrigger className="min-h-[44px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Socio">Sócio</SelectItem>
-                  <SelectItem value="Autonomo">Autônomo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>WhatsApp</Label>
-              <Input
-                className="min-h-[44px]"
-                value={formData.whatsapp}
-                onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                placeholder="(00) 00000-0000"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Telefone Secundário</Label>
-              <Input
-                className="min-h-[44px]"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Endereço</Label>
-              <Input
-                className="min-h-[44px]"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>
-                {editingUserId ? 'Nova Senha (deixe em branco para não alterar)' : 'Senha *'}
-              </Label>
-              <Input
-                type="password"
-                className="min-h-[44px]"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Mínimo 8 caracteres, com letras, números e símbolos (@$!%*#?&)"
-              />
-              <p className="text-xs text-muted-foreground">
-                A senha deve conter pelo menos 8 caracteres, misturando letras, números e um
-                caractere especial.
-              </p>
-            </div>
-
-            <div className="space-y-2 md:col-span-2 border-t pt-4 mt-2">
-              <Label>Especialidades</Label>
-              <div className="flex gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Senha {formData.id && '(Opcional)'}</label>
                 <Input
-                  value={newSpec}
-                  onChange={(e) => setNewSpec(e.target.value)}
-                  placeholder="Ex: Corte Degradê"
-                  onKeyDown={(e) => e.key === 'Enter' && addSpecialty()}
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Mínimo 8 caracteres"
                 />
-                <Button type="button" onClick={addSpecialty} variant="secondary">
-                  Adicionar
-                </Button>
               </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {specialties.map((spec, i) => (
-                  <Badge key={i} variant="secondary" className="flex items-center gap-1">
-                    {spec}
-                    <X
-                      className="size-3 cursor-pointer hover:text-destructive"
-                      onClick={() => setSpecialties(specialties.filter((_, idx) => idx !== i))}
-                    />
-                  </Badge>
-                ))}
-                {specialties.length === 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    Nenhuma especialidade cadastrada.
-                  </span>
-                )}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Confirmar Senha</label>
+                <Input
+                  type="password"
+                  value={formData.passwordConfirm}
+                  onChange={(e) => setFormData({ ...formData, passwordConfirm: e.target.value })}
+                  placeholder="Repita a senha"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Nível de Acesso</label>
+                <Select
+                  value={formData.access_level}
+                  onValueChange={(v) => setFormData({ ...formData, access_level: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Admin">Admin</SelectItem>
+                    <SelectItem value="Socio">Socio</SelectItem>
+                    <SelectItem value="Autonomo">Autonomo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Plano</label>
+                <Select
+                  value={formData.plan}
+                  onValueChange={(v) => setFormData({ ...formData, plan: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Free">Free</SelectItem>
+                    <SelectItem value="Basic">Basic</SelectItem>
+                    <SelectItem value="Pro">Pro</SelectItem>
+                    <SelectItem value="Platinum">Platinum</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleSaveUser} className="w-full sm:w-auto">
-              Salvar Usuário
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button variant="outline" onClick={() => setModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

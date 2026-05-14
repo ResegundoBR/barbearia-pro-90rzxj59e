@@ -11,7 +11,10 @@ routerAdd(
       let feePerc = 0
       try {
         if (svcForm.payment_method) {
-          const pm = txApp.findRecordById('payment_methods', svcForm.payment_method)
+          let pmType = svcForm.payment_method
+          if (pmType === 'credito') pmType = 'credit_card'
+          if (pmType === 'debito') pmType = 'debit_card'
+          const pm = txApp.findFirstRecordByData('payment_methods', 'type', pmType)
           feePerc = pm.getFloat('fee_percentage') || 0
         }
       } catch (_) {}

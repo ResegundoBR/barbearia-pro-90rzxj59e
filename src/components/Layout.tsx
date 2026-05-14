@@ -16,6 +16,7 @@ import {
   Wallet,
   Check,
   Truck,
+  Menu,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -41,6 +42,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -50,23 +53,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import useMainStore from '@/stores/main'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
 import pb from '@/lib/pocketbase/client'
 import { useState, useEffect } from 'react'
 import { useRealtime } from '@/hooks/use-realtime'
-
-const baseNavItems = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  { title: 'Agenda', url: '/agenda', icon: CalendarDays },
-  { title: 'Clientes', url: '/clientes', icon: Users },
-  { title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
-  { title: 'Produtos e Categorias', url: '/produtos-categorias', icon: ShoppingBag },
-  { title: 'Equipe & Comissões', url: '/staff', icon: Users },
-  { title: 'Checkout (POS)', url: '/checkout', icon: BadgeDollarSign },
-]
 
 export default function Layout() {
   const location = useLocation()
@@ -227,23 +219,80 @@ export default function Layout() {
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="pb-16 md:pb-0 h-[100dvh]">
+      <SidebarInset className="h-[100dvh]">
         <header className="flex h-16 shrink-0 items-center gap-2 sm:gap-4 border-b border-border bg-card/50 backdrop-blur px-4 sm:px-6 shadow-sm z-10">
           <SidebarTrigger className="-ml-2 hidden md:flex min-h-[44px] min-w-[44px]" />
 
-          <div className="md:hidden flex items-center gap-2 text-primary font-bold">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt="Barbearia Pro"
-                className="h-8 max-w-[120px] object-contain drop-shadow-md"
-              />
-            ) : (
-              <span className="text-lg tracking-tight">BARBEARIA PRO</span>
-            )}
-            <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">
-              {currentPlan}
-            </span>
+          <div className="md:hidden flex items-center gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="-ml-2 min-h-[44px] min-w-[44px]">
+                  <Menu className="size-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] p-0 flex flex-col">
+                <div className="p-4 border-b flex items-center gap-3">
+                  {logoUrl ? (
+                    <img
+                      src={logoUrl}
+                      alt="Barbearia Pro"
+                      className="h-8 max-w-[150px] object-contain drop-shadow-md"
+                    />
+                  ) : (
+                    <span className="font-bold tracking-tight text-primary">BARBEARIA PRO</span>
+                  )}
+                </div>
+                <ScrollArea className="flex-1">
+                  <div className="flex flex-col gap-1 p-2">
+                    {navItems.map((item) => {
+                      const isActive =
+                        location.pathname === item.url ||
+                        (item.url !== '/' && location.pathname.startsWith(item.url))
+                      return (
+                        <SheetClose asChild key={item.title}>
+                          <Link
+                            to={item.url}
+                            className={cn(
+                              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                              isActive
+                                ? 'bg-primary/10 text-primary'
+                                : 'hover:bg-muted text-muted-foreground',
+                            )}
+                          >
+                            <item.icon className="size-4" />
+                            {item.title}
+                          </Link>
+                        </SheetClose>
+                      )
+                    })}
+                  </div>
+                </ScrollArea>
+                <div className="p-4 border-t">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-muted-foreground"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="size-4 mr-2" />
+                    Sair
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+            <div className="text-primary font-bold flex items-center gap-2">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="Barbearia Pro"
+                  className="h-8 max-w-[120px] object-contain drop-shadow-md hidden sm:block"
+                />
+              ) : (
+                <span className="text-lg tracking-tight hidden sm:block">BARBEARIA PRO</span>
+              )}
+              <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">
+                {currentPlan}
+              </span>
+            </div>
           </div>
 
           <div className="flex-1 flex items-center max-w-md relative ml-2 md:ml-0">
@@ -270,11 +319,7 @@ export default function Layout() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative hidden sm:flex min-h-[44px] min-w-[44px]"
-                >
+                <Button variant="ghost" size="icon" className="relative min-h-[44px] min-w-[44px]">
                   <Bell className="size-5" />
                   {(expiringPackages.length > 0 || notifications.length > 0) && (
                     <span className="absolute top-2 right-2 size-2 bg-destructive rounded-full animate-pulse"></span>
@@ -380,7 +425,7 @@ export default function Layout() {
         </header>
 
         <Dialog open={isPackagesModalOpen} onOpenChange={setIsPackagesModalOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md w-[95vw]">
             <DialogHeader>
               <DialogTitle>Pacotes Quase no Fim</DialogTitle>
             </DialogHeader>
@@ -398,7 +443,7 @@ export default function Layout() {
                       {pkg.expand?.package_id?.name || 'Pacote sem nome'}
                     </p>
                   </div>
-                  <span className="text-xs font-semibold bg-amber-500/20 text-amber-600 px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-semibold bg-amber-500/20 text-amber-600 px-2.5 py-1 rounded-full whitespace-nowrap ml-2">
                     1 uso restante
                   </span>
                 </div>
@@ -412,35 +457,10 @@ export default function Layout() {
           </DialogContent>
         </Dialog>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 animate-fade-in">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 animate-fade-in w-full max-w-[100vw]">
           <Outlet />
         </main>
       </SidebarInset>
-
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-[72px] bg-card/95 backdrop-blur border-t border-border flex items-center px-1 pb-safe shadow-[0_-5px_15px_-10px_rgba(0,0,0,0.3)] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {navItems.map((item) => {
-          const isActive =
-            location.pathname === item.url ||
-            (item.url !== '/' && location.pathname.startsWith(item.url))
-
-          return (
-            <Link
-              key={item.title}
-              to={item.url}
-              className={cn(
-                'flex flex-col items-center justify-center min-w-[72px] flex-1 h-full gap-1 transition-colors min-h-[44px]',
-                isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <item.icon className={cn('size-5 shrink-0', isActive && 'fill-primary/20')} />
-              <span className="text-[10px] font-medium leading-none whitespace-nowrap">
-                {item.title.split(' ')[0]}
-              </span>
-            </Link>
-          )
-        })}
-      </nav>
     </SidebarProvider>
   )
 }
