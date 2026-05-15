@@ -70,6 +70,7 @@ export function ProdutosTab() {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [disablePromptId, setDisablePromptId] = useState<string | null>(null)
+  const [deletePromptId, setDeletePromptId] = useState<string | null>(null)
 
   const { toast } = useToast()
 
@@ -170,7 +171,7 @@ export function ProdutosTab() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteClick = async (id: string) => {
     try {
       const purchases = await pb
         .collection('product_purchases')
@@ -184,9 +185,18 @@ export function ProdutosTab() {
         return
       }
 
-      if (!confirm('Deseja realmente excluir este produto?')) return
-      await deleteProduct(id)
+      setDeletePromptId(id)
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deletePromptId) return
+    try {
+      await deleteProduct(deletePromptId)
       toast({ title: 'Produto excluído' })
+      setDeletePromptId(null)
     } catch (err: any) {
       toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
     }
@@ -326,7 +336,11 @@ export function ProdutosTab() {
                       <Button variant="ghost" size="icon" onClick={() => openDialog(prod)}>
                         <Pencil className="size-4 text-muted-foreground" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(prod.id)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteClick(prod.id)}
+                      >
                         <Trash2 className="size-4 text-destructive/80 hover:text-destructive" />
                       </Button>
                     </TableCell>
@@ -507,6 +521,26 @@ export function ProdutosTab() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDisableProduct}>Sim, desativar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletePromptId} onOpenChange={(v) => !v && setDeletePromptId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir produto</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja realmente excluir este produto? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -12,6 +12,8 @@ import {
 import pb from '@/lib/pocketbase/client'
 import { format } from 'date-fns'
 import { Loader2, Package, Layers, Receipt } from 'lucide-react'
+import { ProdutosTab } from './produtos-categorias/ProdutosTab'
+import { CategoriasTab } from './produtos-categorias/CategoriasTab'
 
 export default function ProdutosCategorias() {
   const [purchases, setPurchases] = useState<any[]>([])
@@ -61,13 +63,11 @@ export default function ProdutosCategorias() {
             <CardHeader>
               <CardTitle>Produtos em Estoque</CardTitle>
               <CardDescription>
-                Para adicionar ou editar produtos, retorne aos módulos específicos ou utilize o
-                estoque rápido.
+                Gerencie todos os produtos do seu estoque, controle quantidades e preços.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              <Package className="size-10 mx-auto mb-3 opacity-50" />
-              Módulo de edição em manutenção. Acesse a aba Histórico de Compras para relatórios.
+            <CardContent className="p-6">
+              <ProdutosTab />
             </CardContent>
           </Card>
         </TabsContent>
@@ -78,9 +78,8 @@ export default function ProdutosCategorias() {
               <CardTitle>Categorias do Sistema</CardTitle>
               <CardDescription>Gerencie as classificações de serviços e produtos.</CardDescription>
             </CardHeader>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              <Layers className="size-10 mx-auto mb-3 opacity-50" />
-              Módulo de edição em manutenção. Acesse a aba Histórico de Compras para relatórios.
+            <CardContent className="p-6">
+              <CategoriasTab />
             </CardContent>
           </Card>
         </TabsContent>

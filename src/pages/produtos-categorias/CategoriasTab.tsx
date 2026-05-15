@@ -34,6 +34,16 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export function CategoriasTab() {
   const [categories, setCategories] = useState<any[]>([])
@@ -47,6 +57,7 @@ export function CategoriasTab() {
     commission_percentage: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [deletePromptId, setDeletePromptId] = useState<string | null>(null)
 
   const { toast } = useToast()
 
@@ -117,11 +128,12 @@ export function CategoriasTab() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deseja realmente excluir esta categoria?')) return
+  const confirmDelete = async () => {
+    if (!deletePromptId) return
     try {
-      await deleteCategory(id)
+      await deleteCategory(deletePromptId)
       toast({ title: 'Categoria excluída' })
+      setDeletePromptId(null)
     } catch (err: any) {
       toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
     }
@@ -170,7 +182,7 @@ export function CategoriasTab() {
                     <Button variant="ghost" size="icon" onClick={() => openDialog(cat)}>
                       <Pencil className="size-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(cat.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => setDeletePromptId(cat.id)}>
                       <Trash2 className="size-4 text-destructive/80 hover:text-destructive" />
                     </Button>
                   </TableCell>
@@ -241,6 +253,26 @@ export function CategoriasTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletePromptId} onOpenChange={(v) => !v && setDeletePromptId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir categoria</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja realmente excluir esta categoria? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
