@@ -72,5 +72,8 @@ export const createProductPurchase = (data: any) => pb.collection('product_purch
 export const createClientPackage = (data: any) => pb.collection('client_packages').create(data)
 export const createCommission = (data: any) => pb.collection('commissions').create(data)
 
+export const getClientLogs = (filter?: string) =>
+  pb.collection('client_logs').getFullList({ sort: '-created', filter })
+
 export const getCommissions = (filter?: string) =>
   pb.collection('commissions').getFullList({ expand: 'barber_id', sort: '-created', filter })
