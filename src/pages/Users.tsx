@@ -39,11 +39,14 @@ export default function UsersPage() {
     id: '',
     name: '',
     email: '',
+    oldPassword: '',
     password: '',
     passwordConfirm: '',
     access_level: 'Autonomo',
     plan: 'Free',
   })
+  const [originalEmail, setOriginalEmail] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const { user: currentUser } = useAuth()
 
@@ -64,6 +67,13 @@ export default function UsersPage() {
   }, [])
 
   const handleSave = async () => {
+    setFieldErrors({})
+
+    if (formData.password && formData.password !== formData.passwordConfirm) {
+      setFieldErrors({ passwordConfirm: 'As senhas não coincidem.' })
+      return
+    }
+
     try {
       setSaving(true)
       if (formData.id) {
@@ -72,15 +82,43 @@ export default function UsersPage() {
           access_level: formData.access_level,
           plan: formData.plan,
         }
+
+        let needsOldPassword = false
+
+        if (formData.email !== originalEmail) {
+          data.email = formData.email
+          needsOldPassword = true
+        }
+
         if (formData.password) {
           data.password = formData.password
           data.passwordConfirm = formData.passwordConfirm
+          needsOldPassword = true
         }
-        data.email = formData.email
+
+        if (needsOldPassword) {
+          if (!formData.oldPassword) {
+            setFieldErrors({
+              oldPassword: 'Senha atual é obrigatória para alterar email ou senha.',
+            })
+            setSaving(false)
+            return
+          }
+          data.oldPassword = formData.oldPassword
+        }
+
         await pb.collection('users').update(formData.id, data)
         toast.success('Usuário atualizado com sucesso')
       } else {
-        await pb.collection('users').create(formData)
+        const createData = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          passwordConfirm: formData.passwordConfirm,
+          access_level: formData.access_level,
+          plan: formData.plan,
+        }
+        await pb.collection('users').create(createData)
         toast.success('Usuário criado com sucesso')
       }
       setModalOpen(false)
@@ -88,7 +126,8 @@ export default function UsersPage() {
     } catch (err: any) {
       const errs = extractFieldErrors(err)
       if (Object.keys(errs).length > 0) {
-        toast.error('Erro: ' + Object.values(errs)[0])
+        setFieldErrors(errs)
+        toast.error('Verifique os erros nos campos do formulário.')
       } else {
         toast.error(
           'Erro ao salvar usuário. Verifique se as senhas coincidem e se o email já está em uso.',
@@ -111,10 +150,13 @@ export default function UsersPage() {
   }
 
   const openNew = () => {
+    setOriginalEmail('')
+    setFieldErrors({})
     setFormData({
       id: '',
       name: '',
       email: '',
+      oldPassword: '',
       password: '',
       passwordConfirm: '',
       access_level: 'Autonomo',
@@ -124,10 +166,13 @@ export default function UsersPage() {
   }
 
   const openEdit = (u: any) => {
+    setOriginalEmail(u.email || '')
+    setFieldErrors({})
     setFormData({
       id: u.id,
       name: u.name || '',
       email: u.email || '',
+      oldPassword: '',
       password: '',
       passwordConfirm: '',
       access_level: u.access_level || 'Autonomo',
@@ -238,6 +283,7 @@ export default function UsersPage() {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Nome completo"
               />
+              {fieldErrors.name && <p className="text-sm text-destructive">{fieldErrors.name}</p>}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">E-mail</label>
@@ -247,7 +293,26 @@ export default function UsersPage() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="exemplo@email.com"
               />
+              {fieldErrors.email && <p className="text-sm text-destructive">{fieldErrors.email}</p>}
             </div>
+
+            {formData.id && (formData.email !== originalEmail || formData.password) && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Senha Atual (obrigatória para alterar email ou senha)
+                </label>
+                <Input
+                  type="password"
+                  value={formData.oldPassword}
+                  onChange={(e) => setFormData({ ...formData, oldPassword: e.target.value })}
+                  placeholder="Digite a senha atual"
+                />
+                {fieldErrors.oldPassword && (
+                  <p className="text-sm text-destructive">{fieldErrors.oldPassword}</p>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Senha {formData.id && '(Opcional)'}</label>
@@ -257,6 +322,9 @@ export default function UsersPage() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Mínimo 8 caracteres"
                 />
+                {fieldErrors.password && (
+                  <p className="text-sm text-destructive">{fieldErrors.password}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Confirmar Senha</label>
@@ -266,6 +334,9 @@ export default function UsersPage() {
                   onChange={(e) => setFormData({ ...formData, passwordConfirm: e.target.value })}
                   placeholder="Repita a senha"
                 />
+                {fieldErrors.passwordConfirm && (
+                  <p className="text-sm text-destructive">{fieldErrors.passwordConfirm}</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -284,6 +355,9 @@ export default function UsersPage() {
                     <SelectItem value="Autonomo">Autonomo</SelectItem>
                   </SelectContent>
                 </Select>
+                {fieldErrors.access_level && (
+                  <p className="text-sm text-destructive">{fieldErrors.access_level}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Plano</label>
@@ -301,6 +375,7 @@ export default function UsersPage() {
                     <SelectItem value="Platinum">Platinum</SelectItem>
                   </SelectContent>
                 </Select>
+                {fieldErrors.plan && <p className="text-sm text-destructive">{fieldErrors.plan}</p>}
               </div>
             </div>
           </div>
