@@ -24,7 +24,12 @@ export default function Login() {
     setIsLoading(false)
 
     if (res.error) {
-      setError('Credenciais inválidas. Verifique seu e-mail e senha.')
+      const err = res.error as any
+      if (err.status === 400 || err.status === 401 || err.status === 403) {
+        setError('Credenciais inválidas. Verifique seu e-mail e senha.')
+      } else {
+        setError(`Erro de conexão ou servidor: ${err.message || 'Tente novamente mais tarde.'}`)
+      }
     } else {
       navigate('/agenda')
     }
