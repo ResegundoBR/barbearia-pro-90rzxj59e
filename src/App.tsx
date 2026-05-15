@@ -26,14 +26,27 @@ function DemoLoginGuard({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout
+
     if (!loading && !user && !authenticating && !error) {
       setAuthenticating(true)
-      signIn('reginaldo.segundo@planagroup.com.br', 'Skip@Pass').then((res) => {
+
+      timeoutId = setTimeout(() => {
+        setError('Tempo limite de autenticação excedido. Por favor, tente novamente.')
+        setAuthenticating(false)
+      }, 10000)
+
+      signIn('alissonmayer7@gmail.com', 'Skip@Pass').then((res) => {
+        clearTimeout(timeoutId)
         if (res.error) {
           setError(res.error.message || 'Falha na autenticação automática')
         }
         setAuthenticating(false)
       })
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [loading, user, authenticating, signIn, error])
 
