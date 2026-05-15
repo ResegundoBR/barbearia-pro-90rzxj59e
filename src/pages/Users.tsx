@@ -38,6 +38,7 @@ export default function UsersPage() {
   const [formData, setFormData] = useState({
     id: '',
     name: '',
+    surname: '',
     email: '',
     oldPassword: '',
     password: '',
@@ -79,6 +80,7 @@ export default function UsersPage() {
       if (formData.id) {
         const data: any = {
           name: formData.name,
+          surname: formData.surname,
           access_level: formData.access_level,
           plan: formData.plan,
         }
@@ -112,6 +114,7 @@ export default function UsersPage() {
       } else {
         const createData = {
           name: formData.name,
+          surname: formData.surname,
           email: formData.email,
           password: formData.password,
           passwordConfirm: formData.passwordConfirm,
@@ -155,6 +158,7 @@ export default function UsersPage() {
     setFormData({
       id: '',
       name: '',
+      surname: '',
       email: '',
       oldPassword: '',
       password: '',
@@ -171,6 +175,7 @@ export default function UsersPage() {
     setFormData({
       id: u.id,
       name: u.name || '',
+      surname: u.surname || '',
       email: u.email || '',
       oldPassword: '',
       password: '',
@@ -216,7 +221,9 @@ export default function UsersPage() {
                 ) : (
                   users.map((u) => (
                     <TableRow key={u.id}>
-                      <TableCell className="font-medium">{u.name || 'Sem nome'}</TableCell>
+                      <TableCell className="font-medium">
+                        {u.name || 'Sem nome'} {u.surname || ''}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-sm">
                           <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -276,14 +283,27 @@ export default function UsersPage() {
             <DialogTitle>{formData.id ? 'Editar' : 'Novo'} Usuário</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto px-1">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Nome</label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nome completo"
-              />
-              {fieldErrors.name && <p className="text-sm text-destructive">{fieldErrors.name}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Nome</label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Nome"
+                />
+                {fieldErrors.name && <p className="text-sm text-destructive">{fieldErrors.name}</p>}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Sobrenome</label>
+                <Input
+                  value={formData.surname}
+                  onChange={(e) => setFormData({ ...formData, surname: e.target.value })}
+                  placeholder="Sobrenome"
+                />
+                {fieldErrors.surname && (
+                  <p className="text-sm text-destructive">{fieldErrors.surname}</p>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">E-mail</label>

@@ -21,12 +21,19 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getClients, getAppointments, getProductPurchases, getClientLogs } from '@/services/api'
 import { ArrowUpRight, AlertTriangle, Medal, Star } from 'lucide-react'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export function RankingDashboard() {
   const [period, setPeriod] = useState('current_month')
   const [clientsData, setClientsData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [metric, setMetric] = useState('revenue')
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const reload = () => setRefreshKey((k) => k + 1)
+  useRealtime('appointments', reload)
+  useRealtime('product_purchases', reload)
+  useRealtime('client_logs', reload)
 
   useEffect(() => {
     async function loadData() {
@@ -59,11 +66,7 @@ export function RankingDashboard() {
         })
 
         appointments.forEach((app: any) => {
-          if (
-            (app.status?.toLowerCase() === 'finalizado' ||
-              app.status?.toLowerCase() === 'completed') &&
-            statsMap[app.client_id]
-          ) {
+          if (app.status === 'Finalizado' && statsMap[app.client_id]) {
             statsMap[app.client_id].totalSpent += app.price || 0
             statsMap[app.client_id].totalVisits += 1
           }
@@ -89,7 +92,7 @@ export function RankingDashboard() {
       }
     }
     loadData()
-  }, [period])
+  }, [period, refreshKey])
 
   const topCustomers = useMemo(() => {
     const data = clientsData.filter((c) => c.totalVisits > 0 || c.totalSpent > 0)
@@ -164,7 +167,7 @@ export function RankingDashboard() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    topCustomers.slice(0, 50).map((row) => (
+                    topCustomers.slice(0, 7).map((row) => (
                       <TableRow key={row.client.id}>
                         <TableCell>
                           <Link
@@ -234,7 +237,7 @@ export function RankingDashboard() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    noShowCustomers.slice(0, 50).map((row) => (
+                    noShowCustomers.slice(0, 7).map((row) => (
                       <TableRow key={row.client.id}>
                         <TableCell>
                           <Link
