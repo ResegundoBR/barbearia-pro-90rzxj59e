@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-15T20:57:40.953Z",
+  "generatedAt": "2026-05-15T21:01:55.431Z",
   "collections": [
     {
       "name": "users",
@@ -104,8 +104,8 @@
       "name": "barbers",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -183,11 +183,11 @@
       "name": "clients",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
       },
       "fields": [
         {
@@ -286,8 +286,8 @@
       "name": "services",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -353,9 +353,9 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
         "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
       },
       "fields": [
         {
@@ -442,9 +442,9 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
         "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
       },
       "fields": [
         {
@@ -519,8 +519,8 @@
       "name": "packages",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -593,9 +593,9 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
         "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
       },
       "fields": [
         {
@@ -652,8 +652,8 @@
       "name": "products",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -756,9 +756,9 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
         "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
       },
       "fields": [
         {
@@ -815,8 +815,8 @@
       "name": "commission_rules",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -876,8 +876,8 @@
       "name": "business_hours",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -915,8 +915,8 @@
       "name": "categories",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -962,8 +962,8 @@
       "name": "settings",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -1008,8 +1008,8 @@
       "name": "payment_methods",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -1061,11 +1061,11 @@
       "name": "client_logs",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
       },
       "fields": [
         {
@@ -1132,9 +1132,9 @@
       "apiRules": {
         "list": "user_id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "view": "user_id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
       },
       "fields": [
         {
@@ -1189,8 +1189,8 @@
       "name": "notification_rules",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -1254,8 +1254,8 @@
       "name": "suppliers",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -1325,8 +1325,8 @@
       "name": "inventory_purchases",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
