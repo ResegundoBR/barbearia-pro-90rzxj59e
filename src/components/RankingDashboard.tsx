@@ -37,7 +37,7 @@ export function RankingDashboard() {
         if (period === 'last_3_months') startDate = subDays(now, 90)
         if (period === 'last_6_months') startDate = subDays(now, 180)
 
-        const dateStr = format(startDate, 'yyyy-MM-dd 00:00:00.000Z')
+        const dateStr = format(startDate, 'yyyy-MM-dd') + ' 00:00:00.000Z'
         const dateFilter = `date >= '${dateStr}'`
         const createdFilter = `created >= '${dateStr}'`
 
