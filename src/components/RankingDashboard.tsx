@@ -66,8 +66,8 @@ export function RankingDashboard() {
         })
 
         appointments.forEach((app: any) => {
-          if (app.status === 'Finalizado' && statsMap[app.client_id]) {
-            statsMap[app.client_id].totalSpent += app.price || 0
+          if (app.status === 'Concluído' && statsMap[app.client_id]) {
+            statsMap[app.client_id].totalSpent += app.price || app.expand?.service_id?.price || 0
             statsMap[app.client_id].totalVisits += 1
           }
         })
@@ -115,7 +115,7 @@ export function RankingDashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <TabsList>
             <TabsTrigger value="top">Top Clientes</TabsTrigger>
-            <TabsTrigger value="noshow">Análise de No-Shows</TabsTrigger>
+            <TabsTrigger value="noshow">Análise de Faltas</TabsTrigger>
           </TabsList>
 
           <Select value={period} onValueChange={setPeriod}>
@@ -174,7 +174,7 @@ export function RankingDashboard() {
                             to={`/clientes/${row.client.id}`}
                             className="font-medium hover:underline text-primary flex items-center gap-1"
                           >
-                            {row.client.name} {row.client.surname}{' '}
+                            {row.client.name || 'Cliente'} {row.client.surname || ''}{' '}
                             <ArrowUpRight className="size-3" />
                           </Link>
                         </TableCell>
@@ -218,8 +218,8 @@ export function RankingDashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
-                    <TableHead className="text-center">No-Shows</TableHead>
-                    <TableHead className="text-center">Visitas Concluídas</TableHead>
+                    <TableHead className="text-center">Faltas</TableHead>
+                    <TableHead className="text-center">Visitas Realizadas</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -244,7 +244,7 @@ export function RankingDashboard() {
                             to={`/clientes/${row.client.id}`}
                             className="font-medium hover:underline text-primary flex items-center gap-1"
                           >
-                            {row.client.name} {row.client.surname}{' '}
+                            {row.client.name || 'Cliente'} {row.client.surname || ''}{' '}
                             <ArrowUpRight className="size-3" />
                           </Link>
                         </TableCell>

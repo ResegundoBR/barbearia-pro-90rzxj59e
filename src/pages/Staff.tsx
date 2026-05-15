@@ -490,7 +490,8 @@ export default function Staff() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
+                <TableHead>Profissional</TableHead>
+                <TableHead>Contato (WhatsApp)</TableHead>
                 <TableHead>Nível</TableHead>
                 <TableHead>Comissão a Receber</TableHead>
                 <TableHead>A Pagar</TableHead>
@@ -525,11 +526,43 @@ export default function Staff() {
                 return (
                   <TableRow key={b.id}>
                     <TableCell
-                      className={`font-medium ${canEdit ? 'cursor-pointer hover:underline text-blue-600' : ''}`}
+                      className={`font-medium ${canEdit ? 'cursor-pointer group' : ''}`}
                       onClick={() => canEdit && editBarber(b)}
                       title={canEdit ? 'Clique para editar' : ''}
                     >
-                      {b.name}
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
+                          {b.avatar ? (
+                            <img
+                              src={b.avatar}
+                              alt={b.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : b.expand?.user_id?.avatar ? (
+                            <img
+                              src={pb.files.getUrl(b.expand.user_id, b.expand.user_id.avatar)}
+                              alt={b.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-primary font-bold">
+                              {b.name.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <span
+                            className={`${canEdit ? 'group-hover:underline text-blue-600' : ''}`}
+                          >
+                            {b.name}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {b.expand?.user_id?.whatsapp || (
+                        <span className="text-muted-foreground italic">Não informado</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={b.work_level === 'socio' ? 'default' : 'outline'}>

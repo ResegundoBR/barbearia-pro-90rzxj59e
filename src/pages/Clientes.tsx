@@ -281,7 +281,7 @@ export default function Clientes() {
                     <TableRow key={c.id} className={c.is_active === false ? 'opacity-50' : ''}>
                       <TableCell>
                         <div className="font-medium text-base">
-                          {c.name} {c.surname}
+                          {c.name || 'Cliente sem nome'} {c.surname || ''}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
                           {c.expand?.created_by_id && (

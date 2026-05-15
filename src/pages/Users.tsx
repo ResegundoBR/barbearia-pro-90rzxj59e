@@ -45,6 +45,7 @@ export default function UsersPage() {
     passwordConfirm: '',
     access_level: 'Autonomo',
     plan: 'Free',
+    whatsapp: '',
   })
   const [originalEmail, setOriginalEmail] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -83,6 +84,7 @@ export default function UsersPage() {
           surname: formData.surname,
           access_level: formData.access_level,
           plan: formData.plan,
+          whatsapp: formData.whatsapp,
         }
 
         let needsOldPassword = false
@@ -120,6 +122,7 @@ export default function UsersPage() {
           passwordConfirm: formData.passwordConfirm,
           access_level: formData.access_level,
           plan: formData.plan,
+          whatsapp: formData.whatsapp,
         }
         await pb.collection('users').create(createData)
         toast.success('Usuário criado com sucesso')
@@ -165,6 +168,7 @@ export default function UsersPage() {
       passwordConfirm: '',
       access_level: 'Autonomo',
       plan: 'Free',
+      whatsapp: '',
     })
     setModalOpen(true)
   }
@@ -182,6 +186,7 @@ export default function UsersPage() {
       passwordConfirm: '',
       access_level: u.access_level || 'Autonomo',
       plan: u.plan || 'Free',
+      whatsapp: u.whatsapp || '',
     })
     setModalOpen(true)
   }
@@ -204,8 +209,8 @@ export default function UsersPage() {
             <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>E-mail</TableHead>
+                  <TableHead>Usuário</TableHead>
+                  <TableHead>Contatos</TableHead>
                   <TableHead>Nível</TableHead>
                   <TableHead>Plano</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -222,16 +227,43 @@ export default function UsersPage() {
                   users.map((u) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">
-                        {u.name || 'Sem nome'} {u.surname || ''}
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
+                            {u.avatar ? (
+                              <img
+                                src={pb.files.getUrl(u, u.avatar)}
+                                alt={u.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-primary font-bold">
+                                {(u.name?.charAt(0) || 'U').toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            {u.name || 'Sem nome'} {u.surname || ''}
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="truncate max-w-[150px] sm:max-w-xs">
-                            {u.email || (
-                              <span className="text-muted-foreground italic">Oculto</span>
-                            )}
-                          </span>
+                        <div className="flex flex-col gap-1 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="truncate max-w-[150px] sm:max-w-xs">
+                              {u.email || (
+                                <span className="text-muted-foreground italic">Oculto</span>
+                              )}
+                            </span>
+                          </div>
+                          {u.whatsapp && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <span className="text-xs">WA:</span>
+                              <span className="truncate max-w-[150px] sm:max-w-xs">
+                                {u.whatsapp}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -305,15 +337,30 @@ export default function UsersPage() {
                 )}
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">E-mail</label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="exemplo@email.com"
-              />
-              {fieldErrors.email && <p className="text-sm text-destructive">{fieldErrors.email}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">E-mail</label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="exemplo@email.com"
+                />
+                {fieldErrors.email && (
+                  <p className="text-sm text-destructive">{fieldErrors.email}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">WhatsApp</label>
+                <Input
+                  value={formData.whatsapp}
+                  onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                  placeholder="(00) 00000-0000"
+                />
+                {fieldErrors.whatsapp && (
+                  <p className="text-sm text-destructive">{fieldErrors.whatsapp}</p>
+                )}
+              </div>
             </div>
 
             {formData.id && (formData.email !== originalEmail || formData.password) && (
