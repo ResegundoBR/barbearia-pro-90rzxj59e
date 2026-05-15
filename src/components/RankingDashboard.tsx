@@ -59,7 +59,11 @@ export function RankingDashboard() {
         })
 
         appointments.forEach((app: any) => {
-          if (app.status === 'completed' && statsMap[app.client_id]) {
+          if (
+            (app.status?.toLowerCase() === 'finalizado' ||
+              app.status?.toLowerCase() === 'completed') &&
+            statsMap[app.client_id]
+          ) {
             statsMap[app.client_id].totalSpent += app.price || 0
             statsMap[app.client_id].totalVisits += 1
           }
