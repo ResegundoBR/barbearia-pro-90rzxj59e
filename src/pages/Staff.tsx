@@ -132,6 +132,10 @@ export default function Staff() {
     loadData()
   }, [])
 
+  useRealtime('barbers', loadData)
+  useRealtime('commissions', loadData)
+  useRealtime('appointments', loadData)
+
   const getRange = () => {
     const today = new Date()
     switch (dateFilter) {

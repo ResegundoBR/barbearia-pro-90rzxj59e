@@ -7,6 +7,7 @@ routerAdd(
 
     const isAdmin =
       auth.getString('access_level') === 'Admin' ||
+      auth.getString('access_level') === 'Socio' ||
       auth.getString('email') === 'reginaldo.segundo@planagroup.com.br'
 
     if (!isAdmin) {

@@ -170,6 +170,10 @@ export default function Layout() {
     loadAlerts()
   })
 
+  useRealtime('appointments', () => {
+    loadAlerts()
+  })
+
   return (
     <SidebarProvider>
       <Sidebar variant="inset" className="hidden md:flex">

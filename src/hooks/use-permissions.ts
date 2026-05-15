@@ -52,7 +52,9 @@ export function usePermissions() {
     []
 
   const isAdmin =
-    user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
+    user?.access_level === 'Admin' ||
+    user?.access_level === 'Socio' ||
+    user?.email === 'reginaldo.segundo@planagroup.com.br'
 
   const hasAccess = (module: string) => {
     if (isAdmin) return true
