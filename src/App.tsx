@@ -4,6 +4,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 import Login from './pages/Login'
+import RecuperarSenha from './pages/RecuperarSenha'
 import Index from './pages/Index'
 import Agenda from './pages/Agenda'
 import Clientes from './pages/Clientes'
@@ -71,6 +72,14 @@ const App = () => (
             element={
               <PublicRoute>
                 <Login />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/recuperar-senha"
+            element={
+              <PublicRoute>
+                <RecuperarSenha />
               </PublicRoute>
             }
           />
