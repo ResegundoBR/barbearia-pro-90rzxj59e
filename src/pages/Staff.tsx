@@ -187,7 +187,9 @@ export default function Staff() {
       const prods = await getProductPurchases(`barber_id='${b.id}'`)
       const packs = await getClientPackages(`barber_id='${b.id}'`)
 
-      const matchedComms = commissions.filter((c) => c.barber_id === b.id && !c.is_advance)
+      const matchedComms = commissions.filter(
+        (c) => c.barber_id === b.id && c.status !== 'paid' && !c.is_advance,
+      )
 
       const items = [
         ...apts.map((a) => {
@@ -253,8 +255,7 @@ export default function Staff() {
       ]
         .filter((i) => {
           if (!i.commission || i.commission <= 0) return false
-          const d = i.commDate
-          return d >= range.from && d <= range.to
+          return true
         })
         .sort((a, b) => b.commDate.getTime() - a.commDate.getTime())
 
@@ -287,7 +288,7 @@ export default function Staff() {
           <body>
             <div class="header">
               <h2>Relatório Detalhado - ${selectedBarberDetailed?.name}</h2>
-              <p>Período selecionado: ${format(range.from, 'dd/MM/yyyy')} a ${format(range.to, 'dd/MM/yyyy')}</p>
+              <p>Comissões Pendentes</p>
               <p>Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
             </div>
             ${content}
@@ -430,14 +431,14 @@ export default function Staff() {
 
     setIsPaying(true)
     try {
-      await Promise.all(
-        selectedComms.map((id) =>
-          pb.collection('commissions').update(id, {
-            status: 'paid',
-            payment_method: paymentMethod,
-          }),
-        ),
-      )
+      await pb.send('/backend/v1/commissions/pay', {
+        method: 'POST',
+        body: JSON.stringify({
+          commissionIds: selectedComms,
+          paymentMethod,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
 
       const paidItems = pendingCommsToPay.filter((c) => selectedComms.includes(c.id))
       const totalPaid = paidItems.reduce((acc, c) => acc + (c.amount || 0), 0)

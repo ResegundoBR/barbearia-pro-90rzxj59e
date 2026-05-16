@@ -2,198 +2,207 @@ routerAdd(
   'POST',
   '/backend/v1/checkout/service',
   (e) => {
-    const body = e.requestInfo().body
+    const body = e.requestInfo().body || {}
     const { isManual, manualForm, svcForm, selectedProducts, packageToConsume } = body
 
-    let finalServicePrice = Number(svcForm.service_price) || 0
+    if (!svcForm || !svcForm.payment_method) {
+      throw new BadRequestError('Método de pagamento é obrigatório.')
+    }
+
+    let resultId = null
 
     $app.runInTransaction((txApp) => {
-      let feePerc = 0
-      try {
-        if (svcForm.payment_method) {
-          let pmType = svcForm.payment_method
-          if (pmType === 'credito') pmType = 'credit_card'
-          if (pmType === 'debito') pmType = 'debit_card'
-          const pm = txApp.findFirstRecordByData('payment_methods', 'type', pmType)
-          feePerc = pm.getFloat('fee_percentage') || 0
-        }
-      } catch (_) {}
-      const feeMultiplier = 1 - feePerc / 100
-      const netServicePrice = finalServicePrice * feeMultiplier
+      let appointmentId = svcForm.appointment_id
+      let appointment
+      let barberId
+      let clientId
+      let serviceId
 
-      let apt
-      let clientId = ''
-      let barberId = ''
-
-      // 1. Appointment Management
       if (isManual) {
-        if (!manualForm.client_id || !manualForm.barber_id)
-          throw new Error('Cliente ou profissional ausente.')
-        clientId = manualForm.client_id
+        if (!manualForm.client_id || !manualForm.barber_id || !manualForm.service_id) {
+          throw new BadRequestError('Preencha todos os campos do atendimento avulso.')
+        }
+        const aptCollection = txApp.findCollectionByNameOrId('appointments')
+        appointment = new Record(aptCollection)
+        appointment.set('client_id', manualForm.client_id)
+        appointment.set('barber_id', manualForm.barber_id)
+        appointment.set('service_id', manualForm.service_id)
+        appointment.set('price', Number(svcForm.service_price) || 0)
+        appointment.set('date', new Date().toISOString())
+        appointment.set('status', 'Concluído')
+        txApp.save(appointment)
+        appointmentId = appointment.id
         barberId = manualForm.barber_id
-
-        if (manualForm.service_id) {
-          const col = txApp.findCollectionByNameOrId('appointments')
-          apt = new Record(col)
-          apt.set('client_id', clientId)
-          apt.set('barber_id', barberId)
-          apt.set('service_id', manualForm.service_id)
-          apt.set('status', 'Concluído')
-          apt.set('date', new Date().toISOString().split('T')[0] + ' 12:00:00')
-          apt.set('time', '12:00')
-          apt.set('price', finalServicePrice)
-          txApp.save(apt)
-        }
+        clientId = manualForm.client_id
+        serviceId = manualForm.service_id
       } else {
-        apt = txApp.findRecordById('appointments', svcForm.appointment_id)
-        clientId = apt.getString('client_id')
-        barberId = apt.getString('barber_id')
-
-        let finalPackageId = apt.getString('client_package_id')
+        if (!appointmentId) throw new BadRequestError('ID do agendamento não fornecido.')
+        appointment = txApp.findRecordById('appointments', appointmentId)
+        appointment.set('status', 'Concluído')
+        appointment.set('price', Number(svcForm.service_price) || 0)
         if (packageToConsume) {
-          finalPackageId = packageToConsume
-          const cp = txApp.findRecordById('client_packages', packageToConsume)
-          cp.set('remaining_uses', Math.max(0, cp.getInt('remaining_uses') - 1))
-          txApp.save(cp)
-        } else if (finalPackageId) {
-          const cp = txApp.findRecordById('client_packages', finalPackageId)
-          cp.set('remaining_uses', Math.max(0, cp.getInt('remaining_uses') - 1))
-          txApp.save(cp)
+          appointment.set('client_package_id', packageToConsume)
         }
-
-        if (finalPackageId) {
-          finalServicePrice = 0
-        }
-
-        apt.set('status', 'Concluído')
-        apt.set('price', finalServicePrice)
-        if (finalPackageId) apt.set('client_package_id', finalPackageId)
-        txApp.save(apt)
+        txApp.save(appointment)
+        barberId = appointment.getString('barber_id')
+        clientId = appointment.getString('client_id')
+        serviceId = appointment.getString('service_id')
       }
 
-      // 2. Commissions & Products
-      const now = new Date().toISOString().replace('T', ' ').substring(0, 19)
+      resultId = appointmentId
 
-      const barber = txApp.findRecordById('barbers', barberId)
-      const workLevel = barber.getString('work_level') || 'autonomo'
-
-      let status = 'pending'
-      let due_date = ''
-
-      if (workLevel === 'socio') {
-        status = 'available'
-        due_date = now
-      } else {
-        const aptDateStr = apt ? apt.getString('date') : ''
-        const txDate = aptDateStr ? new Date(aptDateStr) : new Date()
-        const day = txDate.getDay()
-        let daysToAdd = 0
-        if (day >= 0 && day <= 3) {
-          daysToAdd = 4 - day
-        } else {
-          daysToAdd = 8 - day
-        }
-        const d = new Date(txDate)
-        d.setDate(d.getDate() + daysToAdd)
-        due_date = d.toISOString().replace('T', ' ').substring(0, 19)
+      if (packageToConsume) {
+        const pkg = txApp.findRecordById('client_packages', packageToConsume)
+        const remaining = pkg.getInt('remaining_uses') - 1
+        pkg.set('remaining_uses', Math.max(0, remaining))
+        txApp.save(pkg)
       }
 
-      // Service Commission
-      if (apt && finalServicePrice > 0) {
-        let commAmount = 0
+      let rules = []
+      try {
+        rules = txApp.findRecordsByFilter(
+          'commission_rules',
+          `barber_id='${barberId}' || barber_id=''`,
+          '',
+          100,
+          0,
+        )
+      } catch (_) {}
 
-        if (workLevel === 'socio') {
-          commAmount = netServicePrice
+      const servicePrice = Number(svcForm.service_price) || 0
+
+      let serviceRule = rules.find(
+        (r) =>
+          r.getString('item_type') === 'service' &&
+          r.getString('item_id') === serviceId &&
+          r.getString('barber_id') === barberId,
+      )
+      if (!serviceRule) {
+        serviceRule = rules.find(
+          (r) =>
+            r.getString('item_type') === 'service' &&
+            r.getString('item_id') === '' &&
+            r.getString('barber_id') === barberId,
+        )
+      }
+      if (!serviceRule) {
+        serviceRule = rules.find(
+          (r) => r.getString('item_type') === 'service' && r.getString('item_id') === '',
+        )
+      }
+
+      if (serviceRule || servicePrice > 0) {
+        let commissionAmount = 0
+        if (serviceRule) {
+          if (serviceRule.getString('type') === 'percentage') {
+            commissionAmount = servicePrice * (serviceRule.getFloat('value') / 100)
+          } else {
+            commissionAmount = serviceRule.getFloat('value')
+          }
         } else {
-          const svcId = apt.getString('service_id')
-          if (svcId) {
-            const svc = txApp.findRecordById('services', svcId)
-            const catId = svc.getString('category_id')
-            if (catId) {
-              const cat = txApp.findRecordById('categories', catId)
-              const perc = cat.getFloat('commission_percentage') || 0
-              commAmount = netServicePrice * (perc / 100)
-            } else {
-              commAmount =
-                barber.getString('commission_type') === 'percentage'
-                  ? netServicePrice * (barber.getFloat('commission_value') / 100)
-                  : Math.min(netServicePrice, barber.getFloat('commission_value'))
+          try {
+            const barber = txApp.findRecordById('barbers', barberId)
+            if (barber.getString('work_level') === 'socio') {
+              commissionAmount = servicePrice
+            } else if (barber.getString('commission_type') === 'percentage') {
+              commissionAmount = servicePrice * (barber.getFloat('commission_value') / 100)
             }
-          }
+          } catch (_) {}
         }
 
-        if (commAmount > 0) {
+        if (commissionAmount > 0) {
           const commCol = txApp.findCollectionByNameOrId('commissions')
-          const c = new Record(commCol)
-          c.set('barber_id', barberId)
-          c.set('amount', commAmount)
-          c.set('type', 'service')
-          c.set('date', now)
-          c.set('is_advance', false)
-          c.set('payment_method', svcForm.payment_method)
-          c.set('status', status)
-          if (due_date) c.set('due_date', due_date)
-          txApp.save(c)
+          const comm = new Record(commCol)
+          comm.set('barber_id', barberId)
+          comm.set('amount', commissionAmount)
+          comm.set('type', 'service')
+          comm.set('date', new Date().toISOString())
+          comm.set('payment_method', svcForm.payment_method)
+          comm.set('status', 'available')
+
+          try {
+            const barber = txApp.findRecordById('barbers', barberId)
+            if (barber.getString('work_level') === 'socio') {
+              comm.set('status', 'paid')
+            }
+          } catch (_) {}
+
+          txApp.save(comm)
         }
       }
 
-      // Products
-      if (selectedProducts && selectedProducts.length > 0) {
-        for (const sp of selectedProducts) {
-          const prod = txApp.findRecordById('products', sp.product_id)
-          const currentStock = prod.getInt('stock_quantity')
-          if (currentStock - sp.quantity < 0) {
-            throw new Error(`Estoque insuficiente para o produto: ${prod.getString('name')}`)
-          }
-          prod.set('stock_quantity', currentStock - sp.quantity)
+      if (selectedProducts && Array.isArray(selectedProducts) && selectedProducts.length > 0) {
+        for (const item of selectedProducts) {
+          if (!item.product_id) continue
+          const prod = txApp.findRecordById('products', item.product_id)
+
+          const qty = Number(item.quantity) || 1
+          const stock = prod.getInt('stock_quantity') - qty
+          prod.set('stock_quantity', Math.max(0, stock))
           txApp.save(prod)
 
-          const purchCol = txApp.findCollectionByNameOrId('product_purchases')
-          const purch = new Record(purchCol)
-          purch.set('client_id', clientId)
-          purch.set('product_id', prod.id)
-          purch.set('price_at_sale', prod.getFloat('price'))
-          purch.set('date', now)
-          purch.set('barber_id', barberId)
-          txApp.save(purch)
+          const purchaseCol = txApp.findCollectionByNameOrId('product_purchases')
+          const purchase = new Record(purchaseCol)
+          purchase.set('client_id', clientId)
+          purchase.set('product_id', item.product_id)
+          purchase.set('barber_id', barberId)
+          const itemPrice = item.product?.price || prod.getFloat('price')
+          purchase.set('price_at_sale', itemPrice * qty)
+          purchase.set('date', new Date().toISOString())
+          txApp.save(purchase)
 
-          let prodComm = 0
-          const netProductPrice = prod.getFloat('price') * sp.quantity * feeMultiplier
+          let prodRule = rules.find(
+            (r) =>
+              r.getString('item_type') === 'product' &&
+              r.getString('item_id') === item.product_id &&
+              r.getString('barber_id') === barberId,
+          )
+          if (!prodRule)
+            prodRule = rules.find(
+              (r) =>
+                r.getString('item_type') === 'product' &&
+                r.getString('item_id') === '' &&
+                r.getString('barber_id') === barberId,
+            )
+          if (!prodRule)
+            prodRule = rules.find(
+              (r) => r.getString('item_type') === 'product' && r.getString('item_id') === '',
+            )
 
-          if (workLevel === 'socio') {
-            prodComm = netProductPrice
-          } else {
-            const catId = prod.getString('category_id')
-            if (catId) {
-              const cat = txApp.findRecordById('categories', catId)
-              const perc = cat.getFloat('commission_percentage') || 0
-              prodComm = netProductPrice * (perc / 100)
+          if (prodRule) {
+            let cAmt = 0
+            const totalProdPrice = itemPrice * qty
+            if (prodRule.getString('type') === 'percentage') {
+              cAmt = totalProdPrice * (prodRule.getFloat('value') / 100)
             } else {
-              prodComm =
-                barber.getString('commission_type') === 'percentage'
-                  ? netProductPrice * (barber.getFloat('commission_value') / 100)
-                  : Math.min(netProductPrice, barber.getFloat('commission_value') * sp.quantity)
+              cAmt = prodRule.getFloat('value') * qty
             }
-          }
 
-          if (prodComm > 0) {
-            const commCol = txApp.findCollectionByNameOrId('commissions')
-            const c = new Record(commCol)
-            c.set('barber_id', barberId)
-            c.set('amount', prodComm)
-            c.set('type', 'product')
-            c.set('date', now)
-            c.set('is_advance', false)
-            c.set('payment_method', svcForm.payment_method)
-            c.set('status', status)
-            if (due_date) c.set('due_date', due_date)
-            txApp.save(c)
+            if (cAmt > 0) {
+              const commCol = txApp.findCollectionByNameOrId('commissions')
+              const pComm = new Record(commCol)
+              pComm.set('barber_id', barberId)
+              pComm.set('amount', cAmt)
+              pComm.set('type', 'product')
+              pComm.set('date', new Date().toISOString())
+              pComm.set('payment_method', svcForm.payment_method)
+              pComm.set('status', 'available')
+
+              try {
+                const barber = txApp.findRecordById('barbers', barberId)
+                if (barber.getString('work_level') === 'socio') {
+                  pComm.set('status', 'paid')
+                }
+              } catch (_) {}
+
+              txApp.save(pComm)
+            }
           }
         }
       }
     })
 
-    return e.json(200, { success: true })
+    return e.json(200, { success: true, id: resultId })
   },
   $apis.requireAuth(),
 )
