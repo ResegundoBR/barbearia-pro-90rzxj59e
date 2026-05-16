@@ -201,6 +201,15 @@ export default function Checkout() {
         }
       }
 
+      const pmRecord = paymentMethods.find((p) => p.id === svcForm.payment_method)
+      let commissionPm = ''
+      if (pmRecord) {
+        if (pmRecord.type === 'credit_card') commissionPm = 'credito'
+        else if (pmRecord.type === 'debit_card') commissionPm = 'debito'
+        else if (pmRecord.type === 'pix') commissionPm = 'pix'
+        else if (pmRecord.type === 'cash') commissionPm = 'cash'
+      }
+
       for (const sp of selectedProducts) {
         await pb.collection('product_purchases').create({
           client_id: clientId,
@@ -222,11 +231,9 @@ export default function Checkout() {
         if (barber.work_level === 'socio') {
           commAmount = Number(svcForm.service_price)
         } else {
-          const rules = await pb
-            .collection('commission_rules')
-            .getFullList({
-              filter: `barber_id='${barberId}' && item_type='service' && item_id='${serviceId}'`,
-            })
+          const rules = await pb.collection('commission_rules').getFullList({
+            filter: `barber_id='${barberId}' && item_type='service' && item_id='${serviceId}'`,
+          })
           if (rules.length > 0) {
             const rule = rules[0]
             commAmount =
@@ -251,7 +258,7 @@ export default function Checkout() {
             type: 'service',
             date: new Date().toISOString(),
             status: barber.work_level === 'socio' ? 'paid' : 'pending',
-            payment_method: svcForm.payment_method,
+            payment_method: commissionPm,
           })
         }
       }
@@ -262,21 +269,17 @@ export default function Checkout() {
         if (barber && barber.work_level === 'socio') {
           commAmount = itemTotal
         } else if (barber) {
-          const rules = await pb
-            .collection('commission_rules')
-            .getFullList({
-              filter: `barber_id='${barberId}' && item_type='product' && item_id='${sp.product_id}'`,
-            })
+          const rules = await pb.collection('commission_rules').getFullList({
+            filter: `barber_id='${barberId}' && item_type='product' && item_id='${sp.product_id}'`,
+          })
           if (rules.length > 0) {
             const rule = rules[0]
             commAmount =
               rule.type === 'percentage' ? (itemTotal * rule.value) / 100 : rule.value * sp.quantity
           } else {
-            const catRules = await pb
-              .collection('commission_rules')
-              .getFullList({
-                filter: `barber_id='${barberId}' && item_type='category' && item_id='${sp.product.category_id}'`,
-              })
+            const catRules = await pb.collection('commission_rules').getFullList({
+              filter: `barber_id='${barberId}' && item_type='category' && item_id='${sp.product.category_id}'`,
+            })
             if (catRules.length > 0) {
               const rule = catRules[0]
               commAmount =
@@ -293,7 +296,7 @@ export default function Checkout() {
             type: 'product',
             date: new Date().toISOString(),
             status: barber?.work_level === 'socio' ? 'paid' : 'pending',
-            payment_method: svcForm.payment_method,
+            payment_method: commissionPm,
           })
         }
       }
