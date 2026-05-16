@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { getProducts, createProduct, updateProduct, deleteProduct } from '@/services/products'
 import { getCategories } from '@/services/categories'
 import { useRealtime } from '@/hooks/use-realtime'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
@@ -225,6 +225,10 @@ export function ProdutosTab() {
     .filter((p) => p.is_active !== false)
     .reduce((acc, p) => acc + (Number(p.stock_quantity) || 0) * (Number(p.cost_price) || 0), 0)
 
+  const totalSalesCapacity = products
+    .filter((p) => p.is_active !== false)
+    .reduce((acc, p) => acc + (Number(p.stock_quantity) || 0) * (Number(p.price) || 0), 0)
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -251,6 +255,30 @@ export function ProdutosTab() {
               {totalInvestment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
             <p className="text-xs text-muted-foreground">Valor total em estoque ativo</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+            <h3 className="tracking-tight text-sm font-medium">Capacidade de Venda</h3>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </div>
+          <div className="p-6 pt-0">
+            <div className="text-2xl font-bold">
+              {totalSalesCapacity.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </div>
+            <p className="text-xs text-muted-foreground">Potencial de receita do estoque</p>
           </div>
         </div>
       </div>
@@ -290,11 +318,13 @@ export function ProdutosTab() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Categoria</TableHead>
+              <TableHead>Estoque</TableHead>
               <TableHead>Custo</TableHead>
               <TableHead>Preço Venda</TableHead>
+              <TableHead>Total Custo</TableHead>
+              <TableHead>Total Venda</TableHead>
               <TableHead>Margem</TableHead>
               <TableHead>Última Compra</TableHead>
-              <TableHead>Estoque</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -302,13 +332,13 @@ export function ProdutosTab() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center py-6 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : displayedProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center py-6 text-muted-foreground">
                   Nenhum produto encontrado.
                 </TableCell>
               </TableRow>
@@ -316,6 +346,11 @@ export function ProdutosTab() {
               displayedProducts.map((prod) => {
                 const price = Number(prod.price) || 0
                 const costPrice = Number(prod.cost_price) || 0
+                const stockQty = Number(prod.stock_quantity) || 0
+                const totalCost = stockQty * costPrice
+                const totalSales = stockQty * price
+                const hasNegativeMargin = price < costPrice
+
                 const marginCurrency = price - costPrice
                 const marginPercent =
                   costPrice > 0 ? (marginCurrency / costPrice) * 100 : price > 0 ? 100 : 0
@@ -330,6 +365,7 @@ export function ProdutosTab() {
                     <TableCell className="whitespace-nowrap">
                       {prod.expand?.category_id?.name || '-'}
                     </TableCell>
+                    <TableCell>{stockQty}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       {costPrice.toLocaleString('pt-BR', {
                         style: 'currency',
@@ -337,10 +373,39 @@ export function ProdutosTab() {
                       })}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      <span
+                        className={
+                          hasNegativeMargin
+                            ? 'text-red-600 font-semibold flex items-center gap-1'
+                            : ''
+                        }
+                      >
+                        {hasNegativeMargin && <AlertTriangle className="size-4" />}
+                        {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      <span className={marginCurrency > 0 ? 'text-green-600' : 'text-red-600'}>
+                      {totalCost.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      })}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {totalSales.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      })}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <span
+                        className={
+                          marginCurrency > 0
+                            ? 'text-green-600'
+                            : marginCurrency < 0
+                              ? 'text-red-600'
+                              : 'text-muted-foreground'
+                        }
+                      >
                         R$ {marginCurrency.toFixed(2)} ({marginPercent.toFixed(1)}%)
                       </span>
                     </TableCell>
@@ -360,7 +425,6 @@ export function ProdutosTab() {
                         '-'
                       )}
                     </TableCell>
-                    <TableCell>{prod.stock_quantity ?? 0}</TableCell>
                     <TableCell>
                       {prod.is_active ? (
                         <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 shadow-none border-green-200">
