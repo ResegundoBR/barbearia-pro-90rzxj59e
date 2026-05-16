@@ -162,17 +162,141 @@ export default function Checkout() {
         }
       }
 
-      await pb.send('/backend/v1/checkout/service', {
-        method: 'POST',
-        body: JSON.stringify({
-          isManual,
-          manualForm,
-          svcForm,
-          selectedProducts,
-          packageToConsume,
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      })
+      let finalAptId = svcForm.appointment_id
+      let clientId = manualForm.client_id
+      let barberId = manualForm.barber_id
+      let serviceId = manualForm.service_id
+
+      if (isManual) {
+        const apt = await pb.collection('appointments').create({
+          client_id: clientId,
+          barber_id: barberId,
+          service_id: serviceId,
+          price: Number(svcForm.service_price),
+          status: 'Concluído',
+          date: new Date().toISOString(),
+          time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        })
+        finalAptId = apt.id
+      } else {
+        const apt = appointments.find((a) => a.id === finalAptId)
+        if (!apt) throw new Error('Agendamento não encontrado')
+        clientId = apt.client_id
+        barberId = apt.barber_id
+        serviceId = apt.service_id
+
+        await pb.collection('appointments').update(finalAptId, {
+          status: 'Concluído',
+          price: Number(svcForm.service_price),
+          client_package_id: packageToConsume || apt.client_package_id,
+        })
+      }
+
+      if (packageToConsume) {
+        const pkg = clientPackages.find((p) => p.id === packageToConsume)
+        if (pkg && pkg.remaining_uses > 0) {
+          await pb.collection('client_packages').update(packageToConsume, {
+            remaining_uses: pkg.remaining_uses - 1,
+          })
+        }
+      }
+
+      for (const sp of selectedProducts) {
+        await pb.collection('product_purchases').create({
+          client_id: clientId,
+          product_id: sp.product_id,
+          barber_id: barberId,
+          price_at_sale: sp.product.price * sp.quantity,
+          date: new Date().toISOString(),
+        })
+
+        const currentProd = await pb.collection('products').getOne(sp.product_id)
+        await pb.collection('products').update(sp.product_id, {
+          stock_quantity: Math.max(0, (currentProd.stock_quantity || 0) - sp.quantity),
+        })
+      }
+
+      const barber = barbers.find((b) => b.id === barberId)
+      if (barber && Number(svcForm.service_price) > 0) {
+        let commAmount = 0
+        if (barber.work_level === 'socio') {
+          commAmount = Number(svcForm.service_price)
+        } else {
+          const rules = await pb
+            .collection('commission_rules')
+            .getFullList({
+              filter: `barber_id='${barberId}' && item_type='service' && item_id='${serviceId}'`,
+            })
+          if (rules.length > 0) {
+            const rule = rules[0]
+            commAmount =
+              rule.type === 'percentage'
+                ? (Number(svcForm.service_price) * rule.value) / 100
+                : rule.value
+          } else {
+            const svc = services.find((s) => s.id === serviceId)
+            if (svc && svc.commission_rate) {
+              commAmount = (Number(svcForm.service_price) * svc.commission_rate) / 100
+            } else if (barber.commission_type === 'percentage') {
+              commAmount = (Number(svcForm.service_price) * (barber.commission_value || 0)) / 100
+            } else {
+              commAmount = barber.commission_value || 0
+            }
+          }
+        }
+        if (commAmount > 0) {
+          await pb.collection('commissions').create({
+            barber_id: barberId,
+            amount: commAmount,
+            type: 'service',
+            date: new Date().toISOString(),
+            status: barber.work_level === 'socio' ? 'paid' : 'pending',
+            payment_method: svcForm.payment_method,
+          })
+        }
+      }
+
+      for (const sp of selectedProducts) {
+        let commAmount = 0
+        const itemTotal = sp.product.price * sp.quantity
+        if (barber && barber.work_level === 'socio') {
+          commAmount = itemTotal
+        } else if (barber) {
+          const rules = await pb
+            .collection('commission_rules')
+            .getFullList({
+              filter: `barber_id='${barberId}' && item_type='product' && item_id='${sp.product_id}'`,
+            })
+          if (rules.length > 0) {
+            const rule = rules[0]
+            commAmount =
+              rule.type === 'percentage' ? (itemTotal * rule.value) / 100 : rule.value * sp.quantity
+          } else {
+            const catRules = await pb
+              .collection('commission_rules')
+              .getFullList({
+                filter: `barber_id='${barberId}' && item_type='category' && item_id='${sp.product.category_id}'`,
+              })
+            if (catRules.length > 0) {
+              const rule = catRules[0]
+              commAmount =
+                rule.type === 'percentage'
+                  ? (itemTotal * rule.value) / 100
+                  : rule.value * sp.quantity
+            }
+          }
+        }
+        if (commAmount > 0) {
+          await pb.collection('commissions').create({
+            barber_id: barberId,
+            amount: commAmount,
+            type: 'product',
+            date: new Date().toISOString(),
+            status: barber?.work_level === 'socio' ? 'paid' : 'pending',
+            payment_method: svcForm.payment_method,
+          })
+        }
+      }
 
       setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
       setManualForm({ client_id: '', barber_id: '', service_id: '' })

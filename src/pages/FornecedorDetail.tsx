@@ -55,22 +55,16 @@ export default function FornecedorDetail() {
   }, [purchaseForm.product_id])
 
   const handleQuantityChange = (val: string) => {
-    const q = Number(val) || 0
-    const u = Number(purchaseForm.unit_price) || 0
     setPurchaseForm({
       ...purchaseForm,
       quantity: val,
-      price_paid: q * u > 0 ? (q * u).toFixed(2) : purchaseForm.price_paid,
     })
   }
 
   const handleUnitPriceChange = (val: string) => {
-    const u = Number(val) || 0
-    const q = Number(purchaseForm.quantity) || 0
     setPurchaseForm({
       ...purchaseForm,
       unit_price: val,
-      price_paid: q * u > 0 ? (q * u).toFixed(2) : purchaseForm.price_paid,
     })
   }
 

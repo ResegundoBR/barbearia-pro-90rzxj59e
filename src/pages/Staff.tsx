@@ -26,7 +26,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, DollarSign, Printer, CalendarIcon, Trash, Wallet } from 'lucide-react'
+import {
+  Plus,
+  DollarSign,
+  Printer,
+  CalendarIcon,
+  Trash,
+  Wallet,
+  Copy,
+  CheckCircle2,
+} from 'lucide-react'
 import {
   format,
   startOfMonth,
@@ -87,6 +96,9 @@ export default function Staff() {
   const [isPaying, setIsPaying] = useState(false)
   const [receiptDialog, setReceiptDialog] = useState(false)
   const [paymentReceipt, setPaymentReceipt] = useState<{ url: string; text: string } | null>(null)
+  const [paymentReceiptDetails, setPaymentReceiptDetails] = useState<any>(null)
+  const [businessName, setBusinessName] = useState('Barbearia Pro')
+  const [copied, setCopied] = useState(false)
 
   const [form, setForm] = useState<any>({
     name: '',
@@ -138,6 +150,14 @@ export default function Staff() {
   const loadData = async () => {
     setBarbers(await getBarbers())
     setCommissions(await getCommissions())
+    try {
+      const settings = await pb.collection('settings').getFirstListItem(`key='business_info'`)
+      if (settings && settings.value && settings.value.name) {
+        setBusinessName(settings.value.name)
+      }
+    } catch (e) {
+      // Ignorar se não houver
+    }
   }
 
   useEffect(() => {
@@ -460,6 +480,23 @@ export default function Staff() {
             receiptText,
           )}`
         : `https://api.whatsapp.com/send?text=${encodeURIComponent(receiptText)}`
+
+      const paymentMethodName =
+        paymentMethod === 'pix'
+          ? 'Pix'
+          : paymentMethod === 'cash'
+            ? 'Dinheiro'
+            : paymentMethod === 'debito'
+              ? 'Débito'
+              : 'Crédito'
+
+      setPaymentReceiptDetails({
+        barberName: barberToPay?.name,
+        date: new Date(),
+        items: paidItems,
+        total: totalPaid,
+        method: paymentMethodName,
+      })
 
       setPaymentReceipt({ url, text: receiptText })
 
@@ -1199,14 +1236,72 @@ export default function Staff() {
       </Dialog>
 
       <Dialog open={receiptDialog} onOpenChange={setReceiptDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-stone-50">
           <DialogHeader>
-            <DialogTitle>Pagamento Concluído</DialogTitle>
-            <DialogDescription>
-              O pagamento das comissões foi registrado com sucesso.
-            </DialogDescription>
+            <DialogTitle className="text-center text-xl text-primary">
+              Pagamento Concluído!
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex justify-center py-6">
+
+          <div className="bg-white p-6 border-y-2 border-dashed border-gray-300 shadow-sm font-mono text-sm space-y-4 my-2 max-h-[50vh] overflow-y-auto">
+            <div className="text-center space-y-1">
+              <h3 className="font-bold text-lg">{businessName}</h3>
+              <p>Recibo de Comissões</p>
+              <p>{format(paymentReceiptDetails?.date || new Date(), 'dd/MM/yyyy HH:mm')}</p>
+            </div>
+
+            <div className="border-t border-dashed border-gray-300 pt-3">
+              <p>
+                <strong>Profissional:</strong> {paymentReceiptDetails?.barberName}
+              </p>
+              <p>
+                <strong>Forma de Pag.:</strong> {paymentReceiptDetails?.method}
+              </p>
+            </div>
+
+            <div className="border-t border-dashed border-gray-300 pt-3 space-y-2">
+              <div className="grid grid-cols-12 font-bold mb-1 border-b border-gray-100 pb-1">
+                <div className="col-span-8">Descrição</div>
+                <div className="col-span-4 text-right">Valor</div>
+              </div>
+              {paymentReceiptDetails?.items.map((item: any, i: number) => (
+                <div key={i} className="grid grid-cols-12 text-gray-700 py-0.5">
+                  <div
+                    className="col-span-8 truncate pr-2"
+                    title={`${format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')} - ${typeMap[item.type] || item.type}`}
+                  >
+                    {format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')}{' '}
+                    {typeMap[item.type] || item.type}
+                  </div>
+                  <div className="col-span-4 text-right">R$ {(item.amount || 0).toFixed(2)}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-dashed border-gray-300 pt-3 flex justify-between font-bold text-base">
+              <span>TOTAL PAGO</span>
+              <span>R$ {paymentReceiptDetails?.total.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 mt-2">
+            <Button
+              onClick={() => {
+                const text = `${businessName}\nRecibo de Comissões\nData: ${format(paymentReceiptDetails?.date || new Date(), 'dd/MM/yyyy HH:mm')}\nProfissional: ${paymentReceiptDetails?.barberName}\nForma de Pag.: ${paymentReceiptDetails?.method}\n\nItens:\n${paymentReceiptDetails?.items.map((item: any) => `${format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')} - ${typeMap[item.type] || item.type}: R$ ${(item.amount || 0).toFixed(2)}`).join('\n')}\n\nTOTAL PAGO: R$ ${paymentReceiptDetails?.total.toFixed(2)}`
+                navigator.clipboard.writeText(text)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+              }}
+              variant="outline"
+              className="w-full gap-2"
+            >
+              {copied ? (
+                <CheckCircle2 className="size-4 text-green-500" />
+              ) : (
+                <Copy className="size-4" />
+              )}
+              {copied ? 'Copiado!' : 'Copiar Recibo'}
+            </Button>
             <Button
               onClick={() => {
                 if (paymentReceipt?.url) window.open(paymentReceipt.url, '_blank')
@@ -1214,11 +1309,11 @@ export default function Staff() {
               className="bg-green-600 hover:bg-green-700 text-white gap-2 w-full"
             >
               <Wallet className="size-4" />
-              Enviar Recibo via WhatsApp
+              Enviar via WhatsApp
             </Button>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReceiptDialog(false)}>
+          <DialogFooter className="mt-2">
+            <Button variant="ghost" onClick={() => setReceiptDialog(false)}>
               Fechar
             </Button>
           </DialogFooter>

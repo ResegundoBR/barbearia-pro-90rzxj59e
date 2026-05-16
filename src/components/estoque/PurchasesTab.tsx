@@ -110,7 +110,7 @@ export function PurchasesTab() {
               </TableRow>
             ) : (
               purchases.map((purchase) => {
-                const total = (purchase.quantity || 0) * (purchase.unit_price || 0)
+                const total = purchase.price_paid || 0
                 return (
                   <TableRow key={purchase.id}>
                     <TableCell>
