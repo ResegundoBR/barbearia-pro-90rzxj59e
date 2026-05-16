@@ -61,6 +61,7 @@ export function ProdutosTab() {
     name: '',
     price: '',
     cost_price: '',
+    desired_margin: '',
     category_id: '',
     supplier_ids: [] as string[],
     stock_quantity: '',
@@ -114,6 +115,7 @@ export function ProdutosTab() {
         name: prod.name || '',
         price: prod.price?.toString() || '',
         cost_price: prod.cost_price?.toString() || '',
+        desired_margin: '',
         category_id: prod.category_id || '',
         supplier_ids: prod.supplier_ids || [],
         stock_quantity: prod.stock_quantity?.toString() || '',
@@ -127,6 +129,7 @@ export function ProdutosTab() {
         name: '',
         price: '',
         cost_price: '',
+        desired_margin: '',
         category_id: '',
         supplier_ids: [],
         stock_quantity: '',
@@ -218,8 +221,40 @@ export function ProdutosTab() {
     .filter((p) => showInactive || p.is_active !== false)
     .filter((p) => categoryFilter === 'all' || p.category_id === categoryFilter)
 
+  const totalInvestment = products
+    .filter((p) => p.is_active !== false)
+    .reduce((acc, p) => acc + (Number(p.stock_quantity) || 0) * (Number(p.cost_price) || 0), 0)
+
   return (
     <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+            <h3 className="tracking-tight text-sm font-medium">Capital Imobilizado</h3>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+              <path d="m3.3 7 8.7 5 8.7-5" />
+              <path d="M12 22V12" />
+            </svg>
+          </div>
+          <div className="p-6 pt-0">
+            <div className="text-2xl font-bold">
+              {totalInvestment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </div>
+            <p className="text-xs text-muted-foreground">Valor total em estoque ativo</p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h2 className="text-lg font-semibold">Listagem de Produtos</h2>
         <div className="flex flex-wrap items-center gap-4">
@@ -255,8 +290,8 @@ export function ProdutosTab() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Preço Venda</TableHead>
               <TableHead>Custo</TableHead>
+              <TableHead>Preço Venda</TableHead>
               <TableHead>Margem</TableHead>
               <TableHead>Última Compra</TableHead>
               <TableHead>Estoque</TableHead>
@@ -279,8 +314,11 @@ export function ProdutosTab() {
               </TableRow>
             ) : (
               displayedProducts.map((prod) => {
-                const marginCurrency = (prod.price || 0) - (prod.cost_price || 0)
-                const marginPercent = prod.price ? (marginCurrency / prod.price) * 100 : 0
+                const price = Number(prod.price) || 0
+                const costPrice = Number(prod.cost_price) || 0
+                const marginCurrency = price - costPrice
+                const marginPercent =
+                  costPrice > 0 ? (marginCurrency / costPrice) * 100 : price > 0 ? 100 : 0
                 const lastPurchase = inventoryPurchases.find((p) => p.product_id === prod.id)
 
                 return (
@@ -293,13 +331,13 @@ export function ProdutosTab() {
                       {prod.expand?.category_id?.name || '-'}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {prod.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {prod.cost_price?.toLocaleString('pt-BR', {
+                      {costPrice.toLocaleString('pt-BR', {
                         style: 'currency',
                         currency: 'BRL',
                       })}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <span className={marginCurrency > 0 ? 'text-green-600' : 'text-red-600'}>
@@ -368,19 +406,7 @@ export function ProdutosTab() {
               {errors.name && <p className="text-sm text-destructive font-medium">{errors.name}</p>}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Preço Venda *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                />
-                {errors.price && (
-                  <p className="text-sm text-destructive font-medium">{errors.price}</p>
-                )}
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Preço Custo</Label>
                 <Input
@@ -389,6 +415,55 @@ export function ProdutosTab() {
                   value={formData.cost_price}
                   onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Margem Desejada (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={formData.desired_margin}
+                  onChange={(e) => setFormData({ ...formData, desired_margin: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Preço Venda *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                />
+                {Number(formData.cost_price) > 0 && Number(formData.desired_margin) > 0 && (
+                  <div className="flex items-center justify-between text-sm text-muted-foreground mt-1">
+                    <span>
+                      Sugerido:{' '}
+                      {(
+                        (Number(formData.cost_price) || 0) *
+                        (1 + (Number(formData.desired_margin) || 0) / 100)
+                      ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-primary"
+                      onClick={() => {
+                        const suggested =
+                          (Number(formData.cost_price) || 0) *
+                          (1 + (Number(formData.desired_margin) || 0) / 100)
+                        setFormData({ ...formData, price: suggested.toFixed(2) })
+                      }}
+                    >
+                      Aplicar
+                    </Button>
+                  </div>
+                )}
+                {errors.price && (
+                  <p className="text-sm text-destructive font-medium">{errors.price}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Categoria</Label>
