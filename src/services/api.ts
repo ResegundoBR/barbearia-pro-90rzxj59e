@@ -78,3 +78,6 @@ export const getClientLogs = (filter?: string) =>
 
 export const getCommissions = (filter?: string) =>
   pb.collection('commissions').getFullList({ expand: 'barber_id', sort: '-created', filter })
+
+export const getPaymentMethods = () =>
+  pb.collection('payment_methods').getFullList({ sort: '-created' })
