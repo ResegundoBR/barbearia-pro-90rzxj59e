@@ -176,6 +176,7 @@ export default function Checkout() {
           status: 'Concluído',
           date: new Date().toISOString(),
           time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          client_package_id: packageToConsume || null,
         })
         finalAptId = apt.id
       } else {
@@ -455,7 +456,11 @@ export default function Checkout() {
                             <Label>Cliente</Label>
                             <Select
                               value={manualForm.client_id}
-                              onValueChange={(v) => setManualForm({ ...manualForm, client_id: v })}
+                              onValueChange={(v) => {
+                                setManualForm({ ...manualForm, client_id: v, service_id: '' })
+                                setPackageToConsume(null)
+                                setSvcForm((prev) => ({ ...prev, service_price: '' }))
+                              }}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecione..." />
@@ -495,12 +500,29 @@ export default function Checkout() {
                             onValueChange={(v) => {
                               setManualForm({ ...manualForm, service_id: v })
                               const svc = services.find((s) => s.id === v)
-                              if (svc)
-                                setSvcForm((prev) => ({
-                                  ...prev,
-                                  service_price: svc.price.toString(),
-                                }))
+
+                              let price = svc?.price?.toString() || '0'
+                              let pkgToConsume = null
+
+                              if (manualForm.client_id) {
+                                const availablePkg = clientPackages.find(
+                                  (cp) =>
+                                    cp.client_id === manualForm.client_id &&
+                                    cp.expand?.package_id?.service_id === v,
+                                )
+                                if (availablePkg && availablePkg.remaining_uses > 0) {
+                                  price = '0'
+                                  pkgToConsume = availablePkg.id
+                                }
+                              }
+
+                              setPackageToConsume(pkgToConsume)
+                              setSvcForm((prev) => ({
+                                ...prev,
+                                service_price: price,
+                              }))
                             }}
+                            disabled={!manualForm.client_id}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione o serviço..." />

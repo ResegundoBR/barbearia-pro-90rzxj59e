@@ -24,18 +24,18 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
     let text = `================================\n`
     text += `       RECIBO DE COMISSÃO\n`
     text += `================================\n\n`
-    text += `Barbeiro: ${barberName}\n`
-    text += `Data: ${format(new Date(date), 'dd/MM/yyyy HH:mm')}\n\n`
+    text += `Data: ${format(new Date(date), 'dd/MM/yyyy HH:mm')}\n`
+    text += `Profissional: ${barberName}\n\n`
     text += `DETALHES DOS SERVIÇOS:\n`
     text += `--------------------------------\n`
     items.forEach((item) => {
-      text += `Cliente : ${item.clientName}\n`
-      text += `Serviço : ${item.serviceName}\n`
-      text += `Valor   : R$ ${item.serviceValue.toFixed(2)}\n`
-      text += `Comissão: R$ ${item.commissionValue.toFixed(2)}\n`
+      text += `Nome do Cliente  : ${item.clientName}\n`
+      text += `Serviço          : ${item.serviceName}\n`
+      text += `Valor do Serviço : R$ ${item.serviceValue.toFixed(2)}\n`
+      text += `Valor da Comissão: R$ ${item.commissionValue.toFixed(2)}\n`
       text += `--------------------------------\n`
     })
-    text += `\nTOTAL PAGO: R$ ${totalPaid.toFixed(2)}\n`
+    text += `\nValor Total Pago: R$ ${totalPaid.toFixed(2)}\n`
     text += `================================\n`
 
     navigator.clipboard.writeText(text)
@@ -47,20 +47,34 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
     <div className="w-full max-w-sm mx-auto shadow-md border border-border bg-white text-black font-mono p-6 rounded-md">
       <div className="text-center mb-6 border-b border-dashed border-gray-400 pb-4">
         <h3 className="font-bold text-lg uppercase tracking-widest">Recibo de Comissão</h3>
-        <p className="text-sm mt-1">{barberName}</p>
-        <p className="text-xs text-gray-500 mt-1">{format(new Date(date), 'dd/MM/yyyy HH:mm')}</p>
+        <p className="text-sm mt-1 text-gray-600">
+          Profissional: <span className="font-bold text-black">{barberName}</span>
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          Data: {format(new Date(date), 'dd/MM/yyyy HH:mm')}
+        </p>
       </div>
 
       <div className="space-y-4 mb-6 border-b border-dashed border-gray-400 pb-6">
         {items.map((item, i) => (
-          <div key={i} className="text-sm space-y-1">
-            <div className="flex justify-between font-bold">
-              <span className="truncate mr-2">{item.serviceName}</span>
-              <span className="shrink-0">R$ {item.commissionValue.toFixed(2)}</span>
+          <div key={i} className="text-sm space-y-2 border border-gray-200 p-3 rounded bg-gray-50">
+            <div className="flex justify-between border-b border-gray-200 pb-1">
+              <span className="text-gray-500 text-xs uppercase">Nome do Cliente</span>
+              <span className="font-bold truncate max-w-[150px]">{item.clientName}</span>
             </div>
-            <div className="flex justify-between text-xs text-gray-600">
-              <span className="truncate mr-2">Cli: {item.clientName}</span>
-              <span className="shrink-0">Valor: R$ {item.serviceValue.toFixed(2)}</span>
+            <div className="flex justify-between border-b border-gray-200 pb-1">
+              <span className="text-gray-500 text-xs uppercase">Serviço</span>
+              <span className="font-semibold truncate max-w-[150px]">{item.serviceName}</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-200 pb-1">
+              <span className="text-gray-500 text-xs uppercase">Valor do Serviço</span>
+              <span>R$ {item.serviceValue.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between pt-1">
+              <span className="text-gray-500 text-xs uppercase font-bold text-primary">
+                Valor da Comissão
+              </span>
+              <span className="font-bold text-primary">R$ {item.commissionValue.toFixed(2)}</span>
             </div>
           </div>
         ))}
@@ -69,9 +83,9 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
         )}
       </div>
 
-      <div className="flex justify-between items-center font-bold text-base mb-6">
-        <span>TOTAL PAGO</span>
-        <span>R$ {totalPaid.toFixed(2)}</span>
+      <div className="flex justify-between items-center font-bold text-base mb-6 bg-gray-100 p-3 rounded">
+        <span>VALOR TOTAL PAGO</span>
+        <span className="text-lg">R$ {totalPaid.toFixed(2)}</span>
       </div>
 
       <Button

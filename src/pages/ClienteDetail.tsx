@@ -11,6 +11,8 @@ import {
   FileText,
   ThumbsUp,
   ThumbsDown,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import {
   Dialog,
@@ -19,6 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -36,6 +39,83 @@ import {
   getClientPackages,
 } from '@/services/api'
 import { format } from 'date-fns'
+
+function PackageCard({ p, status, used, total, progress, packageAppointments }: any) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <Card className="overflow-hidden">
+      <div
+        className="p-4 cursor-pointer hover:bg-muted/10 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center gap-2">
+              <h4 className="font-bold text-lg">{p.expand?.package_id?.name || 'Pacote'}</h4>
+              <Badge
+                variant={
+                  status === 'Ativo'
+                    ? 'default'
+                    : status === 'Concluído'
+                      ? 'secondary'
+                      : 'destructive'
+                }
+              >
+                {status}
+              </Badge>
+            </div>
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Data da Compra: {format(new Date(p.created), 'dd/MM/yyyy')}</span>
+              <span>
+                Validade:{' '}
+                {p.expires_at ? format(new Date(p.expires_at), 'dd/MM/yyyy') : 'Sem validade'}
+              </span>
+            </div>
+          </div>
+          <div className="w-full md:w-64 space-y-1 shrink-0">
+            <div className="flex justify-between text-sm">
+              <span>
+                {used} / {total} usadas
+              </span>
+              <span className="font-medium">{p.remaining_uses} sessões restantes</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+          <Button variant="ghost" size="icon" className="shrink-0 hidden md:flex" asChild>
+            <div>
+              {expanded ? <ChevronUp className="size-5" /> : <ChevronDown className="size-5" />}
+            </div>
+          </Button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="p-4 border-t bg-muted/5 space-y-3 animate-fade-in-down">
+          <h5 className="font-semibold text-sm">Histórico de Uso</h5>
+          {packageAppointments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma sessão utilizada ainda.</p>
+          ) : (
+            <div className="space-y-2">
+              {packageAppointments.map((a: any) => (
+                <div
+                  key={a.id}
+                  className="flex justify-between items-center bg-background border p-2 rounded-md text-sm"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{a.expand?.service_id?.name || 'Serviço'}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(a.date), 'dd/MM/yyyy')}
+                    </span>
+                  </div>
+                  <Badge variant="outline">{a.status}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  )
+}
 
 export default function ClienteDetail() {
   const { id } = useParams()
@@ -208,6 +288,38 @@ export default function ClienteDetail() {
             <p className="text-2xl font-bold">R$ {stats.totalProducts.toFixed(2)}</p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold tracking-tight">Meus Pacotes</h3>
+        {packages.length === 0 ? (
+          <p className="text-muted-foreground bg-muted/20 p-4 rounded-lg border">
+            Este cliente não possui pacotes ativos.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {packages.map((p) => {
+              const isExpired = p.expires_at && new Date(p.expires_at) < new Date()
+              const status = p.remaining_uses === 0 ? 'Concluído' : isExpired ? 'Expirado' : 'Ativo'
+              const total = p.expand?.package_id?.quantity || 1
+              const used = total - p.remaining_uses
+              const progress = (used / total) * 100
+              const packageAppointments = appointments.filter((a) => a.client_package_id === p.id)
+
+              return (
+                <PackageCard
+                  key={p.id}
+                  p={p}
+                  status={status}
+                  used={used}
+                  total={total}
+                  progress={progress}
+                  packageAppointments={packageAppointments}
+                />
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
