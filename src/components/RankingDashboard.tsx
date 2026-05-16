@@ -170,13 +170,20 @@ export function RankingDashboard() {
                     topCustomers.slice(0, 7).map((row) => (
                       <TableRow key={row.client.id}>
                         <TableCell>
-                          <Link
-                            to={`/clientes/${row.client.id}`}
-                            className="font-medium hover:underline text-primary flex items-center gap-1"
-                          >
-                            {row.client.name || 'Cliente'} {row.client.surname || ''}{' '}
-                            <ArrowUpRight className="size-3" />
-                          </Link>
+                          <div className="flex flex-col">
+                            <Link
+                              to={`/clientes/${row.client.id}`}
+                              className="font-medium hover:underline text-primary flex items-center gap-1"
+                            >
+                              {row.client.name || 'Cliente'} {row.client.surname || ''}{' '}
+                              <ArrowUpRight className="size-3" />
+                            </Link>
+                            {row.client.expand?.preferred_barber_id?.name && (
+                              <span className="text-xs text-muted-foreground mt-0.5">
+                                Profissional: {row.client.expand.preferred_barber_id.name}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           {new Intl.NumberFormat('pt-BR', {
@@ -240,13 +247,20 @@ export function RankingDashboard() {
                     noShowCustomers.slice(0, 7).map((row) => (
                       <TableRow key={row.client.id}>
                         <TableCell>
-                          <Link
-                            to={`/clientes/${row.client.id}`}
-                            className="font-medium hover:underline text-primary flex items-center gap-1"
-                          >
-                            {row.client.name || 'Cliente'} {row.client.surname || ''}{' '}
-                            <ArrowUpRight className="size-3" />
-                          </Link>
+                          <div className="flex flex-col">
+                            <Link
+                              to={`/clientes/${row.client.id}`}
+                              className="font-medium hover:underline text-primary flex items-center gap-1"
+                            >
+                              {row.client.name || 'Cliente'} {row.client.surname || ''}{' '}
+                              <ArrowUpRight className="size-3" />
+                            </Link>
+                            {row.client.expand?.preferred_barber_id?.name && (
+                              <span className="text-xs text-muted-foreground mt-0.5">
+                                Profissional: {row.client.expand.preferred_barber_id.name}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center font-bold text-destructive">
                           {row.noShows}

@@ -19,6 +19,13 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
   Plus,
   Trash2,
   Check,
@@ -58,19 +65,37 @@ export default function Checkout() {
     package_id: '',
     payment_method: '',
   })
+
   const [svcForm, setSvcForm] = useState({
     appointment_id: '',
     service_price: '',
     payment_method: '',
   })
+
   const [isManual, setIsManual] = useState(false)
   const [manualForm, setManualForm] = useState({ client_id: '', barber_id: '', service_id: '' })
   const [packageToConsume, setPackageToConsume] = useState<string | null>(null)
+
+  const [additionalServices, setAdditionalServices] = useState<
+    { id: string; service_id: string; name: string; price: number }[]
+  >([])
+  const [manualExtras, setManualExtras] = useState<
+    { id: string; description: string; price: number }[]
+  >([])
+  const [serviceToAdd, setServiceToAdd] = useState('')
+  const [extraDesc, setExtraDesc] = useState('')
+  const [extraPrice, setExtraPrice] = useState('')
 
   const [selectedProducts, setSelectedProducts] = useState<
     { product_id: string; product: any; quantity: number }[]
   >([])
   const [productToAdd, setProductToAdd] = useState('')
+
+  const [discount, setDiscount] = useState<{ type: 'fixed' | 'percentage'; value: number }>({
+    type: 'fixed',
+    value: 0,
+  })
+  const [showTicket, setShowTicket] = useState(false)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successState, setSuccessState] = useState<{
@@ -131,48 +156,72 @@ export default function Checkout() {
         body: JSON.stringify(pkgForm),
         headers: { 'Content-Type': 'application/json' },
       })
-
       setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
       setSuccessState({ type: 'package', message: 'Pacote vendido com sucesso!' })
       loadData()
     } catch (err: any) {
-      const msg = err instanceof Error ? err.message : getErrorMessage(err)
-      toast({ title: msg || 'Erro ao vender pacote', variant: 'destructive' })
+      toast({
+        title: err instanceof Error ? err.message : getErrorMessage(err),
+        variant: 'destructive',
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleCloseService = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!svcForm.payment_method) {
-      return toast({ title: 'Selecione o método de pagamento', variant: 'destructive' })
-    }
-    if (!isManual && !svcForm.appointment_id) {
-      return toast({ title: 'Selecione o agendamento', variant: 'destructive' })
-    }
+  const handleAddService = () => {
+    if (!serviceToAdd) return
+    const svc = services.find((s) => s.id === serviceToAdd)
+    if (!svc) return
+    setAdditionalServices([
+      ...additionalServices,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        service_id: svc.id,
+        name: svc.name,
+        price: svc.price,
+      },
+    ])
+    setServiceToAdd('')
+  }
 
+  const handleAddExtra = () => {
+    if (!extraDesc || !extraPrice) return
+    setManualExtras([
+      ...manualExtras,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        description: extraDesc,
+        price: Number(extraPrice),
+      },
+    ])
+    setExtraDesc('')
+    setExtraPrice('')
+  }
+
+  const handleCloseService = async () => {
     setIsSubmitting(true)
     try {
-      // Validate stock locally before sending to prevent unnecessary network roundtrips
       for (const sp of selectedProducts) {
         const prod = sp.product
         if ((prod.stock_quantity || 0) - sp.quantity < 0) {
-          throw new Error(`Estoque insuficiente para o produto: ${prod.name}.`)
+          throw new Error(`Estoque insuficiente para: ${prod.name}.`)
         }
       }
 
       let finalAptId = svcForm.appointment_id
       let clientId = manualForm.client_id
       let barberId = manualForm.barber_id
-      let serviceId = manualForm.service_id
+      let baseServiceId = manualForm.service_id
+
+      const proportion = subtotal > 0 ? 1 - discountAmount / subtotal : 1
 
       if (isManual) {
         const apt = await pb.collection('appointments').create({
           client_id: clientId,
           barber_id: barberId,
-          service_id: serviceId,
-          price: Number(svcForm.service_price),
+          service_id: baseServiceId,
+          price: servicesTotal * proportion,
           status: 'Concluído',
           date: new Date().toISOString(),
           time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -184,11 +233,11 @@ export default function Checkout() {
         if (!apt) throw new Error('Agendamento não encontrado')
         clientId = apt.client_id
         barberId = apt.barber_id
-        serviceId = apt.service_id
+        baseServiceId = apt.service_id
 
         await pb.collection('appointments').update(finalAptId, {
           status: 'Concluído',
-          price: Number(svcForm.service_price),
+          price: servicesTotal * proportion,
           client_package_id: packageToConsume || apt.client_package_id,
         })
       }
@@ -196,9 +245,9 @@ export default function Checkout() {
       if (packageToConsume) {
         const pkg = clientPackages.find((p) => p.id === packageToConsume)
         if (pkg && pkg.remaining_uses > 0) {
-          await pb.collection('client_packages').update(packageToConsume, {
-            remaining_uses: pkg.remaining_uses - 1,
-          })
+          await pb
+            .collection('client_packages')
+            .update(packageToConsume, { remaining_uses: pkg.remaining_uses - 1 })
         }
       }
 
@@ -211,52 +260,17 @@ export default function Checkout() {
         else if (pmRecord.type === 'cash') commissionPm = 'cash'
       }
 
-      for (const sp of selectedProducts) {
-        await pb.collection('product_purchases').create({
-          client_id: clientId,
-          product_id: sp.product_id,
-          barber_id: barberId,
-          price_at_sale: sp.product.price * sp.quantity,
-          date: new Date().toISOString(),
-        })
-
-        const currentProd = await pb.collection('products').getOne(sp.product_id)
-        await pb.collection('products').update(sp.product_id, {
-          stock_quantity: Math.max(0, (currentProd.stock_quantity || 0) - sp.quantity),
-        })
-      }
-
       const barber = barbers.find((b) => b.id === barberId)
-      if (barber && Number(svcForm.service_price) > 0) {
-        let commAmount = 0
-        if (barber.work_level === 'socio') {
-          commAmount = Number(svcForm.service_price)
-        } else {
-          const rules = await pb.collection('commission_rules').getFullList({
-            filter: `barber_id='${barberId}' && item_type='service' && item_id='${serviceId}'`,
-          })
-          if (rules.length > 0) {
-            const rule = rules[0]
-            commAmount =
-              rule.type === 'percentage'
-                ? (Number(svcForm.service_price) * rule.value) / 100
-                : rule.value
-          } else {
-            const svc = services.find((s) => s.id === serviceId)
-            if (svc && svc.commission_rate) {
-              commAmount = (Number(svcForm.service_price) * svc.commission_rate) / 100
-            } else if (barber.commission_type === 'percentage') {
-              commAmount = (Number(svcForm.service_price) * (barber.commission_value || 0)) / 100
-            } else {
-              commAmount = barber.commission_value || 0
-            }
-          }
-        }
-        if (commAmount > 0) {
+      const rules = await pb
+        .collection('commission_rules')
+        .getFullList({ filter: `barber_id='${barberId}'` })
+
+      const createComm = async (amount: number, type: string) => {
+        if (amount > 0 && barber) {
           await pb.collection('commissions').create({
             barber_id: barberId,
-            amount: commAmount,
-            type: 'service',
+            amount,
+            type,
             date: new Date().toISOString(),
             status: barber.work_level === 'socio' ? 'paid' : 'pending',
             payment_method: commissionPm,
@@ -264,60 +278,102 @@ export default function Checkout() {
         }
       }
 
+      const getServiceComm = (svcId: string, itemPrice: number) => {
+        if (barber?.work_level === 'socio') return itemPrice
+        const rule = rules.find((r) => r.item_type === 'service' && r.item_id === svcId)
+        if (rule) return rule.type === 'percentage' ? (itemPrice * rule.value) / 100 : rule.value
+        const svc = services.find((s) => s.id === svcId)
+        if (svc && svc.commission_rate) return (itemPrice * svc.commission_rate) / 100
+        if (barber?.commission_type === 'percentage')
+          return (itemPrice * (barber.commission_value || 0)) / 100
+        return barber?.commission_value || 0
+      }
+
+      if (scheduledPrice > 0) {
+        await createComm(getServiceComm(baseServiceId, scheduledPrice * proportion), 'service')
+      }
+
+      for (const add of additionalServices) {
+        if (add.price > 0) {
+          await createComm(getServiceComm(add.service_id, add.price * proportion), 'service')
+        }
+      }
+
+      for (const extra of manualExtras) {
+        if (extra.price > 0) {
+          const p = extra.price * proportion
+          let c = 0
+          if (barber?.work_level === 'socio') c = p
+          else if (barber?.commission_type === 'percentage')
+            c = (p * (barber.commission_value || 0)) / 100
+          else c = barber?.commission_value || 0
+          await createComm(c, 'service')
+        }
+      }
+
       for (const sp of selectedProducts) {
-        let commAmount = 0
-        const itemTotal = sp.product.price * sp.quantity
-        if (barber && barber.work_level === 'socio') {
-          commAmount = itemTotal
-        } else if (barber) {
-          const rules = await pb.collection('commission_rules').getFullList({
-            filter: `barber_id='${barberId}' && item_type='product' && item_id='${sp.product_id}'`,
-          })
-          if (rules.length > 0) {
-            const rule = rules[0]
-            commAmount =
-              rule.type === 'percentage' ? (itemTotal * rule.value) / 100 : rule.value * sp.quantity
+        const itemPrice = sp.product.price * sp.quantity * proportion
+        await pb.collection('product_purchases').create({
+          client_id: clientId,
+          product_id: sp.product_id,
+          barber_id: barberId,
+          price_at_sale: itemPrice,
+          date: new Date().toISOString(),
+        })
+
+        const currentProd = await pb.collection('products').getOne(sp.product_id)
+        await pb.collection('products').update(sp.product_id, {
+          stock_quantity: Math.max(0, (currentProd.stock_quantity || 0) - sp.quantity),
+        })
+
+        let c = 0
+        if (barber?.work_level === 'socio') c = itemPrice
+        else {
+          const rule = rules.find((r) => r.item_type === 'product' && r.item_id === sp.product_id)
+          if (rule) {
+            c =
+              rule.type === 'percentage' ? (itemPrice * rule.value) / 100 : rule.value * sp.quantity
           } else {
-            const catRules = await pb.collection('commission_rules').getFullList({
-              filter: `barber_id='${barberId}' && item_type='category' && item_id='${sp.product.category_id}'`,
-            })
-            if (catRules.length > 0) {
-              const rule = catRules[0]
-              commAmount =
-                rule.type === 'percentage'
-                  ? (itemTotal * rule.value) / 100
-                  : rule.value * sp.quantity
+            const catRule = rules.find(
+              (r) => r.item_type === 'category' && r.item_id === sp.product.category_id,
+            )
+            if (catRule) {
+              c =
+                catRule.type === 'percentage'
+                  ? (itemPrice * catRule.value) / 100
+                  : catRule.value * sp.quantity
             }
           }
         }
-        if (commAmount > 0) {
-          await pb.collection('commissions').create({
-            barber_id: barberId,
-            amount: commAmount,
-            type: 'product',
-            date: new Date().toISOString(),
-            status: barber?.work_level === 'socio' ? 'paid' : 'pending',
-            payment_method: commissionPm,
-          })
-        }
+        await createComm(c, 'product')
       }
 
       setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
       setManualForm({ client_id: '', barber_id: '', service_id: '' })
       setIsManual(false)
       setSelectedProducts([])
+      setAdditionalServices([])
+      setManualExtras([])
+      setDiscount({ type: 'fixed', value: 0 })
       setPackageToConsume(null)
+      setShowTicket(false)
       loadData()
       setSuccessState({ type: 'service', message: 'Venda finalizada com sucesso!' })
     } catch (err: any) {
-      const msg = err instanceof Error ? err.message : getErrorMessage(err)
-      toast({ title: msg || 'Erro ao finalizar checkout', variant: 'destructive' })
+      toast({
+        title: err instanceof Error ? err.message : getErrorMessage(err),
+        variant: 'destructive',
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleAppointmentChange = (val: string) => {
+    setAdditionalServices([])
+    setManualExtras([])
+    setDiscount({ type: 'fixed', value: 0 })
+
     if (val === 'manual') {
       setIsManual(true)
       setSvcForm({ ...svcForm, appointment_id: 'manual', service_price: '' })
@@ -367,12 +423,36 @@ export default function Checkout() {
     setProductToAdd('')
   }
 
+  const scheduledPrice = parseFloat(svcForm.service_price.replace(',', '.') || '0')
+  const additionalServicesTotal = additionalServices.reduce((acc, curr) => acc + curr.price, 0)
+  const manualExtrasTotal = manualExtras.reduce((acc, curr) => acc + curr.price, 0)
   const productsTotal = selectedProducts.reduce(
     (acc, curr) => acc + curr.product.price * curr.quantity,
     0,
   )
-  const serviceTotal = parseFloat(svcForm.service_price.replace(',', '.') || '0')
-  const grandTotal = (isNaN(serviceTotal) ? 0 : serviceTotal) + productsTotal
+
+  const servicesTotal = scheduledPrice + additionalServicesTotal + manualExtrasTotal
+  const subtotal = servicesTotal + productsTotal
+
+  const discountAmount =
+    discount.type === 'percentage' ? (subtotal * (discount.value || 0)) / 100 : discount.value || 0
+
+  const grandTotal = Math.max(0, subtotal - discountAmount)
+
+  let ticketClientName = ''
+  let ticketServiceName = ''
+  if (isManual) {
+    const c = clients.find((x) => x.id === manualForm.client_id)
+    if (c) ticketClientName = `${c.name} ${c.surname || ''}`
+    const s = services.find((x) => x.id === manualForm.service_id)
+    if (s) ticketServiceName = s.name
+  } else {
+    const apt = appointments.find((a) => a.id === svcForm.appointment_id)
+    if (apt) {
+      ticketClientName = `${apt.expand?.client_id?.name || ''} ${apt.expand?.client_id?.surname || ''}`
+      ticketServiceName = apt.expand?.service_id?.name || ''
+    }
+  }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 animate-fade-in">
@@ -416,14 +496,13 @@ export default function Checkout() {
                       <Scissors className="size-5 text-primary" /> Dados do Atendimento
                     </CardTitle>
                     <CardDescription>
-                      Selecione um agendamento pendente ou crie um avulso.
+                      Selecione o serviço base do agendamento ou manual.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6 space-y-5">
                     <div className="space-y-2">
                       <Label>Agendamento ou Modalidade</Label>
                       <Select
-                        required
                         value={svcForm.appointment_id}
                         onValueChange={handleAppointmentChange}
                       >
@@ -432,8 +511,7 @@ export default function Checkout() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="manual" className="font-bold text-primary">
-                            <Users className="size-4 inline mr-2" /> Novo Atendimento Avulso (Sem
-                            agendamento)
+                            <Users className="size-4 inline mr-2" /> Novo Atendimento Avulso
                           </SelectItem>
                           {appointments.map((a) => (
                             <SelectItem key={a.id} value={a.id}>
@@ -449,7 +527,7 @@ export default function Checkout() {
                     {isManual && (
                       <div className="space-y-4 p-5 bg-card border border-dashed border-primary/30 rounded-xl animate-fade-in">
                         <h4 className="font-semibold text-primary flex items-center gap-2">
-                          <Tag className="size-4" /> Detalhes Avulsos
+                          <Tag className="size-4" /> Serviço Base (Manual)
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -494,16 +572,14 @@ export default function Checkout() {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label>Serviço Executado</Label>
+                          <Label>Serviço Principal</Label>
                           <Select
                             value={manualForm.service_id}
                             onValueChange={(v) => {
                               setManualForm({ ...manualForm, service_id: v })
                               const svc = services.find((s) => s.id === v)
-
                               let price = svc?.price?.toString() || '0'
                               let pkgToConsume = null
-
                               if (manualForm.client_id) {
                                 const availablePkg = clientPackages.find(
                                   (cp) =>
@@ -515,12 +591,8 @@ export default function Checkout() {
                                   pkgToConsume = availablePkg.id
                                 }
                               }
-
                               setPackageToConsume(pkgToConsume)
-                              setSvcForm((prev) => ({
-                                ...prev,
-                                service_price: price,
-                              }))
+                              setSvcForm((prev) => ({ ...prev, service_price: price }))
                             }}
                             disabled={!manualForm.client_id}
                           >
@@ -540,10 +612,9 @@ export default function Checkout() {
                     )}
 
                     <div className="space-y-2">
-                      <Label>Valor do Serviço (R$)</Label>
+                      <Label>Valor do Serviço Base (R$)</Label>
                       <div className="flex flex-col gap-1">
                         <Input
-                          required
                           type="number"
                           step="0.01"
                           min="0"
@@ -566,14 +637,123 @@ export default function Checkout() {
                 <Card className="border-border shadow-sm">
                   <CardHeader className="bg-muted/30 pb-4 border-b">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      <ShoppingBag className="size-5 text-primary" /> Produtos Adicionais
+                      <Plus className="size-5 text-primary" /> Serviços Adicionais & Extras
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-6">
+                    <div className="space-y-2">
+                      <Label>Serviço do Catálogo</Label>
+                      <div className="flex gap-2">
+                        <Select value={serviceToAdd} onValueChange={setServiceToAdd}>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Buscar serviço adicional..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {services.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name} - R$ {s.price.toFixed(2)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="secondary" onClick={handleAddService}>
+                          Adicionar
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Extra Manual</Label>
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1">
+                          <Input
+                            placeholder="Descrição do Extra"
+                            value={extraDesc}
+                            onChange={(e) => setExtraDesc(e.target.value)}
+                          />
+                        </div>
+                        <div className="w-32 space-y-1">
+                          <Input
+                            type="number"
+                            placeholder="Valor (R$)"
+                            min="0"
+                            step="0.01"
+                            value={extraPrice}
+                            onChange={(e) => setExtraPrice(e.target.value)}
+                          />
+                        </div>
+                        <Button type="button" variant="secondary" onClick={handleAddExtra}>
+                          Adicionar
+                        </Button>
+                      </div>
+                    </div>
+
+                    {(additionalServices.length > 0 || manualExtras.length > 0) && (
+                      <div className="mt-4 space-y-2">
+                        {additionalServices.map((s) => (
+                          <div
+                            key={s.id}
+                            className="flex justify-between items-center p-3 border rounded-lg animate-fade-in"
+                          >
+                            <span>
+                              {s.name}{' '}
+                              <span className="text-xs text-muted-foreground ml-1">(Catálogo)</span>
+                            </span>
+                            <div className="flex items-center gap-4">
+                              <span className="font-semibold">R$ {s.price.toFixed(2)}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  setAdditionalServices((prev) => prev.filter((x) => x.id !== s.id))
+                                }
+                              >
+                                <Trash2 className="size-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        {manualExtras.map((m) => (
+                          <div
+                            key={m.id}
+                            className="flex justify-between items-center p-3 border rounded-lg animate-fade-in"
+                          >
+                            <span>
+                              {m.description}{' '}
+                              <span className="text-xs text-muted-foreground ml-1">(Manual)</span>
+                            </span>
+                            <div className="flex items-center gap-4">
+                              <span className="font-semibold">R$ {m.price.toFixed(2)}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  setManualExtras((prev) => prev.filter((x) => x.id !== m.id))
+                                }
+                              >
+                                <Trash2 className="size-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border shadow-sm">
+                  <CardHeader className="bg-muted/30 pb-4 border-b">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <ShoppingBag className="size-5 text-primary" /> Venda de Produtos
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-6">
                     <div className="flex gap-2">
                       <Select value={productToAdd} onValueChange={setProductToAdd}>
                         <SelectTrigger className="flex-1 h-12">
-                          <SelectValue placeholder="Buscar produto vendido..." />
+                          <SelectValue placeholder="Buscar produto..." />
                         </SelectTrigger>
                         <SelectContent>
                           {products.map((p) => (
@@ -635,7 +815,7 @@ export default function Checkout() {
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                className="h-8 w-8 text-destructive"
                                 onClick={() =>
                                   setSelectedProducts(
                                     selectedProducts.filter((x) => x.product_id !== sp.product_id),
@@ -664,15 +844,46 @@ export default function Checkout() {
                   <CardContent className="pt-6 space-y-6">
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Serviços</span>
+                        <span className="text-muted-foreground">Serviços e Extras</span>
                         <span className="font-medium">
-                          R$ {isNaN(serviceTotal) ? '0.00' : serviceTotal.toFixed(2)}
+                          R$ {isNaN(servicesTotal) ? '0.00' : servicesTotal.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Produtos</span>
                         <span className="font-medium">R$ {productsTotal.toFixed(2)}</span>
                       </div>
+
+                      <div className="space-y-3 pt-4 border-t">
+                        <Label>Desconto</Label>
+                        <div className="flex gap-2">
+                          <Select
+                            value={discount.type}
+                            onValueChange={(v: 'fixed' | 'percentage') =>
+                              setDiscount({ ...discount, type: v })
+                            }
+                          >
+                            <SelectTrigger className="w-[130px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="fixed">Fixo (R$)</SelectItem>
+                              <SelectItem value="percentage">Percent (%)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            min="0"
+                            step={discount.type === 'percentage' ? '1' : '0.01'}
+                            value={discount.value}
+                            onChange={(e) =>
+                              setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })
+                            }
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+
                       <Separator />
                       <div className="flex justify-between items-center pt-2">
                         <span className="font-bold text-lg">Total Geral</span>
@@ -698,19 +909,28 @@ export default function Checkout() {
                               {pm.name}
                             </SelectItem>
                           ))}
-                        </SelectContent>{' '}
+                        </SelectContent>
                       </Select>
                     </div>
                   </CardContent>
                   <CardFooter className="pb-8 px-6">
                     <Button
                       type="button"
-                      onClick={handleCloseService}
+                      onClick={() => {
+                        if (!svcForm.payment_method)
+                          return toast({
+                            title: 'Selecione o método de pagamento',
+                            variant: 'destructive',
+                          })
+                        if (!isManual && !svcForm.appointment_id)
+                          return toast({ title: 'Selecione o agendamento', variant: 'destructive' })
+                        setShowTicket(true)
+                      }}
                       disabled={isSubmitting || (!isManual && !svcForm.appointment_id)}
                       size="lg"
                       className="w-full text-base h-14 shadow-lg font-bold"
                     >
-                      {isSubmitting ? 'Processando...' : 'Finalizar e Cobrar'}
+                      Revisar e Finalizar
                     </Button>
                   </CardFooter>
                 </Card>
@@ -822,6 +1042,84 @@ export default function Checkout() {
           </TabsContent>
         </Tabs>
       )}
+
+      <Dialog open={showTicket} onOpenChange={setShowTicket}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ticket de Resumo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm mt-2">
+            <div>
+              <span className="text-muted-foreground">Cliente:</span>{' '}
+              <span className="font-semibold text-base">
+                {ticketClientName || 'Não identificado'}
+              </span>
+            </div>
+
+            <Separator />
+
+            <div className="font-semibold uppercase text-xs tracking-wider">Serviços e Extras</div>
+            <div className="flex justify-between">
+              <span>
+                {ticketServiceName || 'Serviço Base'}{' '}
+                <span className="text-muted-foreground text-xs">(Agendado)</span>
+              </span>
+              <span>R$ {scheduledPrice.toFixed(2)}</span>
+            </div>
+            {additionalServices.map((s) => (
+              <div key={s.id} className="flex justify-between">
+                <span>{s.name}</span>
+                <span>R$ {s.price.toFixed(2)}</span>
+              </div>
+            ))}
+            {manualExtras.map((m) => (
+              <div key={m.id} className="flex justify-between text-muted-foreground">
+                <span>{m.description} (Extra)</span>
+                <span>R$ {m.price.toFixed(2)}</span>
+              </div>
+            ))}
+
+            {selectedProducts.length > 0 && (
+              <>
+                <Separator />
+                <div className="font-semibold uppercase text-xs tracking-wider">Produtos</div>
+                {selectedProducts.map((p) => (
+                  <div key={p.product_id} className="flex justify-between">
+                    <span>
+                      {p.quantity}x {p.product.name}
+                    </span>
+                    <span>R$ {(p.quantity * p.product.price).toFixed(2)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {discountAmount > 0 && (
+              <>
+                <Separator />
+                <div className="flex justify-between text-destructive font-medium">
+                  <span>Desconto Aplicado</span>
+                  <span>- R$ {discountAmount.toFixed(2)}</span>
+                </div>
+              </>
+            )}
+
+            <Separator />
+            <div className="flex justify-between font-bold text-xl pt-2">
+              <span>Total a Pagar</span>
+              <span>R$ {grandTotal.toFixed(2)}</span>
+            </div>
+          </div>
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setShowTicket(false)}>
+              Voltar
+            </Button>
+            <Button onClick={handleCloseService} disabled={isSubmitting}>
+              {isSubmitting ? 'Processando...' : 'Confirmar e Cobrar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
