@@ -54,7 +54,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/agenda" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return <>{children}</>

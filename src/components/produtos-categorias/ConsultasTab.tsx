@@ -29,9 +29,17 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { usePermissions } from '@/hooks/use-permissions'
+import { useAuth } from '@/hooks/use-auth'
+import { useToast } from '@/hooks/use-toast'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export function ConsultasTab() {
   const { isAdmin } = usePermissions()
+  const { user } = useAuth()
+  const isSocio = user?.access_level === 'Socio'
+  const canConfirm = isAdmin || isSocio
+  const { toast } = useToast()
+
   const [categories, setCategories] = useState<any[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -69,16 +77,28 @@ export function ConsultasTab() {
     fetchData()
   }, [selectedCategory])
 
+  useRealtime('inventory_purchases', () => {
+    fetchData()
+  })
+
   const handleConfirmArrival = async (id: string) => {
     try {
       await pb.collection('inventory_purchases').update(id, {
         status: 'received',
         received_at: new Date().toISOString(),
       })
-      await fetchData()
+      toast({
+        title: 'Recebimento confirmado',
+        description: 'O estoque do produto foi atualizado com sucesso.',
+      })
       setConfirmingId(null)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to confirm arrival', err)
+      toast({
+        title: 'Erro ao confirmar',
+        description: err.message,
+        variant: 'destructive',
+      })
     }
   }
 
@@ -123,6 +143,7 @@ export function ConsultasTab() {
               <TableHead>Produto</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Fornecedor</TableHead>
+              <TableHead className="text-right">Qtd</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead></TableHead>
@@ -158,12 +179,9 @@ export function ConsultasTab() {
                       {purch.expand?.product_id?.expand?.category_id?.name || '-'}
                     </TableCell>
                     <TableCell>{purch.expand?.supplier_id?.name || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      {purch.price_paid
-                        ? `R$ ${purch.price_paid.toFixed(2)}`
-                        : purch.unit_price
-                          ? `R$ ${(purch.unit_price * purch.quantity).toFixed(2)}`
-                          : '-'}
+                    <TableCell className="text-right">{purch.quantity}</TableCell>
+                    <TableCell className="text-right font-bold text-emerald-500">
+                      R$ {((purch.price_paid || purch.unit_price || 0) * purch.quantity).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge
@@ -178,7 +196,7 @@ export function ConsultasTab() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {isPending && isAdmin && (
+                      {isPending && canConfirm && (
                         <Button
                           size="sm"
                           variant="outline"
