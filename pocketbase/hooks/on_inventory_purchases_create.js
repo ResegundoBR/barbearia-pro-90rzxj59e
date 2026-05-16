@@ -1,21 +1,32 @@
 onRecordAfterCreateSuccess((e) => {
   const newStatus = e.record.getString('status')
+  const productId = e.record.getString('product_id')
+  const quantity = e.record.getInt('quantity')
+  const unitPrice = e.record.getFloat('unit_price')
 
-  if (newStatus === 'received') {
-    const productId = e.record.getString('product_id')
-    const quantity = e.record.getInt('quantity')
+  if (productId) {
+    try {
+      const product = $app.findRecordById('products', productId)
+      let needsUpdate = false
 
-    if (productId && quantity > 0) {
-      try {
-        const product = $app.findRecordById('products', productId)
+      if (newStatus === 'received' && quantity > 0) {
         const currentStock = product.getInt('stock_quantity')
         product.set('stock_quantity', currentStock + quantity)
-        $app.save(product)
-      } catch (err) {
-        $app
-          .logger()
-          .error('Failed to update product stock on create', 'error', err, 'product_id', productId)
+        needsUpdate = true
       }
+
+      if (unitPrice > 0 && Math.abs(product.getFloat('cost_price') - unitPrice) > 0.001) {
+        product.set('cost_price', unitPrice)
+        needsUpdate = true
+      }
+
+      if (needsUpdate) {
+        $app.save(product)
+      }
+    } catch (err) {
+      $app
+        .logger()
+        .error('Failed to update product on create', 'error', err, 'product_id', productId)
     }
   }
 

@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react'
-import pb from '@/lib/pocketbase/client'
-import { Card } from '@/components/ui/card'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -13,272 +9,114 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Plus, Edit } from 'lucide-react'
+import { getProducts, deleteProduct } from '@/services/products'
+import { useRealtime } from '@/hooks/use-realtime'
+import { ProductFormDialog } from './ProductFormDialog'
 import { useToast } from '@/hooks/use-toast'
-import { Badge } from '@/components/ui/badge'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
 export function ProductsTab() {
-  const [items, setItems] = useState<any[]>([])
-  const [isOpen, setIsOpen] = useState(false)
-  const [categories, setCategories] = useState<any[]>([])
-  const [showInactive, setShowInactive] = useState(false)
-  const [form, setForm] = useState<any>({
-    name: '',
-    price: '',
-    stock_quantity: '',
-    min_stock: '',
-    category_id: '',
-    is_active: true,
-  })
-  const [editingId, setEditingId] = useState<string | null>(null)
   const { toast } = useToast()
+  const [products, setProducts] = useState<any[]>([])
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [productToEdit, setProductToEdit] = useState<any>(null)
 
   const loadData = async () => {
-    const records = await pb
-      .collection('products')
-      .getFullList({ sort: '-created', expand: 'category_id' })
-    setItems(records)
-    const cats = await pb
-      .collection('categories')
-      .getFullList({ filter: "type='product'", sort: 'name' })
-    setCategories(cats)
+    try {
+      const data = await getProducts()
+      setProducts(data)
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   useEffect(() => {
     loadData()
   }, [])
+  useRealtime('products', () => loadData())
 
-  const handleOpen = (item?: any) => {
-    if (item) {
-      setForm({ ...item, category_id: item.category_id || '' })
-      setEditingId(item.id)
-    } else {
-      setForm({
-        name: '',
-        price: '',
-        stock_quantity: 0,
-        min_stock: 0,
-        category_id: '',
-        is_active: true,
-      })
-      setEditingId(null)
-    }
-    setIsOpen(true)
+  const handleEdit = (product: any) => {
+    setProductToEdit(product)
+    setIsFormOpen(true)
   }
 
-  const handleSave = async () => {
-    try {
-      const data = {
-        ...form,
-        price: Number(form.price),
-        stock_quantity: Number(form.stock_quantity),
-        min_stock: Number(form.min_stock),
+  const handleDelete = async (id: string) => {
+    if (confirm('Excluir produto?')) {
+      try {
+        await deleteProduct(id)
+        toast({ title: 'Produto excluído' })
+        loadData()
+      } catch (err: any) {
+        toast({ title: 'Erro', description: err.message, variant: 'destructive' })
       }
-      if (editingId) {
-        await pb.collection('products').update(editingId, data)
-        toast({ title: 'Produto atualizado com sucesso!' })
-      } else {
-        await pb.collection('products').create(data)
-        toast({ title: 'Produto criado com sucesso!' })
-      }
-      setIsOpen(false)
-      loadData()
-    } catch (err) {
-      toast({ title: 'Erro ao salvar', variant: 'destructive' })
     }
   }
 
-  const toggleActive = async (id: string, current: boolean) => {
-    try {
-      await pb.collection('products').update(id, { is_active: !current })
-      loadData()
-    } catch (err) {
-      toast({ title: 'Erro ao atualizar status', variant: 'destructive' })
-    }
-  }
-
-  const displayedItems = items.filter((item) => showInactive || item.is_active !== false)
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h3 className="text-lg font-semibold">Controle de Estoque</h3>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Switch
-              checked={showInactive}
-              onCheckedChange={setShowInactive}
-              id="show-inactive-stock"
-            />
-            <Label
-              htmlFor="show-inactive-stock"
-              className="cursor-pointer text-sm text-muted-foreground"
-            >
-              Mostrar inativos
-            </Label>
-          </div>
-          <Button onClick={() => handleOpen()}>
-            <Plus className="size-4 mr-2" /> Novo Produto
-          </Button>
-        </div>
+    <div className="space-y-4 mt-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Lista de Produtos</h3>
+        <Button
+          onClick={() => {
+            setProductToEdit(null)
+            setIsFormOpen(true)
+          }}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Novo Produto
+        </Button>
       </div>
-      <Card className="border-none shadow-sm">
+
+      <div className="border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>Preço</TableHead>
-              <TableHead>Estoque Atual</TableHead>
-              <TableHead>Estoque Mínimo</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Preço Venda</TableHead>
+              <TableHead className="text-right">Preço Custo</TableHead>
+              <TableHead className="text-right">Estoque</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayedItems.map((item) => (
-              <TableRow key={item.id} className={!item.is_active ? 'opacity-60 bg-muted/30' : ''}>
-                <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell>R$ {item.price?.toFixed(2)}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={item.stock_quantity <= item.min_stock ? 'destructive' : 'secondary'}
-                  >
-                    {item.stock_quantity}
-                  </Badge>
-                </TableCell>
-                <TableCell>{item.min_stock}</TableCell>
-                <TableCell>
-                  {item.expand?.category_id?.name || item.category || '-'}
-                  {item.expand?.category_id && (
-                    <Badge variant="outline" className="ml-2 text-[10px]">
-                      {item.expand.category_id.commission_percentage}% Com.
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={item.is_active}
-                      onCheckedChange={() => toggleActive(item.id, item.is_active)}
-                    />
-                    <Badge
-                      variant={item.is_active ? 'default' : 'secondary'}
-                      className="text-[10px]"
-                    >
-                      {item.is_active ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleOpen(item)}>
-                    <Edit className="size-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {displayedItems.length === 0 && (
+            {products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                  Nenhum produto encontrado.
+                <TableCell colSpan={6} className="text-center py-8">
+                  Nenhum produto
                 </TableCell>
               </TableRow>
+            ) : (
+              products.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell>{p.name}</TableCell>
+                  <TableCell>{p.expand?.category_id?.name || p.category || '-'}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(p.price)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(p.cost_price)}</TableCell>
+                  <TableCell className="text-right">{p.stock_quantity}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
-      </Card>
+      </div>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome do Produto</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Ex: Pomada Modeladora"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Preço de Venda (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-                placeholder="45.00"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Estoque Atual</Label>
-                <Input
-                  type="number"
-                  value={form.stock_quantity}
-                  onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })}
-                  placeholder="10"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Estoque Mínimo (Alerta)</Label>
-                <Input
-                  type="number"
-                  value={form.min_stock}
-                  onChange={(e) => setForm({ ...form, min_stock: e.target.value })}
-                  placeholder="3"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <Select
-                value={form.category_id}
-                onValueChange={(v) => setForm({ ...form, category_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.commission_percentage}%)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2 mt-4">
-              <Switch
-                checked={form.is_active}
-                onCheckedChange={(c) => setForm({ ...form, is_active: c })}
-              />
-              <Label>Produto Ativo (Disponível p/ Venda)</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSave} className="w-full sm:w-auto">
-              Salvar Produto
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProductFormDialog
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        productToEdit={productToEdit}
+        onSuccess={loadData}
+      />
     </div>
   )
 }

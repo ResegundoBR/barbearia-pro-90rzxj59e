@@ -1,29 +1,24 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ServicesTab } from '@/components/estoque/ServicesTab'
-import { PackagesTab } from '@/components/estoque/PackagesTab'
+import { PurchasesTab } from '@/components/estoque/PurchasesTab'
+import { ProductsTab } from '@/components/estoque/ProductsTab'
 
 export default function Estoque() {
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-10 animate-fade-in">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-gradient">Serviços & Pacotes</h2>
-        <p className="text-muted-foreground">Gerencie seus serviços e pacotes.</p>
-      </div>
+    <div className="p-6 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-300">
+      <h1 className="text-3xl font-bold tracking-tight">Estoque</h1>
 
-      <Tabs defaultValue="services" className="w-full">
-        <TabsList className="bg-card w-full justify-start h-auto p-1 overflow-x-auto">
-          <TabsTrigger value="services" className="px-6 py-2">
-            Serviços
-          </TabsTrigger>
-          <TabsTrigger value="packages" className="px-6 py-2">
-            Pacotes
-          </TabsTrigger>
+      <Tabs defaultValue="purchases" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="purchases">Histórico de Compras</TabsTrigger>
+          <TabsTrigger value="products">Produtos</TabsTrigger>
         </TabsList>
-        <TabsContent value="services" className="mt-4">
-          <ServicesTab />
+
+        <TabsContent value="purchases">
+          <PurchasesTab />
         </TabsContent>
-        <TabsContent value="packages" className="mt-4">
-          <PackagesTab />
+
+        <TabsContent value="products">
+          <ProductsTab />
         </TabsContent>
       </Tabs>
     </div>
