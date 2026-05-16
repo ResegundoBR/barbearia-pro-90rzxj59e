@@ -608,10 +608,8 @@ export default function Staff() {
             </TableHeader>
             <TableBody>
               {barbers.map((b) => {
-                const bComms = filteredCommissions.filter((c) => c.barber_id === b.id)
-                const pendingComms = bComms.filter(
-                  (c) => c.status === 'available' || c.status === 'pending',
-                )
+                const bCommsAll = commissions.filter((c) => c.barber_id === b.id)
+                const pendingComms = bCommsAll.filter((c) => c.status !== 'paid')
                 const aReceber = pendingComms.reduce((acc, c) => acc + (c.amount || 0), 0)
 
                 const earliestDue = pendingComms.reduce(
@@ -1028,35 +1026,138 @@ export default function Staff() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pendingCommsToPay.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedComms.includes(c.id)}
-                        onCheckedChange={() => handleToggleComm(c.id)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {format(c.date ? new Date(c.date) : new Date(c.created), 'dd/MM/yyyy')}
-                    </TableCell>
-                    <TableCell>{typeMap[c.type] || c.type}</TableCell>
-                    <TableCell className="text-right">R$ {(c.amount || 0).toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
-                {pendingCommsToPay.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      Nenhuma comissão pendente encontrada.
-                    </TableCell>
-                  </TableRow>
-                )}
+                {(() => {
+                  const periodComms = pendingCommsToPay.filter((c) => {
+                    const d = c.date ? new Date(c.date) : new Date(c.created)
+                    return d >= range.from && d <= range.to
+                  })
+                  const previousComms = pendingCommsToPay.filter((c) => {
+                    const d = c.date ? new Date(c.date) : new Date(c.created)
+                    return d < range.from
+                  })
+                  const futureComms = pendingCommsToPay.filter((c) => {
+                    const d = c.date ? new Date(c.date) : new Date(c.created)
+                    return d > range.to
+                  })
+
+                  return (
+                    <>
+                      {periodComms.length > 0 && (
+                        <>
+                          <TableRow className="bg-muted/50 hover:bg-muted/50">
+                            <TableCell
+                              colSpan={4}
+                              className="font-semibold text-xs uppercase text-muted-foreground"
+                            >
+                              Comissões do Período
+                            </TableCell>
+                          </TableRow>
+                          {periodComms.map((c) => (
+                            <TableRow key={c.id}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedComms.includes(c.id)}
+                                  onCheckedChange={() => handleToggleComm(c.id)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {format(
+                                  c.date ? new Date(c.date) : new Date(c.created),
+                                  'dd/MM/yyyy',
+                                )}
+                              </TableCell>
+                              <TableCell>{typeMap[c.type] || c.type}</TableCell>
+                              <TableCell className="text-right">
+                                R$ {(c.amount || 0).toFixed(2)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      )}
+
+                      {previousComms.length > 0 && (
+                        <>
+                          <TableRow className="bg-muted/50 hover:bg-muted/50">
+                            <TableCell
+                              colSpan={4}
+                              className="font-semibold text-xs uppercase text-muted-foreground"
+                            >
+                              Saldos Anteriores
+                            </TableCell>
+                          </TableRow>
+                          {previousComms.map((c) => (
+                            <TableRow key={c.id}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedComms.includes(c.id)}
+                                  onCheckedChange={() => handleToggleComm(c.id)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {format(
+                                  c.date ? new Date(c.date) : new Date(c.created),
+                                  'dd/MM/yyyy',
+                                )}
+                              </TableCell>
+                              <TableCell>{typeMap[c.type] || c.type}</TableCell>
+                              <TableCell className="text-right">
+                                R$ {(c.amount || 0).toFixed(2)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      )}
+
+                      {futureComms.length > 0 && (
+                        <>
+                          <TableRow className="bg-muted/50 hover:bg-muted/50">
+                            <TableCell
+                              colSpan={4}
+                              className="font-semibold text-xs uppercase text-muted-foreground"
+                            >
+                              Comissões Futuras
+                            </TableCell>
+                          </TableRow>
+                          {futureComms.map((c) => (
+                            <TableRow key={c.id}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedComms.includes(c.id)}
+                                  onCheckedChange={() => handleToggleComm(c.id)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {format(
+                                  c.date ? new Date(c.date) : new Date(c.created),
+                                  'dd/MM/yyyy',
+                                )}
+                              </TableCell>
+                              <TableCell>{typeMap[c.type] || c.type}</TableCell>
+                              <TableCell className="text-right">
+                                R$ {(c.amount || 0).toFixed(2)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      )}
+
+                      {pendingCommsToPay.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                            Nenhuma comissão pendente encontrada.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  )
+                })()}
               </TableBody>
             </Table>
           </div>
 
           <div className="mt-4 flex flex-col gap-4 shrink-0">
             <div className="flex justify-between items-center bg-muted/30 p-4 rounded-lg">
-              <span className="font-semibold">Total a Pagar:</span>
+              <span className="font-semibold">Total Selecionado:</span>
               <span className="text-xl font-bold text-emerald-600">
                 R${' '}
                 {pendingCommsToPay
