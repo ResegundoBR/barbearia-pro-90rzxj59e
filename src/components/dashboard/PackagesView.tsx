@@ -1,13 +1,39 @@
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { useRealtime } from '@/hooks/use-realtime'
+import pb from '@/lib/pocketbase/client'
 
 interface PackagesViewProps {
   packages: any[]
 }
 
-export function PackagesView({ packages }: PackagesViewProps) {
+export function PackagesView({ packages: initialPackages }: PackagesViewProps) {
+  const [packages, setPackages] = useState<any[]>(initialPackages)
+
+  useEffect(() => {
+    setPackages(initialPackages)
+  }, [initialPackages])
+
+  useRealtime('client_packages', (e) => {
+    if (e.action === 'delete') {
+      setPackages((prev) => prev.filter((p) => p.id !== e.record.id))
+    } else {
+      pb.collection('client_packages')
+        .getOne(e.record.id, { expand: 'client_id,package_id,barber_id' })
+        .then((rec) => {
+          if (e.action === 'create') {
+            setPackages((prev) => [rec, ...prev.filter((p) => p.id !== rec.id)])
+          } else {
+            setPackages((prev) => prev.map((p) => (p.id === rec.id ? rec : p)))
+          }
+        })
+        .catch(console.error)
+    }
+  })
+
   const activePackages = packages.filter((p) => p.remaining_uses > 0)
 
   return (
