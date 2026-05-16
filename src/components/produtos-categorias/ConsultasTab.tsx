@@ -17,15 +17,27 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { format } from 'date-fns'
-import { Search } from 'lucide-react'
+import { Search, CheckCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { usePermissions } from '@/hooks/use-permissions'
 
 export function ConsultasTab() {
+  const { isAdmin } = usePermissions()
   const [categories, setCategories] = useState<any[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [products, setProducts] = useState<any[]>([])
-  const [purchasesMap, setPurchasesMap] = useState<Record<string, any>>({})
+  const [purchases, setPurchases] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
   useEffect(() => {
     pb.collection('categories')
@@ -33,48 +45,45 @@ export function ConsultasTab() {
       .then(setCategories)
   }, [])
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        let prodFilter = ''
-        if (selectedCategory && selectedCategory !== 'all') {
-          prodFilter = `category_id="${selectedCategory}"`
-        }
-        const prods = await pb
-          .collection('products')
-          .getFullList({ filter: prodFilter, sort: 'name', expand: 'category_id' })
-
-        let purchFilter = ''
-        if (selectedCategory && selectedCategory !== 'all') {
-          purchFilter = `product_id.category_id="${selectedCategory}"`
-        }
-        const purchs = await pb.collection('inventory_purchases').getFullList({
-          filter: purchFilter,
-          sort: '-purchase_date',
-          expand: 'product_id,supplier_id',
-        })
-
-        const map: Record<string, any> = {}
-        for (const p of purchs) {
-          if (!map[p.product_id]) {
-            map[p.product_id] = p
-          }
-        }
-
-        setProducts(prods)
-        setPurchasesMap(map)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      let purchFilter = ''
+      if (selectedCategory && selectedCategory !== 'all') {
+        purchFilter = `product_id.category_id="${selectedCategory}"`
       }
+      const purchs = await pb.collection('inventory_purchases').getFullList({
+        filter: purchFilter,
+        sort: '-purchase_date',
+        expand: 'product_id,product_id.category_id,supplier_id',
+      })
+      setPurchases(purchs)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchData()
   }, [selectedCategory])
 
-  const filteredProducts = products.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  const handleConfirmArrival = async (id: string) => {
+    try {
+      await pb.collection('inventory_purchases').update(id, {
+        status: 'received',
+        received_at: new Date().toISOString(),
+      })
+      await fetchData()
+      setConfirmingId(null)
+    } catch (err) {
+      console.error('Failed to confirm arrival', err)
+    }
+  }
+
+  const filteredPurchases = purchases.filter((p) =>
+    p.expand?.product_id?.name?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -110,51 +119,76 @@ export function ConsultasTab() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Data</TableHead>
               <TableHead>Produto</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Último Fornecedor</TableHead>
-              <TableHead>Data da Compra</TableHead>
-              <TableHead className="text-right">Preço Unit. Pago</TableHead>
-              <TableHead className="text-right">Total da Compra</TableHead>
+              <TableHead>Fornecedor</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-center">Status</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-6">
+                <TableCell colSpan={7} className="text-center py-6">
                   Carregando...
                 </TableCell>
               </TableRow>
-            ) : filteredProducts.length === 0 ? (
+            ) : filteredPurchases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                  Nenhum produto encontrado.
+                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                  Nenhuma compra encontrada.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredProducts.map((p) => {
-                const lastPurch = purchasesMap[p.id]
+              filteredPurchases.map((purch) => {
+                const isPending = !purch.status || purch.status === 'pending'
                 return (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.expand?.category_id?.name || '-'}</TableCell>
-                    <TableCell>{lastPurch?.expand?.supplier_id?.name || '-'}</TableCell>
+                  <TableRow key={purch.id}>
                     <TableCell>
-                      {lastPurch ? format(new Date(lastPurch.purchase_date), 'dd/MM/yyyy') : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {lastPurch
-                        ? lastPurch.unit_price
-                          ? `R$ ${lastPurch.unit_price.toFixed(2)}`
-                          : `R$ ${(lastPurch.price_paid / lastPurch.quantity).toFixed(2)}`
+                      {purch.purchase_date
+                        ? format(new Date(purch.purchase_date), 'dd/MM/yyyy')
                         : '-'}
                     </TableCell>
+                    <TableCell className="font-medium">
+                      {purch.expand?.product_id?.name || '-'}
+                    </TableCell>
+                    <TableCell>
+                      {purch.expand?.product_id?.expand?.category_id?.name || '-'}
+                    </TableCell>
+                    <TableCell>{purch.expand?.supplier_id?.name || '-'}</TableCell>
                     <TableCell className="text-right">
-                      {lastPurch
-                        ? lastPurch.price_paid
-                          ? `R$ ${lastPurch.price_paid.toFixed(2)}`
-                          : `R$ ${(lastPurch.unit_price * lastPurch.quantity).toFixed(2)}`
-                        : '-'}
+                      {purch.price_paid
+                        ? `R$ ${purch.price_paid.toFixed(2)}`
+                        : purch.unit_price
+                          ? `R$ ${(purch.unit_price * purch.quantity).toFixed(2)}`
+                          : '-'}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        variant={isPending ? 'outline' : 'default'}
+                        className={
+                          isPending
+                            ? 'text-amber-600 bg-amber-500/10 border-amber-500/20'
+                            : 'bg-emerald-500 hover:bg-emerald-600'
+                        }
+                      >
+                        {isPending ? 'Pendente' : 'Recebido'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {isPending && isAdmin && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-emerald-500 text-emerald-600 hover:bg-emerald-50"
+                          onClick={() => setConfirmingId(purch.id)}
+                        >
+                          <CheckCircle className="size-4 mr-1" />
+                          O Produto Chegou?
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 )
@@ -163,6 +197,29 @@ export function ConsultasTab() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={!!confirmingId} onOpenChange={(v) => !v && setConfirmingId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Recebimento</DialogTitle>
+            <DialogDescription>
+              Você confirma que este produto chegou ao estoque? O estoque será atualizado
+              automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="ghost" onClick={() => setConfirmingId(null)}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => confirmingId && handleConfirmArrival(confirmingId)}
+            >
+              Sim, o produto chegou
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

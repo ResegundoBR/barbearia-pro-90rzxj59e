@@ -75,7 +75,7 @@ export default function Layout() {
   const canAccessSettings = isAdmin || isStaff
 
   const allNavItems = [
-    { id: 'dashboard', title: 'Dashboard', url: '/', icon: LayoutDashboard },
+    { id: 'dashboard', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { id: 'agenda', title: 'Agenda', url: '/agenda', icon: CalendarDays },
     { id: 'clientes', title: 'Clientes', url: '/clientes', icon: Users },
     { id: 'estoque', title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
