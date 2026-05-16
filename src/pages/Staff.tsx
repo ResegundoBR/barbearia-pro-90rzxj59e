@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, DollarSign, Printer, CalendarIcon, Trash } from 'lucide-react'
+import { Plus, DollarSign, Printer, CalendarIcon, Trash, Wallet } from 'lucide-react'
 import {
   format,
   startOfMonth,
@@ -77,6 +77,15 @@ export default function Staff() {
   const [bDialog, setBDialog] = useState(false)
   const [selectedBarberDetailed, setSelectedBarberDetailed] = useState<any>(null)
   const [reportItems, setReportItems] = useState<any[]>([])
+
+  const [payDialog, setPayDialog] = useState(false)
+  const [barberToPay, setBarberToPay] = useState<any>(null)
+  const [pendingCommsToPay, setPendingCommsToPay] = useState<any[]>([])
+  const [selectedComms, setSelectedComms] = useState<string[]>([])
+  const [paymentMethod, setPaymentMethod] = useState<string>('pix')
+  const [isPaying, setIsPaying] = useState(false)
+  const [receiptDialog, setReceiptDialog] = useState(false)
+  const [paymentReceipt, setPaymentReceipt] = useState<{ url: string; text: string } | null>(null)
 
   const [form, setForm] = useState<any>({
     name: '',
@@ -375,6 +384,98 @@ export default function Staff() {
     }))
   }
 
+  const typeMap: Record<string, string> = {
+    service: 'Serviço',
+    product: 'Produto',
+    package_sale: 'Pacote',
+    package: 'Pacote',
+    category: 'Categoria',
+  }
+
+  const openPayModal = async (b: any) => {
+    setBarberToPay(b)
+    try {
+      const records = await pb.collection('commissions').getFullList({
+        filter: `barber_id='${b.id}' && status!='paid'`,
+        sort: 'due_date,-created',
+      })
+      setPendingCommsToPay(records)
+      setSelectedComms(records.map((r) => r.id))
+      setPaymentMethod('pix')
+      setPaymentReceipt(null)
+      setPayDialog(true)
+    } catch (e) {
+      toast({ title: 'Erro ao carregar comissões', variant: 'destructive' })
+    }
+  }
+
+  const handleToggleComm = (id: string) => {
+    setSelectedComms((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  const handleToggleAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedComms(pendingCommsToPay.map((c) => c.id))
+    } else {
+      setSelectedComms([])
+    }
+  }
+
+  const handleConfirmPayment = async () => {
+    if (selectedComms.length === 0)
+      return toast({ title: 'Selecione ao menos uma comissão', variant: 'destructive' })
+    if (!paymentMethod)
+      return toast({ title: 'Selecione a forma de pagamento', variant: 'destructive' })
+
+    setIsPaying(true)
+    try {
+      await Promise.all(
+        selectedComms.map((id) =>
+          pb.collection('commissions').update(id, {
+            status: 'paid',
+            payment_method: paymentMethod,
+          }),
+        ),
+      )
+
+      const paidItems = pendingCommsToPay.filter((c) => selectedComms.includes(c.id))
+      const totalPaid = paidItems.reduce((acc, c) => acc + (c.amount || 0), 0)
+
+      const receiptText = `*Recibo de Pagamento*\n\nOlá ${barberToPay?.name},\nRecebemos o pagamento de suas comissões no valor de *R$ ${totalPaid.toFixed(2)}*.\n\nDetalhes:\n${paidItems
+        .map(
+          (c) =>
+            `- ${format(c.date ? new Date(c.date) : new Date(c.created), 'dd/MM/yyyy')}: R$ ${(
+              c.amount || 0
+            ).toFixed(2)} (${typeMap[c.type] || c.type})`,
+        )
+        .join('\n')}\n\nObrigado!`
+
+      const phone =
+        barberToPay?.expand?.user_id?.whatsapp || barberToPay?.expand?.user_id?.phone || ''
+      const cleanPhone = phone.replace(/\D/g, '')
+      const url = cleanPhone
+        ? `https://api.whatsapp.com/send?phone=55${cleanPhone}&text=${encodeURIComponent(
+            receiptText,
+          )}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(receiptText)}`
+
+      setPaymentReceipt({ url, text: receiptText })
+
+      toast({ title: 'Pagamento registrado com sucesso!' })
+      setPayDialog(false)
+      setReceiptDialog(true)
+      loadData()
+    } catch (e) {
+      toast({
+        title: 'Erro ao processar pagamento',
+        description: getErrorMessage(e),
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPaying(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -588,14 +689,26 @@ export default function Staff() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openDetailedReport(b)}
-                        title="Relatório Detalhado"
-                      >
-                        <DollarSign className="size-4 text-emerald-600" />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openDetailedReport(b)}
+                          title="Relatório Detalhado"
+                        >
+                          <DollarSign className="size-4 text-emerald-600" />
+                        </Button>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openPayModal(b)}
+                            title="Pagar Comissões"
+                          >
+                            <Wallet className="size-4 text-blue-600" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 )
@@ -883,6 +996,129 @@ export default function Staff() {
               <Button type="submit">Salvar</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={payDialog} onOpenChange={setPayDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Pagar Comissões - {barberToPay?.name}</DialogTitle>
+            <DialogDescription>
+              Selecione as comissões que deseja baixar como pagas.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-auto flex-1 mt-4 border rounded-md max-h-[40vh]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={
+                        selectedComms.length === pendingCommsToPay.length &&
+                        pendingCommsToPay.length > 0
+                      }
+                      onCheckedChange={(c) => handleToggleAll(!!c)}
+                    />
+                  </TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingCommsToPay.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedComms.includes(c.id)}
+                        onCheckedChange={() => handleToggleComm(c.id)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {format(c.date ? new Date(c.date) : new Date(c.created), 'dd/MM/yyyy')}
+                    </TableCell>
+                    <TableCell>{typeMap[c.type] || c.type}</TableCell>
+                    <TableCell className="text-right">R$ {(c.amount || 0).toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+                {pendingCommsToPay.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      Nenhuma comissão pendente encontrada.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-4 shrink-0">
+            <div className="flex justify-between items-center bg-muted/30 p-4 rounded-lg">
+              <span className="font-semibold">Total a Pagar:</span>
+              <span className="text-xl font-bold text-emerald-600">
+                R${' '}
+                {pendingCommsToPay
+                  .filter((c) => selectedComms.includes(c.id))
+                  .reduce((acc, c) => acc + (c.amount || 0), 0)
+                  .toFixed(2)}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Forma de Pagamento</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pix">Pix</SelectItem>
+                  <SelectItem value="cash">Dinheiro</SelectItem>
+                  <SelectItem value="debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="ghost" onClick={() => setPayDialog(false)} disabled={isPaying}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmPayment}
+              disabled={isPaying || selectedComms.length === 0}
+            >
+              {isPaying ? 'Processando...' : 'Confirmar Pagamento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={receiptDialog} onOpenChange={setReceiptDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pagamento Concluído</DialogTitle>
+            <DialogDescription>
+              O pagamento das comissões foi registrado com sucesso.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-6">
+            <Button
+              onClick={() => {
+                if (paymentReceipt?.url) window.open(paymentReceipt.url, '_blank')
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white gap-2 w-full"
+            >
+              <Wallet className="size-4" />
+              Enviar Recibo via WhatsApp
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiptDialog(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
