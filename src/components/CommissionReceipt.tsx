@@ -50,7 +50,8 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
       text += `Valor do Serviço : R$ ${item.serviceValue.toFixed(2)}\n`
       text += `Comissão Bruta (${rate}%) : R$ ${grossCommission.toFixed(2)}\n`
       text += `Taxa Financeira  : - R$ ${feeValue.toFixed(2)}\n`
-      text += `Total a Pagar    : R$ ${netCommission.toFixed(2)}\n`      text += `--------------------------------\n`
+      text += `Total a Pagar    : R$ ${netCommission.toFixed(2)}\n`
+      text += `--------------------------------\n`
     })
 
     text += `\nValor Total Pago: R$ ${totalPaid.toFixed(2)}\n`
@@ -78,6 +79,7 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
           const pm = paymentMethods.find((p) => p.type === item.paymentMethodType)
           const feePercentage = pm?.fee_percentage || 0
           const feeValue = item.serviceValue * (feePercentage / 100)
+          const rate = item.commissionRate || 0
           const grossCommission = item.commissionRate
             ? item.serviceValue * (item.commissionRate / 100)
             : item.commissionValue + feeValue
