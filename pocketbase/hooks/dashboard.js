@@ -29,28 +29,16 @@ routerAdd(
         servicoVendido: 'Corte + Barba',
         pico: '14h-17h',
       },
-      commissions: [
-        {
-          name: 'João',
-          cortes: 45,
-          cortesTotal: '1.125',
-          pacotes: 3,
-          pacotesTotal: 150,
-          adiantamentos: 500,
-          receber: 775,
-          total: '1.275',
-        },
-        {
-          name: 'Carlos',
-          cortes: 38,
-          cortesTotal: 950,
-          pacotes: 2,
-          pacotesTotal: 100,
-          adiantamentos: 300,
-          receber: 750,
-          total: '1.050',
-        },
-      ],
+      commissions: $app.findRecordsByFilter('barbers', '1=1', '', 100, 0).map((b) => {
+        const isSocio = b.getString('work_level') === 'socio'
+        return {
+          name: b.getString('name'),
+          work_level: b.getString('work_level'),
+          // Para Sócios: recebem valor integral menos taxa (lucro líquido do serviço)
+          // Para Autônomos: recebem o percentual de comissão sobre o valor líquido
+          nota: isSocio ? 'Repasse Integral (Sócio)' : 'Comissão (Autônomo)',
+        }
+      }),
     })
   },
   $apis.requireAuth(),

@@ -309,9 +309,15 @@ export default function Checkout() {
 
       const getCommAmount = (type: string, itemId: string, itemPrice: number, bId: string) => {
         const info = getCommissionInfo(type, itemId, bId)
-        const grossComm = info.type === 'percentage' ? itemPrice * (info.value / 100) : info.value
         const feeVal = itemPrice * (feePct / 100)
-        return grossComm - feeVal
+        const netBase = itemPrice - feeVal
+        const isSocio = barber?.work_level === 'socio'
+
+        if (isSocio) return netBase
+        if (info.type === 'percentage') {
+          return netBase * (info.value / 100)
+        }
+        return info.value
       }
 
       if (scheduledPrice > 0) {
@@ -333,10 +339,19 @@ export default function Checkout() {
       for (const extra of manualExtras) {
         if (extra.price > 0) {
           const p = extra.price * proportion
-          const catCommPct = barber?.commission_value || 0
-          const grossComm = p * (catCommPct / 100)
           const feeVal = p * (feePct / 100)
-          await createComm(grossComm - feeVal, 'service')
+          const netBase = p - feeVal
+          const isSocio = barber?.work_level === 'socio'
+          const catCommPct = barber?.commission_value || 0
+
+          let netComm = 0
+          if (isSocio) {
+            netComm = netBase
+          } else {
+            netComm = netBase * (catCommPct / 100)
+          }
+
+          await createComm(netComm, 'service')
         }
       }
 

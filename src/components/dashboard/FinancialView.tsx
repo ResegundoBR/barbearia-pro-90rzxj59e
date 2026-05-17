@@ -97,7 +97,51 @@ export function FinancialView({
     .filter((c: any) => c.expand?.barber_id?.work_level === 'socio')
     .reduce((acc: number, c: any) => acc + (c.amount || 0), 0)
 
-  const totalCosts = commissions.reduce((acc: number, c: any) => acc + (c.amount || 0), 0)
+  // Total Financial Fees (Taxas das transações)
+  const totalFinancialFees = useMemo(() => {
+    let fees = 0
+    const addFee = (item: any, type: string, val: number) => {
+      let comm
+      if (type === 'service') {
+        comm = commissions.find(
+          (c: any) =>
+            c.barber_id === item.barber_id &&
+            c.type === type &&
+            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
+        )
+      } else {
+        comm = commissions.find(
+          (c: any) =>
+            c.type === type &&
+            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
+        )
+      }
+
+      const methodRaw = comm?.payment_method || 'other'
+      const methodMapping: Record<string, string> = {
+        credito: 'credit_card',
+        debito: 'debit_card',
+        pix: 'pix',
+        cash: 'cash',
+      }
+      const pmType = methodMapping[methodRaw] || methodRaw
+      const pmRecord = paymentMethods.find((p: any) => p.type === pmType)
+      const feePct = pmRecord?.fee_percentage || 0
+      fees += val * (feePct / 100)
+    }
+
+    completedPeriod.forEach((a: any) =>
+      addFee(a, 'service', a.price || a.expand?.service_id?.price || 0),
+    )
+    productPurchasesPeriod.forEach((p: any) =>
+      addFee(p, 'product', p.price_at_sale || p.expand?.product_id?.price || 0),
+    )
+    packagesPeriod.forEach((pkg: any) => addFee(pkg, 'package', pkg.expand?.package_id?.price || 0))
+
+    return fees
+  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions, paymentMethods])
+
+  const totalCosts = autonomousCosts + partnerTransfers + totalFinancialFees
   const netBalance = totalRevenue - totalCosts
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#6b7280']
@@ -179,7 +223,7 @@ export function FinancialView({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -212,6 +256,19 @@ export function FinancialView({
           <CardContent>
             <div className="text-2xl font-bold text-amber-500">
               R$ {partnerTransfers.toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Taxas Financeiras
+            </CardTitle>
+            <DollarSign className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-muted-foreground">
+              R$ {totalFinancialFees.toFixed(2)}
             </div>
           </CardContent>
         </Card>

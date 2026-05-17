@@ -125,10 +125,25 @@ routerAdd(
           return price * (catRate / 100)
         }
 
-        const grossComm = calculateComm('service', serviceId, servicePrice, barberId)
+        let isSocio = false
+        try {
+          const barber = txApp.findRecordById('barbers', barberId)
+          if (barber.getString('work_level') === 'socio') {
+            isSocio = true
+          }
+        } catch (_) {}
+
         const feeVal = servicePrice * (pmFeePct / 100)
-        const netComm = grossComm - feeVal
-        if (netComm !== 0 || grossComm !== 0) {
+        const netBase = servicePrice - feeVal
+        let netComm = 0
+
+        if (isSocio) {
+          netComm = netBase
+        } else {
+          netComm = calculateComm('service', serviceId, netBase, barberId)
+        }
+
+        if (netComm !== 0) {
           const commCol = txApp.findCollectionByNameOrId('commissions')
           const comm = new Record(commCol)
           comm.set('barber_id', barberId)
@@ -136,15 +151,7 @@ routerAdd(
           comm.set('type', 'service')
           comm.set('date', new Date().toISOString())
           comm.set('payment_method', commissionPm)
-          comm.set('status', 'available')
-
-          try {
-            const barber = txApp.findRecordById('barbers', barberId)
-            if (barber.getString('work_level') === 'socio') {
-              comm.set('status', 'paid')
-            }
-          } catch (_) {}
-
+          comm.set('status', isSocio ? 'paid' : 'available')
           txApp.save(comm)
         }
       }
@@ -170,11 +177,25 @@ routerAdd(
           purchase.set('date', new Date().toISOString())
           txApp.save(purchase)
 
-          const grossComm = calculateComm('product', item.product_id, totalProdPrice, barberId)
-          const feeVal = totalProdPrice * (pmFeePct / 100)
-          const netComm = grossComm - feeVal
+          let isSocioProd = false
+          try {
+            const barber = txApp.findRecordById('barbers', barberId)
+            if (barber.getString('work_level') === 'socio') {
+              isSocioProd = true
+            }
+          } catch (_) {}
 
-          if (netComm !== 0 || grossComm !== 0) {
+          const feeVal = totalProdPrice * (pmFeePct / 100)
+          const netBase = totalProdPrice - feeVal
+          let netComm = 0
+
+          if (isSocioProd) {
+            netComm = netBase
+          } else {
+            netComm = calculateComm('product', item.product_id, netBase, barberId)
+          }
+
+          if (netComm !== 0) {
             const commCol = txApp.findCollectionByNameOrId('commissions')
             const pComm = new Record(commCol)
             pComm.set('barber_id', barberId)
@@ -182,15 +203,7 @@ routerAdd(
             pComm.set('type', 'product')
             pComm.set('date', new Date().toISOString())
             pComm.set('payment_method', commissionPm)
-            pComm.set('status', 'available')
-
-            try {
-              const barber = txApp.findRecordById('barbers', barberId)
-              if (barber.getString('work_level') === 'socio') {
-                pComm.set('status', 'paid')
-              }
-            } catch (_) {}
-
+            pComm.set('status', isSocioProd ? 'paid' : 'available')
             txApp.save(pComm)
           }
         }

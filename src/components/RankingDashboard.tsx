@@ -46,13 +46,12 @@ export function RankingDashboard() {
         if (period === 'last_6_months') startDate = subDays(now, 180)
 
         const dateStr = format(startDate, 'yyyy-MM-dd') + ' 00:00:00.000Z'
-        const dateFilter = `date >= '${dateStr}'`
         const createdFilter = `created >= '${dateStr}'`
 
         const [clients, appointments, purchases, logs] = await Promise.all([
           getClients(),
-          getAppointments(dateFilter),
-          getProductPurchases(dateFilter),
+          getAppointments(createdFilter),
+          getProductPurchases(createdFilter),
           getClientLogs(`event_type = 'no_show' && ${createdFilter}`),
         ])
 
@@ -139,17 +138,17 @@ export function RankingDashboard() {
               onValueChange={(v) => {
                 if (v) setMetric(v)
               }}
-              className="bg-muted p-1 rounded-md"
+              className="bg-muted p-1 rounded-md border"
             >
               <ToggleGroupItem
                 value="revenue"
-                className="px-4 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                className="px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm"
               >
                 Faturamento
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="frequency"
-                className="px-4 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                className="px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm"
               >
                 Atendimento
               </ToggleGroupItem>

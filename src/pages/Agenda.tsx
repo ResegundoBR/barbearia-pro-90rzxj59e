@@ -152,14 +152,14 @@ export default function Agenda() {
   useRealtime('product_purchases', loadData)
   useRealtime('payment_methods', loadData)
 
-  const isAdmin = user?.access_level === 'Admin'
+  const canSeeAll = user?.access_level === 'Admin' || user?.access_level === 'Socio'
   const visibleBarbers = useMemo(
-    () => (isAdmin ? data.barbers : data.barbers.filter((b) => b.name === user?.name)),
-    [isAdmin, data.barbers, user],
+    () => (canSeeAll ? data.barbers : data.barbers.filter((b) => b.name === user?.name)),
+    [canSeeAll, data.barbers, user],
   )
 
   const handleOpen = (timeStr = '09:00', day: Date = new Date()) => {
-    const defaultBarber = isAdmin ? '' : visibleBarbers[0]?.id || ''
+    const defaultBarber = canSeeAll ? '' : visibleBarbers[0]?.id || ''
     setForm({ barber_id: defaultBarber, client_id: '', item_id: '', time: timeStr, date: day })
     setNewClient({ name: '', phone: '' })
     setNewClientDialogOpen(false)
@@ -535,7 +535,7 @@ export default function Agenda() {
     return (
       <div className="flex-1 bg-card rounded-xl border shadow-inner overflow-hidden flex flex-col">
         <ScrollArea className="flex-1">
-          <div className="p-4 space-y-4">
+          <div className="p-0 sm:p-4 space-y-1">
             {allEvents.length === 0 ? (
               <div className="text-center text-muted-foreground py-10">
                 Nenhum agendamento encontrado no período.
@@ -544,39 +544,57 @@ export default function Agenda() {
               allEvents.map((apt) => {
                 const isCompleted = apt.status === 'Concluído'
                 const isCanceled = apt.status === 'Cancelado'
+                const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
+
                 return (
                   <div
                     key={apt.id}
                     className={cn(
-                      'flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer',
+                      'group relative flex items-center justify-between p-3 sm:p-4 border-b sm:border sm:rounded-xl hover:bg-muted/50 transition-colors cursor-pointer bg-card',
                       isCompleted && 'opacity-60',
                       isCanceled && 'opacity-50 grayscale',
                     )}
                     onClick={() => handleOpenDetail(apt)}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-md flex flex-col items-center justify-center bg-primary/10 text-primary">
-                        <span className="text-sm font-bold">
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-1.5 sm:rounded-l-xl"
+                      style={{ backgroundColor: barberColor }}
+                    />
+
+                    <div className="flex items-center gap-4 pl-3">
+                      <div className="flex flex-col items-center justify-center w-16 h-14 bg-muted/30 rounded-md border shadow-sm">
+                        <span className="text-sm font-extrabold text-foreground">
                           {apt.displayDate ? format(apt.displayDate, 'dd/MM') : ''}
                         </span>
-                        <span className="text-xs font-medium">{apt.time}</span>
+                        <span className="text-xs font-bold text-foreground">{apt.time}</span>
                       </div>
-                      <div>
-                        <div className="font-semibold text-lg">{apt.expand?.client_id?.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {apt.expand?.service_id?.name} com {apt.expand?.barber_id?.name}
+                      <div className="flex flex-col">
+                        <div className="font-bold text-base sm:text-lg text-foreground">
+                          {apt.expand?.client_id?.name} {apt.expand?.client_id?.surname || ''}
+                        </div>
+                        <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <span>{apt.expand?.service_id?.name}</span>
+                          <span className="w-1 h-1 rounded-full bg-border" />
+                          <span className="flex items-center gap-1">
+                            <span
+                              className="w-2 h-2 rounded-full shadow-sm"
+                              style={{ backgroundColor: barberColor }}
+                            />
+                            {apt.expand?.barber_id?.name}
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+
+                    <div className="flex items-center gap-4 pr-2">
                       <span
                         className={cn(
-                          'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                          'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold shadow-sm',
                           apt.status === 'Concluído'
-                            ? 'bg-green-100 text-green-800'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                             : apt.status === 'Cancelado'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800',
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : 'bg-amber-100 text-amber-800 border border-amber-200',
                         )}
                       >
                         {apt.status}
