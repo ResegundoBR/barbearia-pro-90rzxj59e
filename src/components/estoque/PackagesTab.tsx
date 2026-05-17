@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge'
 
 export function PackagesTab() {
   const [items, setItems] = useState<any[]>([])
+  const [services, setServices] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [form, setForm] = useState<any>({
     name: '',
@@ -41,13 +42,18 @@ export function PackagesTab() {
     duration_minutes: 30,
     is_active: true,
     periodicity: 'semanal',
+    service_id: '',
   })
   const [editingId, setEditingId] = useState<string | null>(null)
   const { toast } = useToast()
 
   const loadData = async () => {
-    const pkgs = await pb.collection('packages').getFullList({ sort: '-created' })
+    const pkgs = await pb
+      .collection('packages')
+      .getFullList({ sort: '-created', expand: 'service_id' })
     setItems(pkgs)
+    const svcs = await pb.collection('services').getFullList({ sort: 'name' })
+    setServices(svcs)
   }
 
   useEffect(() => {
@@ -56,7 +62,11 @@ export function PackagesTab() {
 
   const handleOpen = (item?: any) => {
     if (item) {
-      setForm({ ...item, periodicity: item.periodicity || 'semanal' })
+      setForm({
+        ...item,
+        periodicity: item.periodicity || 'semanal',
+        service_id: item.service_id || 'none',
+      })
       setEditingId(item.id)
     } else {
       setForm({
@@ -66,6 +76,7 @@ export function PackagesTab() {
         duration_minutes: 30,
         is_active: true,
         periodicity: 'semanal',
+        service_id: 'none',
       })
       setEditingId(null)
     }
@@ -76,6 +87,7 @@ export function PackagesTab() {
     try {
       const data = {
         ...form,
+        service_id: form.service_id === 'none' ? '' : form.service_id,
         price: Number(form.price),
         quantity: Number(form.quantity),
         duration_minutes: Number(form.duration_minutes),
@@ -111,59 +123,63 @@ export function PackagesTab() {
           <Plus className="size-4 mr-2" /> Novo Pacote
         </Button>
       </div>
-      <Card className="border-none shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Qtd. Usos</TableHead>
-              <TableHead>Period.</TableHead>
-              <TableHead>Preço Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id} className={!item.is_active ? 'opacity-60' : ''}>
-                <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell>{item.quantity}</TableCell>
-                <TableCell className="capitalize">{item.periodicity || '-'}</TableCell>
-                <TableCell>R$ {item.price?.toFixed(2)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={item.is_active}
-                      onCheckedChange={() => toggleActive(item.id, item.is_active)}
-                    />
-                    <Badge
-                      variant={item.is_active ? 'default' : 'secondary'}
-                      className="text-[10px]"
-                    >
-                      {item.is_active ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleOpen(item)}>
-                    <Edit className="size-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {items.length === 0 && (
+      <Card className="border-none shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                  Nenhum pacote encontrado.
-                </TableCell>
+                <TableHead>Nome</TableHead>
+                <TableHead>Serviço Vinculado</TableHead>
+                <TableHead>Qtd. Usos</TableHead>
+                <TableHead>Period.</TableHead>
+                <TableHead>Preço Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id} className={!item.is_active ? 'opacity-60' : ''}>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>{item.expand?.service_id?.name || '-'}</TableCell>
+                  <TableCell>{item.quantity}</TableCell>
+                  <TableCell className="capitalize">{item.periodicity || '-'}</TableCell>
+                  <TableCell>R$ {item.price?.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={item.is_active}
+                        onCheckedChange={() => toggleActive(item.id, item.is_active)}
+                      />
+                      <Badge
+                        variant={item.is_active ? 'default' : 'secondary'}
+                        className="text-[10px]"
+                      >
+                        {item.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleOpen(item)}>
+                      <Edit className="size-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                    Nenhum pacote encontrado.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Pacote' : 'Novo Pacote'}</DialogTitle>
           </DialogHeader>
@@ -175,6 +191,25 @@ export function PackagesTab() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Ex: Pacote 5 Cortes"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Serviço Vinculado</Label>
+              <Select
+                value={form.service_id}
+                onValueChange={(v) => setForm({ ...form, service_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um serviço" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {services.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

@@ -35,6 +35,7 @@ export function ServicesTab() {
   const [items, setItems] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [categories, setCategories] = useState<any[]>([])
+  const [filterCategory, setFilterCategory] = useState<string>('all')
   const [form, setForm] = useState<any>({
     name: '',
     price: '',
@@ -62,10 +63,10 @@ export function ServicesTab() {
 
   const handleOpen = (item?: any) => {
     if (item) {
-      setForm({ ...item })
+      setForm({ ...item, category_id: item.category_id || 'none' })
       setEditingId(item.id)
     } else {
-      setForm({ name: '', price: '', category_id: '', duration_minutes: 30, is_active: true })
+      setForm({ name: '', price: '', category_id: 'none', duration_minutes: 30, is_active: true })
       setEditingId(null)
     }
     setIsOpen(true)
@@ -75,6 +76,7 @@ export function ServicesTab() {
     try {
       const data = {
         ...form,
+        category_id: form.category_id === 'none' ? '' : form.category_id,
         price: Number(form.price),
         duration_minutes: Number(form.duration_minutes),
       }
@@ -101,78 +103,99 @@ export function ServicesTab() {
     }
   }
 
+  const filteredItems = items.filter(
+    (item) => filterCategory === 'all' || item.category_id === filterCategory,
+  )
+
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h3 className="text-lg font-semibold">Catálogo de Serviços</h3>
-        <Button onClick={() => handleOpen()}>
-          <Plus className="size-4 mr-2" /> Novo Serviço
-        </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Todas Categorias" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas Categorias</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => handleOpen()} className="w-full sm:w-auto">
+            <Plus className="size-4 mr-2" /> Novo Serviço
+          </Button>
+        </div>
       </div>
-      <Card className="border-none shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Preço</TableHead>
-              <TableHead>Categoria / Comissão (%)</TableHead>
-              <TableHead>Duração (min)</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id} className={!item.is_active ? 'opacity-60' : ''}>
-                <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell>R$ {item.price?.toFixed(2)}</TableCell>
-                <TableCell>
-                  {item.expand?.category_id ? (
+      <Card className="border-none shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Preço</TableHead>
+                <TableHead>Categoria / Comissão (%)</TableHead>
+                <TableHead>Duração (min)</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredItems.map((item) => (
+                <TableRow key={item.id} className={!item.is_active ? 'opacity-60' : ''}>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>R$ {item.price?.toFixed(2)}</TableCell>
+                  <TableCell>
+                    {item.expand?.category_id ? (
+                      <div className="flex items-center gap-2">
+                        <span>{item.expand.category_id.name}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {item.expand.category_id.commission_percentage}%
+                        </Badge>
+                      </div>
+                    ) : (
+                      <span>{item.commission_rate || 0}% (Legado)</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{item.duration_minutes} min</TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
-                      <span>{item.expand.category_id.name}</span>
-                      <Badge variant="outline" className="text-[10px]">
-                        {item.expand.category_id.commission_percentage}%
+                      <Switch
+                        checked={item.is_active}
+                        onCheckedChange={() => toggleActive(item.id, item.is_active)}
+                      />
+                      <Badge
+                        variant={item.is_active ? 'default' : 'secondary'}
+                        className="text-[10px]"
+                      >
+                        {item.is_active ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </div>
-                  ) : (
-                    <span>{item.commission_rate || 0}% (Legado)</span>
-                  )}
-                </TableCell>
-                <TableCell>{item.duration_minutes} min</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={item.is_active}
-                      onCheckedChange={() => toggleActive(item.id, item.is_active)}
-                    />
-                    <Badge
-                      variant={item.is_active ? 'default' : 'secondary'}
-                      className="text-[10px]"
-                    >
-                      {item.is_active ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleOpen(item)}>
-                    <Edit className="size-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {items.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                  Nenhum serviço encontrado.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleOpen(item)}>
+                      <Edit className="size-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    Nenhum serviço encontrado.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Serviço' : 'Novo Serviço'}</DialogTitle>
           </DialogHeader>
@@ -206,6 +229,7 @@ export function ServicesTab() {
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name} ({c.commission_percentage}%)
