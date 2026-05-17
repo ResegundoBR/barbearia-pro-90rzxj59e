@@ -268,6 +268,8 @@ export default function Staff() {
         (c) => c.barber_id === b.id && c.status !== 'paid' && !c.is_advance,
       )
 
+      const consumptionComms = matchedComms.filter((c) => c.type === 'consumption')
+
       const items = [
         ...apts.map((a) => {
           const c = matchedComms.find(
@@ -338,6 +340,22 @@ export default function Staff() {
             commissionInfo: getCommissionInfo('package', pk.package_id, b.id),
           }
         }),
+        ...consumptionComms.map((c) => ({
+          id: c.id,
+          type: 'Consumo',
+          client: '-',
+          item: 'Consumo Interno',
+          date: c.date ? new Date(c.date) : new Date(c.created),
+          time: format(new Date(c.created), 'HH:mm'),
+          packageUsed: false,
+          price: 0,
+          commission: c.amount,
+          dueDate: c.due_date ? new Date(c.due_date) : null,
+          commDate: c.date ? new Date(c.date) : new Date(c.created),
+          commissionObj: c,
+          basePrice: 0,
+          commissionInfo: { type: 'fixed', value: c.amount },
+        })),
       ].sort((a, b) => b.commDate.getTime() - a.commDate.getTime())
 
       setReportItems(items)
@@ -473,6 +491,7 @@ export default function Staff() {
     package_sale: 'Pacote',
     package: 'Pacote',
     category: 'Categoria',
+    consumption: 'Consumo Interno',
   }
 
   const handleReconcile = async () => {
@@ -550,15 +569,22 @@ export default function Staff() {
 
       const paidItems = pendingCommsToPay.filter((c) => selectedComms.includes(c.id))
       const totalPaid = paidItems.reduce((acc, c) => acc + (c.amount || 0), 0)
+      const paidEarnings = paidItems.filter((c) => (c.amount || 0) >= 0)
+      const paidDeductions = paidItems.filter((c) => (c.amount || 0) < 0)
 
-      const receiptText = `*Recibo de Pagamento*\n\nOlá ${barberToPay?.name},\nRecebemos o pagamento de suas comissões no valor de *R$ ${totalPaid.toFixed(2)}*.\n\nDetalhes:\n${paidItems
+      let receiptText = `*Recibo de Pagamento*\n\nOlá ${barberToPay?.name},\nRecebemos o pagamento de suas comissões no valor de *R$ ${totalPaid.toFixed(2)}*.\n\nDetalhes:\n${paidEarnings
         .map(
           (c) =>
             `- ${format(c.date ? new Date(c.date) : new Date(c.created), 'dd/MM/yyyy')}: R$ ${(
               c.amount || 0
             ).toFixed(2)} (${typeMap[c.type] || c.type})`,
         )
-        .join('\n')}\n\nObrigado!`
+        .join('\n')}`
+
+      if (paidDeductions.length > 0) {
+        receiptText += `\n\nDeduções / Consumo Interno:\n${paidDeductions.map((c) => `- ${format(c.date ? new Date(c.date) : new Date(c.created), 'dd/MM/yyyy')}: R$ ${(c.amount || 0).toFixed(2)} (${typeMap[c.type] || c.type})`).join('\n')}`
+      }
+      receiptText += `\n\nObrigado!`
 
       const phone =
         barberToPay?.expand?.user_id?.whatsapp || barberToPay?.expand?.user_id?.phone || ''
@@ -994,7 +1020,7 @@ export default function Staff() {
                 </TableHeader>
                 <TableBody>
                   {reportItems
-                    .filter((i) => i.commission > 0)
+                    .filter((i) => i.commission !== 0)
                     .map((item, i) => (
                       <TableRow key={`${item.id}-${i}`}>
                         <TableCell>
@@ -1036,7 +1062,9 @@ export default function Staff() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
-                        <TableCell className="text-right font-semibold text-emerald-600">
+                        <TableCell
+                          className={`text-right font-semibold ${item.commission < 0 ? 'text-red-600' : 'text-emerald-600'}`}
+                        >
                           R$ {item.commission.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right">
@@ -1051,7 +1079,7 @@ export default function Staff() {
                         </TableCell>
                       </TableRow>
                     ))}
-                  {reportItems.filter((i) => i.commission > 0).length === 0 && (
+                  {reportItems.filter((i) => i.commission !== 0).length === 0 && (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Nenhuma comissão registrada para este período.
@@ -1060,7 +1088,7 @@ export default function Staff() {
                   )}
                 </TableBody>
               </Table>
-              {reportItems.filter((i) => i.commission > 0).length > 0 && (
+              {reportItems.filter((i) => i.commission !== 0).length > 0 && (
                 <div className="summary flex flex-col gap-2 mt-6">
                   <div className="flex justify-between items-center text-lg">
                     <span>Total de Comissões no Período:</span>
@@ -1282,15 +1310,18 @@ export default function Staff() {
               </TableHeader>
               <TableBody>
                 {(() => {
-                  const periodComms = pendingCommsToPay.filter((c) => {
+                  const allEarnings = pendingCommsToPay.filter((c) => (c.amount || 0) >= 0)
+                  const allDeductions = pendingCommsToPay.filter((c) => (c.amount || 0) < 0)
+
+                  const periodComms = allEarnings.filter((c) => {
                     const d = c.date ? new Date(c.date) : new Date(c.created)
                     return d >= range.from && d <= range.to
                   })
-                  const previousComms = pendingCommsToPay.filter((c) => {
+                  const previousComms = allEarnings.filter((c) => {
                     const d = c.date ? new Date(c.date) : new Date(c.created)
                     return d < range.from
                   })
-                  const futureComms = pendingCommsToPay.filter((c) => {
+                  const futureComms = allEarnings.filter((c) => {
                     const d = c.date ? new Date(c.date) : new Date(c.created)
                     return d > range.to
                   })
@@ -1396,6 +1427,41 @@ export default function Staff() {
                         </>
                       )}
 
+                      {allDeductions.length > 0 && (
+                        <>
+                          <TableRow className="bg-red-50 hover:bg-red-50">
+                            <TableCell
+                              colSpan={4}
+                              className="font-semibold text-xs uppercase text-red-600"
+                            >
+                              Deduções / Consumo Interno
+                            </TableCell>
+                          </TableRow>
+                          {allDeductions.map((c) => (
+                            <TableRow key={c.id}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedComms.includes(c.id)}
+                                  onCheckedChange={() => handleToggleComm(c.id)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {format(
+                                  c.date ? new Date(c.date) : new Date(c.created),
+                                  'dd/MM/yyyy',
+                                )}
+                              </TableCell>
+                              <TableCell className="text-red-700">
+                                {typeMap[c.type] || c.type}
+                              </TableCell>
+                              <TableCell className="text-right text-red-600 font-medium">
+                                R$ {(c.amount || 0).toFixed(2)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      )}
+
                       {pendingCommsToPay.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
@@ -1481,18 +1547,47 @@ export default function Staff() {
                 <div className="col-span-8">Descrição</div>
                 <div className="col-span-4 text-right">Valor</div>
               </div>
-              {paymentReceiptDetails?.items.map((item: any, i: number) => (
-                <div key={i} className="grid grid-cols-12 text-gray-700 py-0.5">
-                  <div
-                    className="col-span-8 truncate pr-2"
-                    title={`${format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')} - ${typeMap[item.type] || item.type}`}
-                  >
-                    {format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')}{' '}
-                    {typeMap[item.type] || item.type}
+              {paymentReceiptDetails?.items
+                .filter((i: any) => (i.amount || 0) >= 0)
+                .map((item: any, i: number) => (
+                  <div key={i} className="grid grid-cols-12 text-gray-700 py-0.5">
+                    <div
+                      className="col-span-8 truncate pr-2"
+                      title={`${format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')} - ${typeMap[item.type] || item.type}`}
+                    >
+                      {format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')}{' '}
+                      {typeMap[item.type] || item.type}
+                    </div>
+                    <div className="col-span-4 text-right">R$ {(item.amount || 0).toFixed(2)}</div>
                   </div>
-                  <div className="col-span-4 text-right">R$ {(item.amount || 0).toFixed(2)}</div>
-                </div>
-              ))}
+                ))}
+
+              {paymentReceiptDetails?.items.some((i: any) => (i.amount || 0) < 0) && (
+                <>
+                  <div className="grid grid-cols-12 font-bold mt-4 mb-1 border-b border-gray-100 pb-1 text-red-800">
+                    <div className="col-span-12">Deduções / Consumo Interno</div>
+                  </div>
+                  {paymentReceiptDetails?.items
+                    .filter((i: any) => (i.amount || 0) < 0)
+                    .map((item: any, i: number) => (
+                      <div key={`deduction-${i}`} className="grid grid-cols-12 text-red-700 py-0.5">
+                        <div
+                          className="col-span-8 truncate pr-2"
+                          title={`${format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')} - ${typeMap[item.type] || item.type}`}
+                        >
+                          {format(
+                            item.date ? new Date(item.date) : new Date(item.created),
+                            'dd/MM/yy',
+                          )}{' '}
+                          {typeMap[item.type] || item.type}
+                        </div>
+                        <div className="col-span-4 text-right">
+                          R$ {(item.amount || 0).toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                </>
+              )}
             </div>
 
             <div className="border-t border-dashed border-gray-300 pt-3 flex justify-between font-bold text-base">
@@ -1504,8 +1599,8 @@ export default function Staff() {
           <div className="flex flex-col gap-3 mt-2">
             <Button
               onClick={() => {
-                const text = `${businessName}\nRecibo de Comissões\nData: ${format(paymentReceiptDetails?.date || new Date(), 'dd/MM/yyyy HH:mm')}\nProfissional: ${paymentReceiptDetails?.barberName}\nForma de Pag.: ${paymentReceiptDetails?.method}\n\nItens:\n${paymentReceiptDetails?.items.map((item: any) => `${format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')} - ${typeMap[item.type] || item.type}: R$ ${(item.amount || 0).toFixed(2)}`).join('\n')}\n\nTOTAL PAGO: R$ ${paymentReceiptDetails?.total.toFixed(2)}`
-                navigator.clipboard.writeText(text)
+                const text = paymentReceipt?.text || ''
+                navigator.clipboard.writeText(text.replace(/\*/g, ''))
                 setCopied(true)
                 setTimeout(() => setCopied(false), 2000)
               }}

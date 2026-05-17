@@ -73,22 +73,38 @@ export function ProdutosTab() {
   const [disablePromptId, setDisablePromptId] = useState<string | null>(null)
   const [deletePromptId, setDeletePromptId] = useState<string | null>(null)
 
+  const [enableConsumption, setEnableConsumption] = useState(true)
+  const [consumeDialog, setConsumeDialog] = useState(false)
+  const [consumeForm, setConsumeForm] = useState({ barber_id: '', product_id: '', quantity: '1' })
+  const [barbers, setBarbers] = useState<any[]>([])
+
   const { toast } = useToast()
 
   const loadData = async () => {
     try {
-      const [prodData, catData, supData, invData] = await Promise.all([
+      const [prodData, catData, supData, invData, bData, finSett] = await Promise.all([
         getProducts(),
         getCategories(),
         pb.collection('suppliers').getFullList({ sort: 'name' }),
         pb
           .collection('inventory_purchases')
           .getFullList({ sort: '-purchase_date', expand: 'supplier_id' }),
+        pb.collection('barbers').getFullList({ sort: 'name' }),
+        pb
+          .collection('settings')
+          .getFirstListItem(`key='financial_config'`)
+          .catch(() => null),
       ])
       setProducts(prodData)
       setCategories(catData.filter((c) => c.type === 'product'))
       setSuppliers(supData)
       setInventoryPurchases(invData)
+      setBarbers(bData)
+      if (finSett && finSett.value?.enable_professional_consumption === false) {
+        setEnableConsumption(false)
+      } else {
+        setEnableConsumption(true)
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -217,6 +233,43 @@ export function ProdutosTab() {
     }
   }
 
+  const handleConsume = async () => {
+    try {
+      const p = products.find((p) => p.id === consumeForm.product_id)
+      if (!p || (Number(p.cost_price) || 0) <= 0) {
+        toast({
+          title: 'Erro',
+          description: 'Produto não possui preço de custo definido.',
+          variant: 'destructive',
+        })
+        return
+      }
+      if (Number(p.stock_quantity) < Number(consumeForm.quantity)) {
+        toast({ title: 'Erro', description: 'Estoque insuficiente.', variant: 'destructive' })
+        return
+      }
+      await pb.send('/backend/v1/products/consume', {
+        method: 'POST',
+        body: JSON.stringify({
+          product_id: consumeForm.product_id,
+          barber_id: consumeForm.barber_id,
+          quantity: Number(consumeForm.quantity),
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      toast({ title: 'Consumo registrado com sucesso!' })
+      setConsumeDialog(false)
+      setConsumeForm({ barber_id: '', product_id: '', quantity: '1' })
+      loadData()
+    } catch (e: any) {
+      toast({
+        title: 'Erro',
+        description: e.message || 'Erro ao registrar consumo',
+        variant: 'destructive',
+      })
+    }
+  }
+
   const displayedProducts = products
     .filter((p) => showInactive || p.is_active !== false)
     .filter((p) => categoryFilter === 'all' || p.category_id === categoryFilter)
@@ -305,6 +358,14 @@ export function ProdutosTab() {
               Mostrar inativos
             </Label>
           </div>
+          {enableConsumption && (
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => setConsumeDialog(true)}
+            >
+              Registrar Consumo Profissional
+            </Button>
+          )}
           <Button onClick={() => openDialog()}>
             <Plus className="size-4 mr-2" />
             Novo Produto
@@ -677,6 +738,116 @@ export function ProdutosTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={consumeDialog} onOpenChange={setConsumeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Consumo Profissional</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Profissional</Label>
+              <Select
+                value={consumeForm.barber_id}
+                onValueChange={(v) => setConsumeForm({ ...consumeForm, barber_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o profissional" />
+                </SelectTrigger>
+                <SelectContent>
+                  {barbers.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Produto</Label>
+              <Select
+                value={consumeForm.product_id}
+                onValueChange={(v) => setConsumeForm({ ...consumeForm, product_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products
+                    .filter((p) => p.is_active !== false)
+                    .map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} (Estoque: {p.stock_quantity})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Quantidade</Label>
+              <Input
+                type="number"
+                min="1"
+                value={consumeForm.quantity}
+                onChange={(e) => setConsumeForm({ ...consumeForm, quantity: e.target.value })}
+              />
+            </div>
+
+            {consumeForm.product_id &&
+              (() => {
+                const p = products.find((prod) => prod.id === consumeForm.product_id)
+                if (!p) return null
+                const cost = Number(p.cost_price) || 0
+                const qty = Number(consumeForm.quantity) || 1
+
+                if (cost <= 0) {
+                  return (
+                    <div className="p-3 bg-red-50 text-red-900 rounded-md text-sm">
+                      Este produto não possui preço de custo. É necessário definir o preço de custo
+                      antes de consumir.
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="p-3 bg-red-50 text-red-900 border border-red-200 rounded-md">
+                    <p className="text-sm font-medium flex justify-between">
+                      <span>Custo Unitário:</span>{' '}
+                      <span>
+                        {cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </p>
+                    <p className="text-sm font-bold flex justify-between mt-1 pt-1 border-t border-red-200/50">
+                      <span>Dedução Total:</span>{' '}
+                      <span>
+                        {(cost * qty).toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </span>
+                    </p>
+                  </div>
+                )
+              })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConsumeDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConsume}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={
+                !consumeForm.barber_id ||
+                !consumeForm.product_id ||
+                Number(consumeForm.quantity) < 1
+              }
+            >
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

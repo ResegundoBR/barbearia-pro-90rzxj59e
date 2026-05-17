@@ -252,7 +252,7 @@ export default function UsersPage() {
                             <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
                             <span className="truncate max-w-[150px] sm:max-w-xs">
                               {u.email || (
-                                <span className="text-muted-foreground italic">Oculto</span>
+                                <span className="text-muted-foreground italic">Não informado</span>
                               )}
                             </span>
                           </div>

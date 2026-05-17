@@ -47,6 +47,7 @@ export default function Settings() {
     inventory_owner_id: '',
     default_product_commission: 10,
     enable_third_party_commission: true,
+    enable_professional_consumption: true,
   })
   const [barbers, setBarbers] = useState<any[]>([])
 
@@ -437,6 +438,22 @@ export default function Settings() {
                   </p>
                 </div>
               )}
+
+              <div className="flex items-center justify-between rounded-lg border p-4 bg-card/50">
+                <div className="space-y-1 mr-4">
+                  <Label className="text-base">Consumo Profissional</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Permite registrar produtos consumidos internamente pelos profissionais,
+                    deduzindo o preço de custo de suas comissões automaticamente.
+                  </p>
+                </div>
+                <Switch
+                  checked={finForm.enable_professional_consumption ?? true}
+                  onCheckedChange={(v) =>
+                    setFinForm({ ...finForm, enable_professional_consumption: v })
+                  }
+                />
+              </div>
 
               <Button onClick={handleSaveFinConfig} className="mt-4">
                 Salvar Regras Financeiras
