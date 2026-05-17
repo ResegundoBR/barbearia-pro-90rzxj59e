@@ -19,6 +19,7 @@ import {
   getCommissions,
   createCommission,
   getProductPurchases,
+  getPaymentMethods,
 } from '@/services/api'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -80,6 +81,7 @@ export default function Index() {
   const [products, setProducts] = useState<any[]>([])
   const [commissions, setCommissions] = useState<any[]>([])
   const [productPurchases, setProductPurchases] = useState<any[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([])
 
   const [period, setPeriod] = useState('month')
   const [barberFilter, setBarberFilter] = useState('all')
@@ -100,6 +102,7 @@ export default function Index() {
   >(null)
   const [forecastModal, setForecastModal] = useState<'tomorrow' | 'week' | 'month' | null>(null)
 
+  const [historyModalDate, setHistoryModalDate] = useState<string | null>(null)
   const [historyType, setHistoryType] = useState<'services' | 'products'>('services')
   const [gaugeMetric, setGaugeMetric] = useState<'revenue' | 'attendance'>('revenue')
 
@@ -116,6 +119,7 @@ export default function Index() {
     setProducts(await getProducts())
     setCommissions(await getCommissions(''))
     setProductPurchases(await getProductPurchases(''))
+    setPaymentMethods(await getPaymentMethods())
     setIsLoading(false)
   }
 
@@ -231,7 +235,10 @@ export default function Index() {
   const totalRevenue = periodRevenue + productRevenue + packagesRevenue
 
   const uniqueClientsPeriod = new Set(completedPeriod.map((a) => a.client_id)).size
-  const avgTicket = completedPeriod.length > 0 ? periodRevenue / completedPeriod.length : 0
+  const serviceAndPackageRevenue = periodRevenue + packagesRevenue
+  const serviceAndPackageCount = completedPeriod.length + packagesPeriod.length
+  const avgTicket =
+    serviceAndPackageCount > 0 ? serviceAndPackageRevenue / serviceAndPackageCount : 0
   const avgProductTicket =
     productPurchasesPeriod.length > 0 ? productRevenue / productPurchasesPeriod.length : 0
 
@@ -251,7 +258,11 @@ export default function Index() {
   const lowUsesPackagesList = filteredPackages.filter((p) => p.remaining_uses === 1)
 
   const aptsTomorrowList = filteredAppointments.filter(
-    (a) => a.date && isTomorrow(new Date(a.date)) && a.status !== 'Cancelado',
+    (a) =>
+      a.date &&
+      isTomorrow(new Date(a.date)) &&
+      a.status !== 'Cancelado' &&
+      a.status !== 'Concluído',
   )
 
   const calcApptRevenue = (a: any) => {
@@ -371,6 +382,7 @@ export default function Index() {
 
     const sortedDates = Object.keys(dataMap).sort()
     return sortedDates.map((dateStr) => ({
+      fullDate: dateStr,
       date: format(new Date(dateStr + 'T12:00:00'), 'dd/MM'),
       services: dataMap[dateStr].services,
       products: dataMap[dateStr].products,
@@ -388,16 +400,19 @@ export default function Index() {
     })
   }, [completedPeriod])
 
-  const translateMethod = (m: string) =>
-    m === 'cash'
-      ? 'Dinheiro'
-      : m === 'pix'
-        ? 'Pix'
-        : m === 'debito'
-          ? 'Débito'
-          : m === 'credito'
-            ? 'Crédito'
-            : m
+  const getMethodName = (m: string) => {
+    const mappedType = m === 'debito' ? 'debit_card' : m === 'credito' ? 'credit_card' : m
+    const pm = paymentMethods.find(
+      (p: any) => p.type === mappedType || p.name.toLowerCase() === m.toLowerCase(),
+    )
+    if (pm) return pm.name
+
+    if (m === 'cash') return 'Dinheiro'
+    if (m === 'pix') return 'Pix'
+    if (m === 'debito') return 'Cartão de Débito'
+    if (m === 'credito') return 'Cartão de Crédito'
+    return m
+  }
 
   return (
     <div className="space-y-6 pb-20 md:pb-6 max-w-5xl mx-auto">
@@ -743,6 +758,12 @@ export default function Index() {
                         <BarChart
                           data={historyData}
                           margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                          onClick={(e) => {
+                            if (e && e.activePayload && e.activePayload.length > 0) {
+                              setHistoryModalDate(e.activePayload[0].payload.fullDate)
+                            }
+                          }}
+                          className="cursor-pointer"
                         >
                           <CartesianGrid vertical={false} strokeDasharray="3 3" />
                           <XAxis dataKey="date" tickLine={false} axisLine={false} />
@@ -878,14 +899,14 @@ export default function Index() {
           )}
 
           {hasAccess('dash_block_alerts') && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <Card className="bg-glass border-none">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
                     Alertas
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {lowStockProductsList.length > 0 && (
                     <div
                       className="flex items-center justify-between gap-3 bg-orange-500/10 text-orange-500 p-2 rounded-md cursor-pointer"
@@ -959,6 +980,7 @@ export default function Index() {
           commissions={filteredCommissions}
           isAdmin={isAdmin}
           effectiveBarberFilter={effectiveBarberFilter}
+          paymentMethods={paymentMethods}
         />
       )}
       {activeTab === 'packages' && <PackagesView packages={filteredPackages} />}
@@ -1139,7 +1161,7 @@ export default function Index() {
                           </TableCell>
                           <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
                           <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
-                          <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
+                          <TableCell>{getMethodName(comm?.payment_method || '-')}</TableCell>
                           <TableCell className="text-right">
                             R$ {(a.price || a.expand?.service_id?.price || 0).toFixed(2)}
                           </TableCell>
@@ -1160,7 +1182,7 @@ export default function Index() {
                           </TableCell>
                           <TableCell>{p.expand?.client_id?.name || 'Avulso'}</TableCell>
                           <TableCell>{p.expand?.barber_id?.name || '-'}</TableCell>
-                          <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
+                          <TableCell>{getMethodName(comm?.payment_method || '-')}</TableCell>
                           <TableCell className="text-right">
                             R$ {(p.price_at_sale || 0).toFixed(2)}
                           </TableCell>
@@ -1180,7 +1202,7 @@ export default function Index() {
                           <TableCell>{format(new Date(pkg.created), 'dd/MM/yyyy HH:mm')}</TableCell>
                           <TableCell>{pkg.expand?.client_id?.name || 'Avulso'}</TableCell>
                           <TableCell>{pkg.expand?.barber_id?.name || '-'}</TableCell>
-                          <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>
+                          <TableCell>{getMethodName(comm?.payment_method || '-')}</TableCell>
                           <TableCell className="text-right">
                             R$ {(pkg.expand?.package_id?.price || 0).toFixed(2)}
                           </TableCell>
@@ -1258,6 +1280,104 @@ export default function Index() {
                   </TableBody>
                 </Table>
               )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!historyModalDate} onOpenChange={(v) => !v && setHistoryModalDate(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              Vendas em{' '}
+              {historyModalDate
+                ? format(new Date(historyModalDate + 'T12:00:00'), 'dd/MM/yyyy')
+                : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 w-full mt-4">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {completedPeriod
+                    .filter(
+                      (a) =>
+                        (a.date ? a.date.substring(0, 10) : a.updated.substring(0, 10)) ===
+                        historyModalDate,
+                    )
+                    .map((a) => (
+                      <TableRow key={`hist_apt_${a.id}`}>
+                        <TableCell>
+                          {a.updated ? format(new Date(a.updated), 'dd/MM/yyyy HH:mm') : ''}
+                        </TableCell>
+                        <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
+                        <TableCell>{a.expand?.service_id?.name || 'Serviço'}</TableCell>
+                        <TableCell className="text-right text-emerald-500 font-medium">
+                          R$ {(a.price || a.expand?.service_id?.price || 0).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {productPurchasesPeriod
+                    .filter(
+                      (p) =>
+                        (p.date ? p.date.substring(0, 10) : p.created.substring(0, 10)) ===
+                        historyModalDate,
+                    )
+                    .map((p) => (
+                      <TableRow key={`hist_prod_${p.id}`}>
+                        <TableCell>
+                          {p.created ? format(new Date(p.created), 'dd/MM/yyyy HH:mm') : ''}
+                        </TableCell>
+                        <TableCell>{p.expand?.client_id?.name || 'Avulso'}</TableCell>
+                        <TableCell>{p.expand?.product_id?.name || 'Produto'}</TableCell>
+                        <TableCell className="text-right text-emerald-500 font-medium">
+                          R$ {(p.price_at_sale || p.expand?.product_id?.price || 0).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {packagesPeriod
+                    .filter((pkg) => pkg.created.substring(0, 10) === historyModalDate)
+                    .map((pkg) => (
+                      <TableRow key={`hist_pkg_${pkg.id}`}>
+                        <TableCell>
+                          {pkg.created ? format(new Date(pkg.created), 'dd/MM/yyyy HH:mm') : ''}
+                        </TableCell>
+                        <TableCell>{pkg.expand?.client_id?.name || 'Avulso'}</TableCell>
+                        <TableCell>{pkg.expand?.package_id?.name || 'Pacote'}</TableCell>
+                        <TableCell className="text-right text-emerald-500 font-medium">
+                          R$ {(pkg.expand?.package_id?.price || 0).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {completedPeriod.filter(
+                    (a) =>
+                      (a.date ? a.date.substring(0, 10) : a.updated.substring(0, 10)) ===
+                      historyModalDate,
+                  ).length === 0 &&
+                    productPurchasesPeriod.filter(
+                      (p) =>
+                        (p.date ? p.date.substring(0, 10) : p.created.substring(0, 10)) ===
+                        historyModalDate,
+                    ).length === 0 &&
+                    packagesPeriod.filter(
+                      (pkg) => pkg.created.substring(0, 10) === historyModalDate,
+                    ).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                          Nenhuma venda registrada nesta data.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                </TableBody>
+              </Table>
             </div>
           </ScrollArea>
         </DialogContent>

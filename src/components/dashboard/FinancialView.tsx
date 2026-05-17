@@ -2,7 +2,16 @@ import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
-import { ArrowDownCircle, DollarSign, Wallet } from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle, DollarSign, Wallet } from 'lucide-react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { format } from 'date-fns'
 
 export function FinancialView({
   completedPeriod,
@@ -11,6 +20,7 @@ export function FinancialView({
   commissions,
   isAdmin,
   effectiveBarberFilter,
+  paymentMethods = [],
 }: any) {
   const serviceRevenue = completedPeriod.reduce(
     (acc: number, curr: any) => acc + (curr.price || curr.expand?.service_id?.price || 0),
@@ -26,6 +36,20 @@ export function FinancialView({
   )
 
   const totalRevenue = serviceRevenue + productRevenue + packagesRevenue
+
+  const getMethodName = (m: string) => {
+    const mappedType = m === 'debito' ? 'debit_card' : m === 'credito' ? 'credit_card' : m
+    const pm = paymentMethods.find(
+      (p: any) => p.type === mappedType || p.name.toLowerCase() === m.toLowerCase(),
+    )
+    if (pm) return pm.name
+
+    if (m === 'cash') return 'Dinheiro'
+    if (m === 'pix') return 'Pix'
+    if (m === 'debito') return 'Cartão de Débito'
+    if (m === 'credito') return 'Cartão de Crédito'
+    return m
+  }
 
   const paymentMethodsDist = useMemo(() => {
     const methods: Record<string, number> = {}
@@ -46,8 +70,11 @@ export function FinancialView({
             Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
         )
       }
-      const method = comm?.payment_method || 'other'
-      methods[method] = (methods[method] || 0) + val
+
+      const methodRaw =
+        comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : 'other')
+      const methodName = getMethodName(methodRaw)
+      methods[methodName] = (methods[methodName] || 0) + val
     }
 
     completedPeriod.forEach((a: any) =>
@@ -59,12 +86,19 @@ export function FinancialView({
     packagesPeriod.forEach((pkg: any) => addVal(pkg, 'package', pkg.expand?.package_id?.price || 0))
 
     return Object.entries(methods)
-      .map(([name, value]) => ({ name: translateMethod(name), value }))
+      .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions])
+  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions, paymentMethods])
+
+  const autonomousCosts = commissions
+    .filter((c: any) => c.expand?.barber_id?.work_level === 'autonomo')
+    .reduce((acc: number, c: any) => acc + (c.amount || 0), 0)
+
+  const partnerTransfers = commissions
+    .filter((c: any) => c.expand?.barber_id?.work_level === 'socio')
+    .reduce((acc: number, c: any) => acc + (c.amount || 0), 0)
 
   const totalCosts = commissions.reduce((acc: number, c: any) => acc + (c.amount || 0), 0)
-
   const netBalance = totalRevenue - totalCosts
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#6b7280']
@@ -77,9 +111,76 @@ export function FinancialView({
     return cfg
   }, [paymentMethodsDist])
 
+  const transactions = useMemo(() => {
+    const list: any[] = []
+
+    completedPeriod.forEach((a: any) => {
+      const comm = commissions.find(
+        (c: any) =>
+          c.barber_id === a.barber_id &&
+          c.type === 'service' &&
+          Math.abs(new Date(c.created).getTime() - new Date(a.updated).getTime()) < 15000,
+      )
+      list.push({
+        id: `apt_${a.id}`,
+        date: new Date(a.updated || a.created),
+        client: a.expand?.client_id?.name || 'Avulso',
+        item: a.expand?.service_id?.name || 'Serviço',
+        barber: a.expand?.barber_id?.name || '-',
+        method: getMethodName(
+          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+        ),
+        value: a.price || a.expand?.service_id?.price || 0,
+        type: 'service',
+      })
+    })
+
+    productPurchasesPeriod.forEach((p: any) => {
+      const comm = commissions.find(
+        (c: any) =>
+          c.type === 'product' &&
+          Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) < 15000,
+      )
+      list.push({
+        id: `prod_${p.id}`,
+        date: new Date(p.created),
+        client: p.expand?.client_id?.name || 'Avulso',
+        item: p.expand?.product_id?.name || 'Produto',
+        barber: p.expand?.barber_id?.name || '-',
+        method: getMethodName(
+          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+        ),
+        value: p.price_at_sale || p.expand?.product_id?.price || 0,
+        type: 'product',
+      })
+    })
+
+    packagesPeriod.forEach((pkg: any) => {
+      const comm = commissions.find(
+        (c: any) =>
+          c.type === 'package' &&
+          Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) < 15000,
+      )
+      list.push({
+        id: `pkg_${pkg.id}`,
+        date: new Date(pkg.created),
+        client: pkg.expand?.client_id?.name || 'Avulso',
+        item: pkg.expand?.package_id?.name || 'Pacote',
+        barber: pkg.expand?.barber_id?.name || '-',
+        method: getMethodName(
+          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+        ),
+        value: pkg.expand?.package_id?.price || 0,
+        type: 'package',
+      })
+    })
+
+    return list.sort((a, b) => b.date.getTime() - a.date.getTime())
+  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions, paymentMethods])
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -94,12 +195,25 @@ export function FinancialView({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Custos (Comissões)
+              Custos (Autônomos)
             </CardTitle>
             <ArrowDownCircle className="size-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">R$ {totalCosts.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-red-500">R$ {autonomousCosts.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Repasses (Sócios)
+            </CardTitle>
+            <ArrowUpCircle className="size-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-500">
+              R$ {partnerTransfers.toFixed(2)}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -177,15 +291,49 @@ export function FinancialView({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Transações</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[700px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Profissional</TableHead>
+                  <TableHead>Método de Pagamento</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell>{format(t.date, 'dd/MM/yyyy HH:mm')}</TableCell>
+                    <TableCell>{t.client}</TableCell>
+                    <TableCell>{t.item}</TableCell>
+                    <TableCell>{t.barber}</TableCell>
+                    <TableCell>{t.method}</TableCell>
+                    <TableCell className="text-right font-medium text-emerald-500">
+                      R$ {t.value.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {transactions.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                      Nenhuma transação encontrada no período.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
-}
-
-function translateMethod(m: string) {
-  if (m === 'cash') return 'Dinheiro'
-  if (m === 'pix') return 'Pix'
-  if (m === 'debito') return 'Débito'
-  if (m === 'credito') return 'Crédito'
-  if (m === 'other') return 'Outro'
-  return m
 }
