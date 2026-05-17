@@ -540,9 +540,13 @@ export default function Staff() {
   const ticketData = useMemo(() => {
     if (!ticketItem) return null
 
-    const grossValue = ticketItem.basePrice
-    const pricePaid = ticketItem.price
-    const discount = Math.max(0, grossValue - pricePaid)
+    // Group items from the same transaction
+    const transactionItems = reportItems.filter(
+      (i) =>
+        i.client === ticketItem.client &&
+        Math.abs(i.commDate.getTime() - ticketItem.commDate.getTime()) < 60000 &&
+        i.commissionObj?.payment_method === ticketItem.commissionObj?.payment_method,
+    )
 
     const pmType = ticketItem.commissionObj?.payment_method || 'other'
     const matchedPm = paymentMethods.find(
@@ -550,33 +554,40 @@ export default function Staff() {
         p.type === mapCommPayMethod(pmType) || p.name.toLowerCase() === pmType.toLowerCase(),
     )
     const feePercentage = matchedPm?.fee_percentage || 0
-    const feeDeduction = grossValue * (feePercentage / 100)
 
-    const netBase = grossValue - discount - feeDeduction
-    const finalCommission = ticketItem.commission || 0
+    const services = transactionItems.filter((i) => i.type === 'Serviço')
+    const products = transactionItems.filter((i) => i.type === 'Produto')
+    const others = transactionItems.filter((i) => i.type === 'Pacote' || i.type === 'Categoria')
+
+    const servicesTotal = services.reduce((acc, i) => acc + i.price, 0)
+    const productsTotal = products.reduce((acc, i) => acc + i.price, 0)
+    const othersTotal = others.reduce((acc, i) => acc + i.price, 0)
+
+    const totalPaid = servicesTotal + productsTotal + othersTotal
+    const totalDiscount = transactionItems.reduce(
+      (acc, i) => acc + Math.max(0, i.basePrice - i.price),
+      0,
+    )
+
+    const dbTotalCommission = transactionItems.reduce((acc, i) => acc + (i.commission || 0), 0)
+
+    let impliedGrossCommission = dbTotalCommission
+    if (feePercentage > 0 && feePercentage < 100) {
+      impliedGrossCommission = dbTotalCommission / (1 - feePercentage / 100)
+    }
+
+    const feeDeduction = impliedGrossCommission - dbTotalCommission
 
     const isSocio = selectedBarberDetailed?.work_level === 'socio'
-    let commissionRate = 0
-    let isFixed = false
+    let commissionRate = selectedBarberDetailed?.commission_value || 0
+    if (isSocio) commissionRate = 100
 
-    if (isSocio) {
-      commissionRate = 100
-    } else {
-      if (netBase > 0 && finalCommission > 0) {
-        const implied = (finalCommission / netBase) * 100
-        if (Math.abs(Math.round(implied) - implied) < 0.5) {
-          commissionRate = Math.round(implied)
-        } else {
-          // try without fee
-          const impliedNoFee = (finalCommission / (grossValue - discount)) * 100
-          if (Math.abs(Math.round(impliedNoFee) - impliedNoFee) < 0.5) {
-            commissionRate = Math.round(impliedNoFee)
-          } else {
-            isFixed = true
-          }
-        }
-      } else if (finalCommission > 0) {
-        isFixed = true
+    if (!commissionRate || commissionRate === 0) {
+      const commGeneratingTotal = transactionItems
+        .filter((i) => i.commission > 0)
+        .reduce((acc, i) => acc + i.price, 0)
+      if (commGeneratingTotal > 0) {
+        commissionRate = Math.round((impliedGrossCommission / commGeneratingTotal) * 100)
       }
     }
 
@@ -588,21 +599,27 @@ export default function Staff() {
     return {
       professionalName: selectedBarberDetailed?.name,
       clientName: ticketItem.client,
-      date: ticketItem.date,
-      itemName: ticketItem.item,
-      itemType: ticketItem.type,
-      grossValue,
-      discount,
-      pricePaid,
+      date: ticketItem.date || ticketItem.commDate,
       paymentMethodName,
+
+      services,
+      products,
+      others,
+
+      servicesTotal,
+      productsTotal,
+      othersTotal,
+      totalPaid,
+      totalDiscount,
+
       feePercentage,
       feeDeduction,
-      netBase,
+
+      grossCommission: impliedGrossCommission,
+      netCommission: dbTotalCommission,
       commissionRate,
-      isFixed,
-      finalCommission,
     }
-  }, [ticketItem, selectedBarberDetailed, paymentMethods])
+  }, [ticketItem, selectedBarberDetailed, paymentMethods, reportItems])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1427,7 +1444,6 @@ export default function Staff() {
               <span className="text-xl font-bold uppercase tracking-widest text-slate-700">
                 Ticket de Comissão
               </span>
-              <span className="text-xs font-mono text-slate-500">Memória de Cálculo</span>
             </DialogTitle>
           </DialogHeader>
 
@@ -1459,29 +1475,66 @@ export default function Staff() {
               <div className="border-t border-dashed border-slate-300 my-2" />
 
               <div className="space-y-1">
-                <div className="flex justify-between font-bold text-slate-700 mb-2">
-                  <span>Venda ({ticketData.itemType})</span>
+                <div className="flex justify-between font-bold text-slate-700 mb-1">
+                  <span>Resumo da Transação</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">{ticketData.itemName}</span>
-                  <span>R$ {ticketData.grossValue.toFixed(2)}</span>
+                  <span className="text-slate-500">Total Pago</span>
+                  <span className="font-semibold">R$ {ticketData.totalPaid.toFixed(2)}</span>
                 </div>
-                {ticketData.discount > 0 && (
-                  <div className="flex justify-between text-red-500">
-                    <span>Desconto</span>
-                    <span>- R$ {ticketData.discount.toFixed(2)}</span>
+                {ticketData.productsTotal > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Produtos</span>
+                    <span>R$ {ticketData.productsTotal.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-semibold">
-                  <span>Valor Pago</span>
-                  <span>R$ {ticketData.pricePaid.toFixed(2)}</span>
+                {ticketData.othersTotal > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Outros</span>
+                    <span>R$ {ticketData.othersTotal.toFixed(2)}</span>
+                  </div>
+                )}
+                {ticketData.totalDiscount > 0 && (
+                  <div className="flex justify-between text-red-500">
+                    <span>Desconto</span>
+                    <span>- R$ {ticketData.totalDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-dashed border-slate-300 my-2" />
+
+              {ticketData.services.length > 0 && (
+                <>
+                  <div className="space-y-1">
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>Serviços Realizados</span>
+                    </div>
+                    {ticketData.services.map((svc: any, i: number) => (
+                      <div key={i} className="flex justify-between">
+                        <span className="text-slate-500">{svc.item}</span>
+                        <span>R$ {svc.price.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-dashed border-slate-300 my-2" />
+                </>
+              )}
+
+              <div className="space-y-1">
+                <div className="flex justify-between font-bold text-slate-700 mb-1">
+                  <span>Cálculo de Comissão</span>
+                </div>
+                <div className="flex justify-between text-emerald-700 font-semibold">
+                  <span>Comissão {ticketData.commissionRate}%</span>
+                  <span>R$ {ticketData.grossCommission.toFixed(2)}</span>
                 </div>
               </div>
 
               <div className="border-t border-dashed border-slate-300 my-2" />
 
               <div className="space-y-1">
-                <div className="flex justify-between font-bold text-slate-700 mb-2">
+                <div className="flex justify-between font-bold text-slate-700 mb-1">
                   <span>Deduções</span>
                 </div>
                 <div className="flex justify-between">
@@ -1490,56 +1543,18 @@ export default function Staff() {
                   </span>
                   <span className="text-red-500">- R$ {ticketData.feeDeduction.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between font-semibold">
-                  <span>Base de Cálculo</span>
-                  <span>R$ {ticketData.netBase.toFixed(2)}</span>
-                </div>
               </div>
 
               <div className="border-t border-dashed border-slate-300 my-2" />
 
-              <div className="space-y-1">
-                <div className="flex justify-between font-bold text-slate-700 mb-2">
-                  <span>Comissão Final</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Regra Aplicada</span>
-                  <span>
-                    {ticketData.isFixed
-                      ? `Fixo (R$ ${ticketData.finalCommission.toFixed(2)})`
-                      : `${ticketData.commissionRate}% sobre Base`}
-                  </span>
-                </div>
-
-                <div className="bg-slate-100 p-3 rounded mt-2 border border-slate-200">
-                  <div className="text-xs text-slate-500 mb-1">Fórmula (Memória):</div>
-                  <div className="text-[11px] sm:text-xs leading-relaxed">
-                    {ticketData.isFixed ? (
-                      <span>
-                        (Regra de Valor Fixo Aplicada) = R$ {ticketData.finalCommission.toFixed(2)}
-                      </span>
-                    ) : (
-                      <span>
-                        (R$ {ticketData.grossValue.toFixed(2)}
-                        {ticketData.discount > 0
-                          ? ` - R$ ${ticketData.discount.toFixed(2)} [Desc]`
-                          : ''}
-                        {ticketData.feeDeduction > 0
-                          ? ` - R$ ${ticketData.feeDeduction.toFixed(2)} [Taxa]`
-                          : ''}
-                        ) * {ticketData.commissionRate}% ={' '}
-                        <strong className="text-emerald-600 font-bold">
-                          R$ {ticketData.finalCommission.toFixed(2)}
-                        </strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
+              <div className="flex justify-between items-center text-lg font-bold text-slate-800 pt-1">
+                <span>Vlr a pagar:</span>
+                <span>R$ {ticketData.netCommission.toFixed(2)}</span>
               </div>
             </div>
           )}
 
-          <DialogFooter className="border-t border-dashed border-slate-300 pt-4">
+          <DialogFooter className="border-t border-dashed border-slate-300 pt-4 mt-2">
             <Button variant="outline" className="w-full" onClick={() => setTicketItem(null)}>
               Fechar
             </Button>
