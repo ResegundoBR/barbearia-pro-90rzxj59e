@@ -11,9 +11,8 @@ import {
 } from '@/components/ui/table'
 import pb from '@/lib/pocketbase/client'
 import { format } from 'date-fns'
-import { Loader2, Package, Layers, Receipt } from 'lucide-react'
+import { Loader2, Package, Receipt } from 'lucide-react'
 import { ProdutosTab } from './produtos-categorias/ProdutosTab'
-import { CategoriasTab } from './produtos-categorias/CategoriasTab'
 import { ConsultasTab } from '@/components/produtos-categorias/ConsultasTab'
 
 export default function ProdutosCategorias() {
@@ -27,12 +26,9 @@ export default function ProdutosCategorias() {
       </div>
 
       <Tabs defaultValue="history" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg mb-4">
+        <TabsList className="grid w-full grid-cols-2 max-w-md mb-4">
           <TabsTrigger value="products" className="flex items-center gap-2">
             <Package className="size-4 hidden sm:block" /> Produtos
-          </TabsTrigger>
-          <TabsTrigger value="categories" className="flex items-center gap-2">
-            <Layers className="size-4 hidden sm:block" /> Categorias
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center gap-2">
             <Receipt className="size-4 hidden sm:block" /> Histórico
@@ -49,18 +45,6 @@ export default function ProdutosCategorias() {
             </CardHeader>
             <CardContent className="p-6">
               <ProdutosTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="categories">
-          <Card>
-            <CardHeader>
-              <CardTitle>Categorias do Sistema</CardTitle>
-              <CardDescription>Gerencie as classificações de serviços e produtos.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <CategoriasTab />
             </CardContent>
           </Card>
         </TabsContent>

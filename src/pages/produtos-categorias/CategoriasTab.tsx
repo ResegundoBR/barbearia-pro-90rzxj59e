@@ -102,6 +102,15 @@ export function CategoriasTab() {
 
   const handleSave = async () => {
     setErrors({})
+
+    if (formData.commission_percentage) {
+      const p = Number(formData.commission_percentage)
+      if (isNaN(p) || p < 0 || p > 100) {
+        setErrors({ commission_percentage: 'O valor deve estar entre 0 e 100' })
+        return
+      }
+    }
+
     try {
       const payload = {
         name: formData.name,

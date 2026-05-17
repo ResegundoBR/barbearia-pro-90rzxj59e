@@ -31,6 +31,7 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
 import { Badge } from '@/components/ui/badge'
+import { CategoriasTab } from '@/pages/produtos-categorias/CategoriasTab'
 
 export default function Settings() {
   const { user } = useAuth()
@@ -39,6 +40,13 @@ export default function Settings() {
   const [logoConfigId, setLogoConfigId] = useState<string>('')
   const [logoPreview, setLogoPreview] = useState<string>('')
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null)
+
+  const [finConfigId, setFinConfigId] = useState<string>('')
+  const [finForm, setFinForm] = useState({
+    inventory_owner_id: '',
+    default_product_commission: 10,
+  })
+  const [barbers, setBarbers] = useState<any[]>([])
 
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [editingNotifId, setEditingNotifId] = useState<string | null>(null)
@@ -55,13 +63,23 @@ export default function Settings() {
 
   const loadData = async () => {
     try {
-      const sett = await pb.collection('settings').getFullList({ filter: 'key="logo"' })
-      if (sett.length > 0) {
-        setLogoConfigId(sett[0].id)
-        if (sett[0].logo) {
-          setLogoPreview(pb.files.getURL(sett[0], sett[0].logo))
+      const sett = await pb.collection('settings').getFullList()
+      const logoSett = sett.find((s) => s.key === 'logo')
+      if (logoSett) {
+        setLogoConfigId(logoSett.id)
+        if (logoSett.logo) {
+          setLogoPreview(pb.files.getURL(logoSett, logoSett.logo))
         }
       }
+
+      const finSett = sett.find((s) => s.key === 'financial_config')
+      if (finSett) {
+        setFinConfigId(finSett.id)
+        setFinForm(finSett.value || { inventory_owner_id: '', default_product_commission: 10 })
+      }
+
+      const bList = await pb.collection('barbers').getFullList({ sort: 'name' })
+      setBarbers(bList)
     } catch (e) {
       console.error(e)
     }
@@ -155,6 +173,28 @@ export default function Settings() {
         description: 'Verifique se o arquivo é um PNG/JPG válido e tente novamente.',
         variant: 'destructive',
       })
+    }
+  }
+
+  const handleSaveFinConfig = async () => {
+    if (!finForm.inventory_owner_id) {
+      toast({ title: 'Selecione o Gestor de Estoque.', variant: 'destructive' })
+      return
+    }
+    const payload = {
+      key: 'financial_config',
+      value: finForm,
+    }
+    try {
+      if (finConfigId) {
+        await pb.collection('settings').update(finConfigId, payload)
+      } else {
+        const r = await pb.collection('settings').create(payload)
+        setFinConfigId(r.id)
+      }
+      toast({ title: 'Regras Financeiras atualizadas com sucesso!' })
+    } catch (err) {
+      toast({ title: 'Erro ao salvar regras financeiras', variant: 'destructive' })
     }
   }
 
@@ -264,6 +304,8 @@ export default function Settings() {
       <Tabs defaultValue="geral" className="w-full">
         <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="geral">Geral (Marca)</TabsTrigger>
+          <TabsTrigger value="categories">Configurações de Categorias</TabsTrigger>
+          <TabsTrigger value="financial">Regras Financeiras</TabsTrigger>
           <TabsTrigger value="notifications">Gerenciamento de Notificações</TabsTrigger>
         </TabsList>
 
@@ -304,6 +346,74 @@ export default function Settings() {
                   </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <Card className="border-border shadow-sm">
+            <CardHeader>
+              <CardTitle>Categorias do Sistema</CardTitle>
+              <CardDescription>
+                Gerencie as classificações de serviços e produtos e suas comissões padrão.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CategoriasTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="financial" className="space-y-4">
+          <Card className="border-border shadow-sm max-w-2xl">
+            <CardHeader>
+              <CardTitle>Regras Financeiras</CardTitle>
+              <CardDescription>
+                Configure as regras globais de financeiro, comissões e gestão de estoque.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Gestor de Estoque (Product Inventory Owner)</Label>
+                <Select
+                  value={finForm.inventory_owner_id}
+                  onValueChange={(v) => setFinForm({ ...finForm, inventory_owner_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o recebedor principal..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {barbers.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  O gestor de estoque recebe a parte majoritária (ou total) das vendas de produtos.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Comissão Padrão de Produtos (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={finForm.default_product_commission}
+                  onChange={(e) =>
+                    setFinForm({ ...finForm, default_product_commission: Number(e.target.value) })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Aplicada caso o produto não tenha uma comissão de categoria específica.
+                </p>
+              </div>
+
+              <Button onClick={handleSaveFinConfig} className="mt-4">
+                Salvar Regras
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

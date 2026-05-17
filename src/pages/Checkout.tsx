@@ -59,6 +59,7 @@ export default function Checkout() {
   const [services, setServices] = useState<any[]>([])
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
   const [commissionRules, setCommissionRules] = useState<any[]>([])
+  const [financialConfig, setFinancialConfig] = useState<any>({})
 
   const [pkgForm, setPkgForm] = useState({
     barber_id: '',
@@ -122,7 +123,11 @@ export default function Checkout() {
         .collection('commission_rules')
         .getFullList()
         .catch(() => []),
-    ]).then(([b, c, p, a, prods, cp, svcs, pms, rules]) => {
+      pb
+        .collection('settings')
+        .getFullList()
+        .catch(() => []),
+    ]).then(([b, c, p, a, prods, cp, svcs, pms, rules, settingsArr]) => {
       setBarbers(b)
       setClients(c)
       setPackages(p)
@@ -137,6 +142,9 @@ export default function Checkout() {
       setServices(svcs)
       setPaymentMethods(pms)
       setCommissionRules(rules)
+
+      const fin = settingsArr.find((s) => s.key === 'financial_config')?.value || {}
+      setFinancialConfig(fin)
     })
   }
 
@@ -268,14 +276,19 @@ export default function Checkout() {
 
       const barber = barbers.find((b) => b.id === barberId)
 
-      const createComm = async (amount: number, type: string) => {
-        if (amount > 0 && barber) {
+      const createComm = async (
+        amount: number,
+        type: string,
+        specificBarberId: string = barberId,
+      ) => {
+        const targetBarber = barbers.find((b) => b.id === specificBarberId)
+        if (amount > 0 && targetBarber) {
           await pb.collection('commissions').create({
-            barber_id: barberId,
+            barber_id: specificBarberId,
             amount,
             type,
             date: new Date().toISOString(),
-            status: barber.work_level === 'socio' ? 'paid' : 'pending',
+            status: targetBarber.work_level === 'socio' ? 'paid' : 'pending',
             payment_method: commissionPm,
           })
         }
@@ -370,7 +383,38 @@ export default function Checkout() {
           stock_quantity: Math.max(0, (currentProd.stock_quantity || 0) - sp.quantity),
         })
 
-        await createComm(getCommAmount('product', sp.product_id, itemPrice, barberId), 'product')
+        const inventoryOwnerId = financialConfig.inventory_owner_id
+        if (inventoryOwnerId) {
+          const feeVal = itemPrice * (feePct / 100)
+          const netBase = itemPrice - feeVal
+
+          if (barberId === inventoryOwnerId) {
+            // Owner sale
+            await createComm(netBase, 'product', inventoryOwnerId)
+          } else {
+            // Staff sale
+            const defaultProductCommission = financialConfig.default_product_commission ?? 10
+            const catRate =
+              sp.product?.expand?.category_id?.commission_percentage ?? defaultProductCommission
+
+            const sellerComm = netBase * (catRate / 100)
+            const ownerComm = netBase - sellerComm
+
+            if (sellerComm > 0) {
+              await createComm(sellerComm, 'product', barberId)
+            }
+            if (ownerComm > 0) {
+              await createComm(ownerComm, 'product', inventoryOwnerId)
+            }
+          }
+        } else {
+          // Fallback se gestor de estoque não configurado
+          await createComm(
+            getCommAmount('product', sp.product_id, itemPrice, barberId),
+            'product',
+            barberId,
+          )
+        }
       }
 
       setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
