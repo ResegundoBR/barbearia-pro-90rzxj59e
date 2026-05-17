@@ -73,19 +73,61 @@ routerAdd(
       const servicePrice = Number(svcForm.service_price) || 0
 
       if (servicePrice > 0) {
-        let catCommPct = 0
-        try {
-          if (serviceId) {
-            const svc = txApp.findRecordById('services', serviceId)
-            const cat = txApp.findRecordById('categories', svc.getString('category_id'))
-            catCommPct = cat.getFloat('commission_percentage')
-          }
-        } catch (_) {}
+        function calculateComm(type, itemId, price, bId) {
+          let ruleVal = null
+          let ruleType = 'percentage'
+          try {
+            const rules = txApp.findRecordsByFilter(
+              'commission_rules',
+              "item_type='" + type + "' && item_id='" + itemId + "'",
+              '',
+              100,
+              0,
+            )
+            for (let i = 0; i < rules.length; i++) {
+              if (rules[i].getString('barber_id') === bId) {
+                ruleVal = rules[i].getFloat('value')
+                ruleType = rules[i].getString('type')
+                break
+              }
+            }
+            if (ruleVal === null) {
+              for (let i = 0; i < rules.length; i++) {
+                if (rules[i].getString('barber_id') === '') {
+                  ruleVal = rules[i].getFloat('value')
+                  ruleType = rules[i].getString('type')
+                  break
+                }
+              }
+            }
+          } catch (e) {}
 
-        const grossComm = servicePrice * (catCommPct / 100)
+          if (ruleVal !== null) {
+            return ruleType === 'percentage' ? price * (ruleVal / 100) : ruleVal
+          }
+
+          let svcRate = 0
+          let catRate = 0
+          try {
+            if (type === 'service') {
+              const svc = txApp.findRecordById('services', itemId)
+              svcRate = svc.getFloat('commission_rate')
+              const cat = txApp.findRecordById('categories', svc.getString('category_id'))
+              catRate = cat.getFloat('commission_percentage')
+            } else if (type === 'product') {
+              const prod = txApp.findRecordById('products', itemId)
+              const cat = txApp.findRecordById('categories', prod.getString('category_id'))
+              catRate = cat.getFloat('commission_percentage')
+            }
+          } catch (e) {}
+
+          if (svcRate > 0) return price * (svcRate / 100)
+          return price * (catRate / 100)
+        }
+
+        const grossComm = calculateComm('service', serviceId, servicePrice, barberId)
         const feeVal = servicePrice * (pmFeePct / 100)
         const netComm = grossComm - feeVal
-
         if (netComm !== 0 || grossComm !== 0) {
           const commCol = txApp.findCollectionByNameOrId('commissions')
           const comm = new Record(commCol)
@@ -128,13 +170,7 @@ routerAdd(
           purchase.set('date', new Date().toISOString())
           txApp.save(purchase)
 
-          let catCommPct = 0
-          try {
-            const cat = txApp.findRecordById('categories', prod.getString('category_id'))
-            catCommPct = cat.getFloat('commission_percentage')
-          } catch (_) {}
-
-          const grossComm = totalProdPrice * (catCommPct / 100)
+          const grossComm = calculateComm('product', item.product_id, totalProdPrice, barberId)
           const feeVal = totalProdPrice * (pmFeePct / 100)
           const netComm = grossComm - feeVal
 

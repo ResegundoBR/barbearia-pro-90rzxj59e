@@ -44,15 +44,57 @@ routerAdd(
         else if (pType === 'pix') commissionPm = 'pix'
       } catch (_) {}
 
-      let catCommPct = 0
-      try {
-        const svc = txApp.findRecordById('services', pkg.getString('service_id'))
-        const cat = txApp.findRecordById('categories', svc.getString('category_id'))
-        catCommPct = cat.getFloat('commission_percentage')
-      } catch (_) {}
+      function calculateComm(type, itemId, p, bId) {
+        let ruleVal = null
+        let ruleType = 'percentage'
+        try {
+          const rules = txApp.findRecordsByFilter(
+            'commission_rules',
+            "item_type='" + type + "' && item_id='" + itemId + "'",
+            '',
+            100,
+            0,
+          )
+          for (let i = 0; i < rules.length; i++) {
+            if (rules[i].getString('barber_id') === bId) {
+              ruleVal = rules[i].getFloat('value')
+              ruleType = rules[i].getString('type')
+              break
+            }
+          }
+          if (ruleVal === null) {
+            for (let i = 0; i < rules.length; i++) {
+              if (rules[i].getString('barber_id') === '') {
+                ruleVal = rules[i].getFloat('value')
+                ruleType = rules[i].getString('type')
+                break
+              }
+            }
+          }
+        } catch (e) {}
+
+        if (ruleVal !== null) {
+          return ruleType === 'percentage' ? p * (ruleVal / 100) : ruleVal
+        }
+
+        let svcRate = 0
+        let catRate = 0
+        try {
+          if (type === 'package') {
+            const pk = txApp.findRecordById('packages', itemId)
+            const svc = txApp.findRecordById('services', pk.getString('service_id'))
+            svcRate = svc.getFloat('commission_rate')
+            const cat = txApp.findRecordById('categories', svc.getString('category_id'))
+            catRate = cat.getFloat('commission_percentage')
+          }
+        } catch (e) {}
+
+        if (svcRate > 0) return p * (svcRate / 100)
+        return p * (catRate / 100)
+      }
 
       const price = pkg.getFloat('price')
-      const grossComm = price * (catCommPct / 100)
+      const grossComm = calculateComm('package', package_id, price, barber_id)
       const feeVal = price * (pmFeePct / 100)
       const netComm = grossComm - feeVal
 

@@ -26,7 +26,8 @@ routerAdd(
       for (const r of rules) {
         if (
           r.getString('barber_id') === barberId &&
-          r.getString('item_type') === type &&
+          (r.getString('item_type') === type ||
+            (type === 'package_sale' && r.getString('item_type') === 'package')) &&
           r.getString('item_id') === itemId
         ) {
           rule = r
@@ -37,7 +38,8 @@ routerAdd(
         for (const r of rules) {
           if (
             r.getString('barber_id') === '' &&
-            r.getString('item_type') === type &&
+            (r.getString('item_type') === type ||
+              (type === 'package_sale' && r.getString('item_type') === 'package')) &&
             r.getString('item_id') === itemId
           ) {
             rule = r
@@ -51,7 +53,30 @@ routerAdd(
         if (rule.getString('type') === 'percentage') return basePrice * (val / 100)
         return val
       }
-      return 0
+
+      let svcRate = 0
+      let catRate = 0
+      try {
+        if (type === 'service') {
+          const svc = $app.findRecordById('services', itemId)
+          svcRate = svc.getFloat('commission_rate')
+          const cat = $app.findRecordById('categories', svc.getString('category_id'))
+          catRate = cat.getFloat('commission_percentage')
+        } else if (type === 'product') {
+          const prod = $app.findRecordById('products', itemId)
+          const cat = $app.findRecordById('categories', prod.getString('category_id'))
+          catRate = cat.getFloat('commission_percentage')
+        } else if (type === 'package' || type === 'package_sale') {
+          const pkg = $app.findRecordById('packages', itemId)
+          const svc = $app.findRecordById('services', pkg.getString('service_id'))
+          svcRate = svc.getFloat('commission_rate')
+          const cat = $app.findRecordById('categories', svc.getString('category_id'))
+          catRate = cat.getFloat('commission_percentage')
+        }
+      } catch (e) {}
+
+      if (svcRate > 0) return basePrice * (svcRate / 100)
+      return basePrice * (catRate / 100)
     }
 
     const existingCommsAll = $app.findRecordsByFilter(

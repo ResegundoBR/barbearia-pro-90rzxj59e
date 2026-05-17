@@ -11,6 +11,7 @@ export interface ReceiptItem {
   commissionValue: number
   paymentMethodType?: string
   commissionRate?: number
+  commissionInfo?: { type: string; value: number }
 }
 
 interface CommissionReceiptProps {
@@ -41,14 +42,31 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
       const pm = paymentMethods.find((p) => p.type === item.paymentMethodType)
       const feePercentage = pm?.fee_percentage || 0
       const feeValue = item.serviceValue * (feePercentage / 100)
-      const rate = item.commissionRate || 0
-      const grossCommission = item.serviceValue * (rate / 100)
+
+      const info = item.commissionInfo
+      let rateLabel = ''
+      if (info?.type === 'percentage') {
+        rateLabel = `(${info.value}%)`
+      } else if (info?.type === 'fixed') {
+        rateLabel = `(Fixo R$ ${info.value.toFixed(2)})`
+      } else if (item.commissionRate) {
+        rateLabel = `(${item.commissionRate}%)`
+      }
+
+      let grossCommission = item.commissionValue + feeValue
+      if (info?.type === 'percentage') {
+        grossCommission = item.serviceValue * (info.value / 100)
+      } else if (info?.type === 'fixed') {
+        grossCommission = info.value
+      } else if (item.commissionRate) {
+        grossCommission = item.serviceValue * (item.commissionRate / 100)
+      }
       const netCommission = grossCommission - feeValue
 
       text += `Nome do Cliente  : ${item.clientName}\n`
       text += `Serviço          : ${item.serviceName}\n`
       text += `Valor do Serviço : R$ ${item.serviceValue.toFixed(2)}\n`
-      text += `Comissão Bruta (${rate}%) : R$ ${grossCommission.toFixed(2)}\n`
+      text += `Comissão Bruta ${rateLabel} : R$ ${grossCommission.toFixed(2)}\n`
       text += `Taxa Financeira  : - R$ ${feeValue.toFixed(2)}\n`
       text += `Total a Pagar    : R$ ${netCommission.toFixed(2)}\n`
       text += `--------------------------------\n`
@@ -79,10 +97,24 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
           const pm = paymentMethods.find((p) => p.type === item.paymentMethodType)
           const feePercentage = pm?.fee_percentage || 0
           const feeValue = item.serviceValue * (feePercentage / 100)
-          const rate = item.commissionRate || 0
-          const grossCommission = item.commissionRate
-            ? item.serviceValue * (item.commissionRate / 100)
-            : item.commissionValue + feeValue
+          const info = item.commissionInfo
+          let rateLabel = ''
+          if (info?.type === 'percentage') {
+            rateLabel = `(${info.value}%)`
+          } else if (info?.type === 'fixed') {
+            rateLabel = `(Fixo R$ ${info.value.toFixed(2)})`
+          } else if (item.commissionRate) {
+            rateLabel = `(${item.commissionRate}%)`
+          }
+
+          let grossCommission = item.commissionValue + feeValue
+          if (info?.type === 'percentage') {
+            grossCommission = item.serviceValue * (info.value / 100)
+          } else if (info?.type === 'fixed') {
+            grossCommission = info.value
+          } else if (item.commissionRate) {
+            grossCommission = item.serviceValue * (item.commissionRate / 100)
+          }
           const netCommission = grossCommission - feeValue
 
           return (
@@ -103,7 +135,7 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
                 <span>R$ {item.serviceValue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 pb-1">
-                <span className="text-gray-500 text-xs uppercase">Comissão Bruta ({rate}%)</span>
+                <span className="text-gray-500 text-xs uppercase">Comissão Bruta {rateLabel}</span>
                 <span>R$ {grossCommission.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 pb-1">

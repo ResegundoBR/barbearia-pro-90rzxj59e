@@ -402,18 +402,16 @@ export default function Index() {
   }, [completedPeriod])
 
   const getMethodName = (m: string) => {
-    if (!m) return 'Outro'
-    const mappedType = m === 'debito' ? 'debit_card' : m === 'credito' ? 'credit_card' : m
-    const pm = paymentMethods.find(
-      (p: any) => p.id === m || p.type === mappedType || p.name.toLowerCase() === m.toLowerCase(),
-    )
-    if (pm) return pm.name
+    if (!m) return 'Não Informado'
+    const pmById = paymentMethods.find((p: any) => p.id === m)
+    if (pmById) return pmById.name
 
     if (m === 'cash') return 'Dinheiro'
     if (m === 'pix') return 'Pix'
-    if (m === 'debito') return 'Cartão de Débito'
-    if (m === 'credito') return 'Cartão de Crédito'
-    return m === 'other' ? 'Outro' : m
+    if (m === 'debito' || m === 'debit_card') return 'Cartão de Débito'
+    if (m === 'credito' || m === 'credit_card') return 'Cartão de Crédito'
+
+    return 'Outro'
   }
 
   const transactions = useMemo(() => {
@@ -1038,53 +1036,6 @@ export default function Index() {
               </Card>
             </div>
           )}
-
-          <div className="grid grid-cols-1 gap-4 mt-6">
-            <Card className="bg-glass border-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Lista de Transações (Período)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[700px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Profissional</TableHead>
-                        <TableHead>Método de Pagamento</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {transactions.map((t) => (
-                        <TableRow key={t.id}>
-                          <TableCell>{format(t.date, 'dd/MM/yyyy HH:mm')}</TableCell>
-                          <TableCell>{t.client}</TableCell>
-                          <TableCell>{t.item}</TableCell>
-                          <TableCell>{t.barber}</TableCell>
-                          <TableCell>{t.method}</TableCell>
-                          <TableCell className="text-right font-medium text-emerald-500">
-                            R$ {t.value.toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {transactions.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                            Nenhuma transação encontrada no período.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       )}
 

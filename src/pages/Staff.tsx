@@ -83,6 +83,10 @@ export default function Staff() {
 
   const [barbers, setBarbers] = useState<any[]>([])
   const [commissions, setCommissions] = useState<any[]>([])
+  const [services, setServices] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
+  const [packages, setPackages] = useState<any[]>([])
+  const [commissionRules, setCommissionRules] = useState<any[]>([])
 
   const [dateFilter, setDateFilter] = useState('this_month')
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
@@ -159,6 +163,10 @@ export default function Staff() {
     setCommissions(await getCommissions())
     try {
       setPaymentMethods(await getPaymentMethods())
+      setServices(await pb.collection('services').getFullList({ expand: 'category_id' }))
+      setProducts(await pb.collection('products').getFullList({ expand: 'category_id' }))
+      setPackages(await pb.collection('packages').getFullList())
+      setCommissionRules(await pb.collection('commission_rules').getFullList())
     } catch {
       /* intentionally ignored */
     }
@@ -212,6 +220,43 @@ export default function Staff() {
     return d >= range.from && d <= range.to
   })
 
+  const getCommissionInfo = (type: string, itemId: string, barberId: string) => {
+    let rule = commissionRules.find(
+      (r) =>
+        r.barber_id === barberId &&
+        (r.item_type === type || (type === 'package_sale' && r.item_type === 'package')) &&
+        r.item_id === itemId,
+    )
+    if (!rule)
+      rule = commissionRules.find(
+        (r) =>
+          !r.barber_id &&
+          (r.item_type === type || (type === 'package_sale' && r.item_type === 'package')) &&
+          r.item_id === itemId,
+      )
+    if (rule) return { type: rule.type, value: rule.value }
+
+    let svcRate = 0
+    let catRate = 0
+
+    if (type === 'service') {
+      const svc = services.find((s) => s.id === itemId)
+      svcRate = svc?.commission_rate || 0
+      catRate = svc?.expand?.category_id?.commission_percentage || 0
+    } else if (type === 'product') {
+      const prod = products.find((p) => p.id === itemId)
+      catRate = prod?.expand?.category_id?.commission_percentage || 0
+    } else if (type === 'package' || type === 'package_sale') {
+      const pkg = packages.find((p) => p.id === itemId)
+      const svc = services.find((s) => s.id === pkg?.service_id)
+      svcRate = svc?.commission_rate || 0
+      catRate = svc?.expand?.category_id?.commission_percentage || 0
+    }
+
+    if (svcRate > 0) return { type: 'percentage', value: svcRate }
+    return { type: 'percentage', value: catRate }
+  }
+
   const openDetailedReport = async (b: any) => {
     setSelectedBarberDetailed(b)
     try {
@@ -244,6 +289,7 @@ export default function Staff() {
             commDate: c?.date ? new Date(c.date) : new Date(a.updated),
             commissionObj: c,
             basePrice: a.expand?.service_id?.price || a.price || 0,
+            commissionInfo: getCommissionInfo('service', a.service_id, b.id),
           }
         }),
         ...prods.map((p) => {
@@ -266,6 +312,7 @@ export default function Staff() {
             commDate: c?.date ? new Date(c.date) : new Date(p.created),
             commissionObj: c,
             basePrice: p.expand?.product_id?.price || p.price_at_sale || 0,
+            commissionInfo: getCommissionInfo('product', p.product_id, b.id),
           }
         }),
         ...packs.map((pk) => {
@@ -288,6 +335,7 @@ export default function Staff() {
             commDate: c?.date ? new Date(c.date) : new Date(pk.created),
             commissionObj: c,
             basePrice: pk.expand?.package_id?.price || 0,
+            commissionInfo: getCommissionInfo('package', pk.package_id, b.id),
           }
         }),
       ].sort((a, b) => b.commDate.getTime() - a.commDate.getTime())
@@ -592,10 +640,14 @@ export default function Staff() {
     const totalPaid = transactionItems.reduce((acc, i) => acc + i.price, 0)
     const commissionBase = commissionableItems.reduce((acc, i) => acc + i.price, 0)
 
-    // Gross commission per item
+    // Gross commission per item (no reverse calc)
     const itemsWithGross = commissionableItems.map((i) => {
       let gross = i.commission
-      if (feePercentage > 0 && feePercentage < 100) {
+      if (i.commissionInfo?.type === 'percentage') {
+        gross = i.price * (i.commissionInfo.value / 100)
+      } else if (i.commissionInfo?.type === 'fixed') {
+        gross = i.commissionInfo.value
+      } else if (feePercentage > 0 && feePercentage < 100) {
         gross = i.commission / (1 - feePercentage / 100)
       }
       return { ...i, grossCommission: gross }
@@ -603,31 +655,20 @@ export default function Staff() {
 
     const grossTotal = itemsWithGross.reduce((acc, i) => acc + i.grossCommission, 0)
     const netTotal = transactionItems.reduce((acc, i) => acc + (i.commission || 0), 0)
-    const feeDeduction = grossTotal - netTotal
+    const feeDeduction = Math.max(0, grossTotal - netTotal)
 
-    // Grouping for memory calculation
-    const commGroups = itemsWithGross.reduce((acc: any, i) => {
-      if (!acc[i.type]) {
-        acc[i.type] = { type: i.type, base: 0, gross: 0, count: 0 }
-      }
-      acc[i.type].base += i.price
-      acc[i.type].gross += i.grossCommission
-      acc[i.type].count += 1
-      return acc
-    }, {})
-
-    const memoryLines = Object.values(commGroups).map((g: any) => {
-      // Find the percentage
+    const memoryLines = itemsWithGross.map((i: any) => {
       let rateStr = ''
-      if (g.base > 0) {
-        const pct = Math.round((g.gross / g.base) * 100)
-        rateStr = `${pct}%`
+      if (i.commissionInfo?.type === 'percentage') {
+        rateStr = `${i.commissionInfo.value}%`
+      } else if (i.commissionInfo?.type === 'fixed') {
+        rateStr = `Fixo R$ ${i.commissionInfo.value.toFixed(2)}`
       } else {
-        rateStr = 'Fixo'
+        rateStr = 'Desconhecido'
       }
       return {
-        label: `Comissão ${g.type}s (${rateStr})`,
-        value: g.gross,
+        label: `${i.item} (${rateStr})`,
+        value: i.grossCommission,
       }
     })
 
