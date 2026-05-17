@@ -85,7 +85,7 @@ export function PurchaseFormDialog({
     try {
       if (purchaseToEdit) {
         await updateInventoryPurchase(purchaseToEdit.id, data)
-        toast({ title: 'Compra atualizada com sucesso!' })
+        toast({ title: 'Compra registrada com sucesso!' })
       } else {
         await createInventoryPurchase(data)
         toast({ title: 'Compra registrada com sucesso!' })
@@ -149,7 +149,7 @@ export function PurchaseFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Vlr Unit (R$)</Label>
+              <Label>Preço Unitário (R$)</Label>
               <Input
                 type="number"
                 min="0"
@@ -183,7 +183,7 @@ export function PurchaseFormDialog({
           </div>
 
           <div className="bg-muted p-3 rounded-md flex justify-between items-center border">
-            <span className="font-semibold text-sm">Vlr da compra:</span>
+            <span className="font-semibold text-sm">Total da Compra:</span>
             <span className="font-bold text-lg">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
                 vlrDaCompra,

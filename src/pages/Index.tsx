@@ -101,6 +101,7 @@ export default function Index() {
   const [forecastModal, setForecastModal] = useState<'tomorrow' | 'week' | 'month' | null>(null)
 
   const [historyType, setHistoryType] = useState<'services' | 'products'>('services')
+  const [gaugeMetric, setGaugeMetric] = useState<'revenue' | 'attendance'>('revenue')
 
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false)
   const [advanceBarber, setAdvanceBarber] = useState('')
@@ -586,8 +587,117 @@ export default function Index() {
               </Card>
             )}
 
+            {hasAccess('dash_tab_overview') && (
+              <Card className="bg-glass border-none w-full mt-4">
+                <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
+                    Desempenho da Equipe
+                  </CardTitle>
+                  <Select value={gaugeMetric} onValueChange={(v: any) => setGaugeMetric(v)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="revenue">Faturamento</SelectItem>
+                      <SelectItem value="attendance">Atendimentos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-4 pb-6">
+                    {barbers
+                      .filter(
+                        (b) => effectiveBarberFilter === 'all' || b.id === effectiveBarberFilter,
+                      )
+                      .map((barber) => {
+                        const barberApts = completedPeriod.filter((a) => a.barber_id === barber.id)
+                        const barberPurchases = productPurchasesPeriod.filter(
+                          (p) => p.barber_id === barber.id,
+                        )
+                        const attendance = barberApts.length
+                        const revenue =
+                          barberApts.reduce(
+                            (acc, a) => acc + (a.price || a.expand?.service_id?.price || 0),
+                            0,
+                          ) + barberPurchases.reduce((acc, p) => acc + (p.price_at_sale || 0), 0)
+                        const value = gaugeMetric === 'revenue' ? revenue : attendance
+                        const max =
+                          gaugeMetric === 'revenue'
+                            ? Math.max(5000, revenue * 1.2)
+                            : Math.max(100, attendance * 1.2)
+                        const percent = Math.min(value / (max || 1), 1)
+                        const angle = percent * 180
+                        return (
+                          <div
+                            key={barber.id}
+                            className="flex flex-col items-center justify-center p-4 border rounded-xl bg-card/50"
+                          >
+                            <h4 className="font-semibold mb-4 text-center">{barber.name}</h4>
+                            <svg
+                              width="160"
+                              height="80"
+                              viewBox="0 0 160 80"
+                              className="overflow-visible"
+                            >
+                              <path
+                                d="M 20 80 A 60 60 0 0 1 140 80"
+                                fill="none"
+                                stroke="currentColor"
+                                className="text-muted/30"
+                                strokeWidth="20"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M 20 80 A 60 60 0 0 1 140 80"
+                                fill="none"
+                                stroke="currentColor"
+                                className="text-primary transition-all duration-1000 ease-out"
+                                strokeWidth="20"
+                                strokeLinecap="round"
+                                strokeDasharray="188.5"
+                                strokeDashoffset={188.5 - percent * 188.5}
+                              />
+                              <g
+                                transform={`translate(80, 80) rotate(${angle - 90})`}
+                                className="transition-all duration-1000 ease-out"
+                              >
+                                <polygon
+                                  points="-4,0 4,0 0,-50"
+                                  fill="currentColor"
+                                  className="text-foreground"
+                                />
+                                <circle
+                                  cx="0"
+                                  cy="0"
+                                  r="6"
+                                  fill="currentColor"
+                                  className="text-foreground"
+                                />
+                              </g>
+                            </svg>
+                            <div className="mt-4 text-center">
+                              <div className="text-2xl font-bold">
+                                {gaugeMetric === 'revenue'
+                                  ? new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(value)
+                                  : value}
+                              </div>
+                              <div className="text-xs text-muted-foreground uppercase tracking-wider mt-1">
+                                {gaugeMetric === 'revenue' ? 'Faturamento' : 'Atendimentos'}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {hasAccess('dash_block_history') && (
-              <Card className="bg-glass border-none w-full">
+              <Card className="bg-glass border-none w-full mt-4">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Histórico de Vendas (Receita)
@@ -976,7 +1086,7 @@ export default function Index() {
                 <Table className="min-w-[600px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Data</TableHead>
+                      <TableHead>Data e Hora</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Profissional</TableHead>
                       <TableHead>Método de Pagamento</TableHead>
@@ -995,7 +1105,7 @@ export default function Index() {
                       return (
                         <TableRow key={`apt_${a.id}`}>
                           <TableCell>
-                            {a.date ? format(new Date(a.date), 'dd/MM/yyyy') : ''}
+                            {a.updated ? format(new Date(a.updated), 'dd/MM/yyyy HH:mm') : ''}
                           </TableCell>
                           <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
                           <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
@@ -1016,7 +1126,7 @@ export default function Index() {
                       return (
                         <TableRow key={`prod_${p.id}`}>
                           <TableCell>
-                            {p.date ? format(new Date(p.date), 'dd/MM/yyyy') : ''}
+                            {p.updated ? format(new Date(p.updated), 'dd/MM/yyyy HH:mm') : ''}
                           </TableCell>
                           <TableCell>{p.expand?.client_id?.name || 'Avulso'}</TableCell>
                           <TableCell>{p.expand?.barber_id?.name || '-'}</TableCell>
@@ -1037,7 +1147,7 @@ export default function Index() {
                       )
                       return (
                         <TableRow key={`pkg_${pkg.id}`}>
-                          <TableCell>{format(new Date(pkg.created), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell>{format(new Date(pkg.created), 'dd/MM/yyyy HH:mm')}</TableCell>
                           <TableCell>{pkg.expand?.client_id?.name || 'Avulso'}</TableCell>
                           <TableCell>{pkg.expand?.barber_id?.name || '-'}</TableCell>
                           <TableCell>{translateMethod(comm?.payment_method || '-')}</TableCell>

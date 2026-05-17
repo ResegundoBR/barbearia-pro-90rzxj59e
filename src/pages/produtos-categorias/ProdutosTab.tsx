@@ -321,8 +321,7 @@ export function ProdutosTab() {
               <TableHead>Estoque</TableHead>
               <TableHead>Custo</TableHead>
               <TableHead>Preço Venda</TableHead>
-              <TableHead>Total Custo</TableHead>
-              <TableHead>Total Venda</TableHead>
+              <TableHead>Total da Compra</TableHead>
               <TableHead>Margem</TableHead>
               <TableHead>Última Compra</TableHead>
               <TableHead>Status</TableHead>
@@ -384,17 +383,13 @@ export function ProdutosTab() {
                         {price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {totalCost.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      })}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {totalSales.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      })}
+                    <TableCell className="whitespace-nowrap font-medium text-emerald-600">
+                      {lastPurchase?.price_paid
+                        ? lastPurchase.price_paid.toLocaleString('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          })
+                        : '-'}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <span
@@ -412,10 +407,9 @@ export function ProdutosTab() {
                     <TableCell>
                       {lastPurchase ? (
                         <div className="text-xs whitespace-nowrap">
-                          {lastPurchase.price_paid?.toLocaleString('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          })}
+                          {lastPurchase.purchase_date
+                            ? new Date(lastPurchase.purchase_date).toLocaleDateString('pt-BR')
+                            : ''}
                           <br />
                           <span className="text-muted-foreground">
                             {lastPurchase.expand?.supplier_id?.name}

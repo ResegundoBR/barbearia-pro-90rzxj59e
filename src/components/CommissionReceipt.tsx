@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Check, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import pb from '@/lib/pocketbase/client'
 
 export interface ReceiptItem {
   clientName: string
   serviceName: string
   serviceValue: number
   commissionValue: number
+  paymentMethodType?: string
+  commissionRate?: number
 }
 
 interface CommissionReceiptProps {
@@ -19,6 +22,11 @@ interface CommissionReceiptProps {
 
 export function CommissionReceipt({ date, barberName, items, totalPaid }: CommissionReceiptProps) {
   const [copied, setCopied] = useState(false)
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([])
+
+  useEffect(() => {
+    pb.collection('payment_methods').getFullList().then(setPaymentMethods).catch(console.error)
+  }, [])
 
   const handleCopy = () => {
     let text = `================================\n`
@@ -28,13 +36,25 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
     text += `Profissional: ${barberName}\n\n`
     text += `DETALHES DOS SERVIÇOS:\n`
     text += `--------------------------------\n`
+
     items.forEach((item) => {
+      const pm = paymentMethods.find((p) => p.type === item.paymentMethodType)
+      const feePercentage = pm?.fee_percentage || 0
+      const feeValue = item.serviceValue * (feePercentage / 100)
+      const grossCommission = item.commissionRate
+        ? item.serviceValue * (item.commissionRate / 100)
+        : item.commissionValue + feeValue
+      const netCommission = grossCommission - feeValue
+
       text += `Nome do Cliente  : ${item.clientName}\n`
       text += `Serviço          : ${item.serviceName}\n`
       text += `Valor do Serviço : R$ ${item.serviceValue.toFixed(2)}\n`
-      text += `Valor da Comissão: R$ ${item.commissionValue.toFixed(2)}\n`
+      text += `Comissão Bruta   : R$ ${grossCommission.toFixed(2)}\n`
+      text += `Taxa Financeira  : - R$ ${feeValue.toFixed(2)}\n`
+      text += `Total a Pagar    : R$ ${netCommission.toFixed(2)}\n`
       text += `--------------------------------\n`
     })
+
     text += `\nValor Total Pago: R$ ${totalPaid.toFixed(2)}\n`
     text += `================================\n`
 
@@ -56,28 +76,51 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
       </div>
 
       <div className="space-y-4 mb-6 border-b border-dashed border-gray-400 pb-6">
-        {items.map((item, i) => (
-          <div key={i} className="text-sm space-y-2 border border-gray-200 p-3 rounded bg-gray-50">
-            <div className="flex justify-between border-b border-gray-200 pb-1">
-              <span className="text-gray-500 text-xs uppercase">Nome do Cliente</span>
-              <span className="font-bold truncate max-w-[150px]">{item.clientName}</span>
+        {items.map((item, i) => {
+          const pm = paymentMethods.find((p) => p.type === item.paymentMethodType)
+          const feePercentage = pm?.fee_percentage || 0
+          const feeValue = item.serviceValue * (feePercentage / 100)
+          const grossCommission = item.commissionRate
+            ? item.serviceValue * (item.commissionRate / 100)
+            : item.commissionValue + feeValue
+          const netCommission = grossCommission - feeValue
+
+          return (
+            <div
+              key={i}
+              className="text-sm space-y-2 border border-gray-200 p-3 rounded bg-gray-50"
+            >
+              <div className="flex justify-between border-b border-gray-200 pb-1">
+                <span className="text-gray-500 text-xs uppercase">Nome do Cliente</span>
+                <span className="font-bold truncate max-w-[150px]">{item.clientName}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 pb-1">
+                <span className="text-gray-500 text-xs uppercase">Serviço</span>
+                <span className="font-semibold truncate max-w-[150px]">{item.serviceName}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 pb-1">
+                <span className="text-gray-500 text-xs uppercase">Valor do Serviço</span>
+                <span>R$ {item.serviceValue.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 pb-1">
+                <span className="text-gray-500 text-xs uppercase">Comissão Bruta</span>
+                <span>R$ {grossCommission.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 pb-1">
+                <span className="text-gray-500 text-xs uppercase text-red-600">
+                  Taxa Financeira
+                </span>
+                <span className="text-red-600">- R$ {feeValue.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between pt-1">
+                <span className="text-gray-500 text-xs uppercase font-bold text-primary">
+                  Total a Pagar
+                </span>
+                <span className="font-bold text-primary">R$ {netCommission.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex justify-between border-b border-gray-200 pb-1">
-              <span className="text-gray-500 text-xs uppercase">Serviço</span>
-              <span className="font-semibold truncate max-w-[150px]">{item.serviceName}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-200 pb-1">
-              <span className="text-gray-500 text-xs uppercase">Valor do Serviço</span>
-              <span>R$ {item.serviceValue.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between pt-1">
-              <span className="text-gray-500 text-xs uppercase font-bold text-primary">
-                Valor da Comissão
-              </span>
-              <span className="font-bold text-primary">R$ {item.commissionValue.toFixed(2)}</span>
-            </div>
-          </div>
-        ))}
+          )
+        })}
         {items.length === 0 && (
           <div className="text-center text-xs text-gray-500 italic">Nenhum serviço listado</div>
         )}
