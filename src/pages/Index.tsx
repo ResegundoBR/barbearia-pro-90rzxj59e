@@ -591,17 +591,32 @@ export default function Index() {
               <Card className="bg-glass border-none w-full mt-4">
                 <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
-                    Desempenho da Equipe
+                    DESEMPENHO DA EQUIPE
                   </CardTitle>
-                  <Select value={gaugeMetric} onValueChange={(v: any) => setGaugeMetric(v)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="revenue">Faturamento</SelectItem>
-                      <SelectItem value="attendance">Atendimentos</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2 bg-muted p-1 rounded-md">
+                    <button
+                      onClick={() => setGaugeMetric('revenue')}
+                      className={cn(
+                        'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+                        gaugeMetric === 'revenue'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:bg-background/50',
+                      )}
+                    >
+                      Faturamento
+                    </button>
+                    <button
+                      onClick={() => setGaugeMetric('attendance')}
+                      className={cn(
+                        'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+                        gaugeMetric === 'attendance'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:bg-background/50',
+                      )}
+                    >
+                      Atendimento
+                    </button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-4 pb-6">
@@ -627,6 +642,19 @@ export default function Index() {
                             : Math.max(100, attendance * 1.2)
                         const percent = Math.min(value / (max || 1), 1)
                         const angle = percent * 180
+
+                        const BARBER_COLORS = [
+                          '#f97316',
+                          '#3b82f6',
+                          '#10b981',
+                          '#a855f7',
+                          '#ef4444',
+                          '#eab308',
+                        ]
+                        const bIndex = barbers.findIndex((b) => b.id === barber.id)
+                        const activeColor =
+                          barber.color || BARBER_COLORS[bIndex % BARBER_COLORS.length]
+
                         return (
                           <div
                             key={barber.id}
@@ -650,8 +678,8 @@ export default function Index() {
                               <path
                                 d="M 20 80 A 60 60 0 0 1 140 80"
                                 fill="none"
-                                stroke="currentColor"
-                                className="text-primary transition-all duration-1000 ease-out"
+                                stroke={activeColor}
+                                className="transition-all duration-1000 ease-out"
                                 strokeWidth="20"
                                 strokeLinecap="round"
                                 strokeDasharray="188.5"
@@ -925,9 +953,11 @@ export default function Index() {
 
       {activeTab === 'financial' && (
         <FinancialView
+          completedPeriod={completedPeriod}
+          productPurchasesPeriod={productPurchasesPeriod}
+          packagesPeriod={packagesPeriod}
           commissions={filteredCommissions}
           isAdmin={isAdmin}
-          onOpenAdvanceModal={() => setAdvanceModalOpen(true)}
           effectiveBarberFilter={effectiveBarberFilter}
         />
       )}

@@ -1,227 +1,191 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { CommissionReceipt, ReceiptItem } from '@/components/CommissionReceipt'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { format } from 'date-fns'
-import pb from '@/lib/pocketbase/client'
-import { useToast } from '@/hooks/use-toast'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
+import { ArrowDownCircle, DollarSign, Wallet } from 'lucide-react'
 
 export function FinancialView({
+  completedPeriod,
+  productPurchasesPeriod,
+  packagesPeriod,
   commissions,
   isAdmin,
-  onOpenAdvanceModal,
   effectiveBarberFilter,
 }: any) {
-  const { toast } = useToast()
-  const [appointments, setAppointments] = useState<any[]>([])
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([])
-  const [barbers, setBarbers] = useState<any[]>([])
-  const [receiptModal, setReceiptModal] = useState<{
-    open: boolean
-    barberId?: string
-    items?: ReceiptItem[]
-    total?: number
-  }>({ open: false })
+  const serviceRevenue = completedPeriod.reduce(
+    (acc: number, curr: any) => acc + (curr.price || curr.expand?.service_id?.price || 0),
+    0,
+  )
+  const productRevenue = productPurchasesPeriod.reduce(
+    (acc: number, curr: any) => acc + (curr.price_at_sale || curr.expand?.product_id?.price || 0),
+    0,
+  )
+  const packagesRevenue = packagesPeriod.reduce(
+    (acc: number, curr: any) => acc + (curr.expand?.package_id?.price || 0),
+    0,
+  )
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [apts, pms, barbs] = await Promise.all([
-          pb.collection('appointments').getFullList({ expand: 'client_id,service_id,barber_id' }),
-          pb.collection('payment_methods').getFullList(),
-          pb.collection('barbers').getFullList(),
-        ])
-        setAppointments(apts)
-        setPaymentMethods(pms)
-        setBarbers(barbs)
-      } catch (e) {
-        console.error(e)
+  const totalRevenue = serviceRevenue + productRevenue + packagesRevenue
+
+  const paymentMethodsDist = useMemo(() => {
+    const methods: Record<string, number> = {}
+
+    const addVal = (item: any, type: string, val: number) => {
+      let comm
+      if (type === 'service') {
+        comm = commissions.find(
+          (c: any) =>
+            c.barber_id === item.barber_id &&
+            c.type === type &&
+            Math.abs(new Date(c.created).getTime() - new Date(item.updated).getTime()) < 15000,
+        )
+      } else {
+        comm = commissions.find(
+          (c: any) =>
+            c.type === type &&
+            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
+        )
       }
+      const method = comm?.payment_method || 'other'
+      methods[method] = (methods[method] || 0) + val
     }
-    load()
-  }, [])
 
-  const pendingCommissions = useMemo(() => {
-    return commissions.filter((c: any) => c.status === 'pending' || c.status === 'available')
-  }, [commissions])
+    completedPeriod.forEach((a: any) =>
+      addVal(a, 'service', a.price || a.expand?.service_id?.price || 0),
+    )
+    productPurchasesPeriod.forEach((p: any) =>
+      addVal(p, 'product', p.price_at_sale || p.expand?.product_id?.price || 0),
+    )
+    packagesPeriod.forEach((pkg: any) => addVal(pkg, 'package', pkg.expand?.package_id?.price || 0))
 
-  const groupedCommissions = useMemo(() => {
-    const groups: Record<string, { barberName: string; commissions: any[]; total: number }> = {}
+    return Object.entries(methods)
+      .map(([name, value]) => ({ name: translateMethod(name), value }))
+      .sort((a, b) => b.value - a.value)
+  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions])
 
-    pendingCommissions.forEach((c: any) => {
-      if (effectiveBarberFilter !== 'all' && c.barber_id !== effectiveBarberFilter) return
+  const totalCosts = commissions.reduce((acc: number, c: any) => acc + (c.amount || 0), 0)
 
-      const barber = barbers.find((b) => b.id === c.barber_id)
-      if (!barber) return
+  const netBalance = totalRevenue - totalCosts
 
-      if (!groups[c.barber_id]) {
-        groups[c.barber_id] = { barberName: barber.name, commissions: [], total: 0 }
-      }
-      groups[c.barber_id].commissions.push(c)
-      groups[c.barber_id].total += c.amount
+  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#6b7280']
+
+  const chartConfig = useMemo(() => {
+    const cfg: Record<string, any> = {}
+    paymentMethodsDist.forEach((item, i) => {
+      cfg[item.name] = { label: item.name, color: COLORS[i % COLORS.length] }
     })
-
-    return Object.entries(groups).map(([id, data]) => ({ barberId: id, ...data }))
-  }, [pendingCommissions, effectiveBarberFilter, barbers])
-
-  const handlePay = async (barberId: string, comms: any[]) => {
-    if (!confirm('Confirmar o pagamento das comissões selecionadas?')) return
-
-    try {
-      await Promise.all(
-        comms.map((c) => pb.collection('commissions').update(c.id, { status: 'paid' })),
-      )
-      toast({ title: 'Comissões pagas com sucesso!' })
-      generateReceipt(barberId, comms)
-    } catch (e) {
-      toast({ title: 'Erro ao pagar comissões', variant: 'destructive' })
-    }
-  }
-
-  const generateReceipt = (barberId: string, comms: any[]) => {
-    const items: ReceiptItem[] = []
-    let total = 0
-
-    comms.forEach((c) => {
-      const apt = appointments.find(
-        (a) =>
-          a.barber_id === c.barber_id &&
-          a.status === 'Concluído' &&
-          Math.abs(new Date(a.updated).getTime() - new Date(c.created).getTime()) < 60000,
-      )
-
-      const pm = paymentMethods.find((m) => m.type === c.payment_method)
-      const feePercent = pm?.fee_percentage || 0
-
-      let serviceValue = apt ? apt.price || apt.expand?.service_id?.price || 0 : 0
-      let clientName = apt ? apt.expand?.client_id?.name || 'Avulso' : 'Desconhecido'
-      let serviceName = apt
-        ? apt.expand?.service_id?.name || 'Serviço'
-        : c.type === 'product'
-          ? 'Produto'
-          : 'Avulso'
-
-      const barber = barbers.find((b) => b.id === c.barber_id)
-      const commissionRate = barber?.commission_value || 50
-
-      const grossCommission = serviceValue > 0 ? serviceValue * (commissionRate / 100) : c.amount
-      const financialFee = serviceValue > 0 ? serviceValue * (feePercent / 100) : 0
-      const netCommission = serviceValue > 0 ? grossCommission - financialFee : c.amount
-
-      total += netCommission
-
-      items.push({
-        clientName,
-        serviceName,
-        serviceValue: serviceValue || c.amount,
-        commissionValue: netCommission,
-        grossCommission: serviceValue > 0 ? grossCommission : undefined,
-        financialFee: serviceValue > 0 && financialFee > 0 ? financialFee : undefined,
-        commissionRate: serviceValue > 0 ? commissionRate : undefined,
-      })
-    })
-
-    setReceiptModal({ open: true, barberId, items, total })
-  }
+    return cfg
+  }, [paymentMethodsDist])
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold">Comissões Pendentes</h3>
-        {isAdmin && (
-          <Button variant="outline" onClick={onOpenAdvanceModal}>
-            Registrar Vale/Adiantamento
-          </Button>
-        )}
-      </div>
-
-      {groupedCommissions.length === 0 ? (
-        <Card className="border-dashed bg-transparent">
-          <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-            <p>Nenhuma comissão pendente no momento.</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Faturamento Bruto
+            </CardTitle>
+            <DollarSign className="size-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-500">R$ {totalRevenue.toFixed(2)}</div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {groupedCommissions.map((group) => (
-            <Card key={group.barberId}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex justify-between">
-                  <span>{group.barberName}</span>
-                  <span className="text-primary font-bold">R$ {group.total.toFixed(2)}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-2">
-                    {group.commissions.map((c: any) => {
-                      const apt = appointments.find(
-                        (a) =>
-                          a.barber_id === c.barber_id &&
-                          a.status === 'Concluído' &&
-                          Math.abs(new Date(a.updated).getTime() - new Date(c.created).getTime()) <
-                            60000,
-                      )
-                      const timeStr = apt
-                        ? format(new Date(apt.updated), 'dd/MM/yyyy HH:mm')
-                        : format(new Date(c.created), 'dd/MM/yyyy HH:mm')
-                      const clientName = apt
-                        ? apt.expand?.client_id?.name || 'Avulso'
-                        : c.type === 'product'
-                          ? 'Venda de Produto'
-                          : 'Avulso'
-                      return (
-                        <div
-                          key={c.id}
-                          className="flex justify-between text-sm items-center border-b pb-1 last:border-0 last:pb-0"
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-medium">{clientName}</span>
-                            <span className="text-xs text-muted-foreground">{timeStr}</span>
-                          </div>
-                          <span className="font-semibold text-primary">
-                            R$ {c.amount.toFixed(2)}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  {isAdmin ? (
-                    <Button
-                      className="w-full"
-                      onClick={() => handlePay(group.barberId, group.commissions)}
-                    >
-                      Pagar e Gerar Recibo
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant="secondary"
-                      onClick={() => generateReceipt(group.barberId, group.commissions)}
-                    >
-                      Visualizar Recibo
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Custos (Comissões)
+            </CardTitle>
+            <ArrowDownCircle className="size-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-500">R$ {totalCosts.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Saldo Líquido
+            </CardTitle>
+            <Wallet className="size-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-500">R$ {netBalance.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Dialog open={receiptModal.open} onOpenChange={(v) => !v && setReceiptModal({ open: false })}>
-        <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden bg-transparent border-none shadow-none">
-          {receiptModal.items && (
-            <CommissionReceipt
-              date={new Date()}
-              barberName={barbers.find((b) => b.id === receiptModal.barberId)?.name || ''}
-              items={receiptModal.items}
-              totalPaid={receiptModal.total || 0}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Métodos de Pagamento</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {paymentMethodsDist.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-full w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={paymentMethodsDist}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {paymentMethodsDist.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Nenhum dado para o período.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumo de Receitas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 mt-4">
+              <div className="flex justify-between items-center border-b pb-2">
+                <span className="text-muted-foreground">Serviços</span>
+                <span className="font-medium">R$ {serviceRevenue.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center border-b pb-2">
+                <span className="text-muted-foreground">Produtos</span>
+                <span className="font-medium">R$ {productRevenue.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center border-b pb-2">
+                <span className="text-muted-foreground">Pacotes</span>
+                <span className="font-medium">R$ {packagesRevenue.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="font-bold">Total</span>
+                <span className="font-bold text-emerald-500">R$ {totalRevenue.toFixed(2)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
+}
+
+function translateMethod(m: string) {
+  if (m === 'cash') return 'Dinheiro'
+  if (m === 'pix') return 'Pix'
+  if (m === 'debito') return 'Débito'
+  if (m === 'credito') return 'Crédito'
+  if (m === 'other') return 'Outro'
+  return m
 }
