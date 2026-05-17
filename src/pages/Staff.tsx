@@ -288,12 +288,7 @@ export default function Staff() {
             basePrice: pk.expand?.package_id?.price || 0,
           }
         }),
-      ]
-        .filter((i) => {
-          if (!i.commission || i.commission <= 0) return false
-          return true
-        })
-        .sort((a, b) => b.commDate.getTime() - a.commDate.getTime())
+      ].sort((a, b) => b.commDate.getTime() - a.commDate.getTime())
 
       setReportItems(items)
     } catch (e) {
@@ -545,7 +540,9 @@ export default function Staff() {
       (i) =>
         i.client === ticketItem.client &&
         Math.abs(i.commDate.getTime() - ticketItem.commDate.getTime()) < 60000 &&
-        i.commissionObj?.payment_method === ticketItem.commissionObj?.payment_method,
+        (!i.commissionObj ||
+          !ticketItem.commissionObj ||
+          i.commissionObj.payment_method === ticketItem.commissionObj.payment_method),
     )
 
     const pmType = ticketItem.commissionObj?.payment_method || 'other'
@@ -555,41 +552,55 @@ export default function Staff() {
     )
     const feePercentage = matchedPm?.fee_percentage || 0
 
-    const services = transactionItems.filter((i) => i.type === 'Serviço')
-    const products = transactionItems.filter((i) => i.type === 'Produto')
-    const others = transactionItems.filter((i) => i.type === 'Pacote' || i.type === 'Categoria')
-
-    const servicesTotal = services.reduce((acc, i) => acc + i.price, 0)
-    const productsTotal = products.reduce((acc, i) => acc + i.price, 0)
-    const othersTotal = others.reduce((acc, i) => acc + i.price, 0)
-
-    const totalPaid = servicesTotal + productsTotal + othersTotal
-    const totalDiscount = transactionItems.reduce(
-      (acc, i) => acc + Math.max(0, i.basePrice - i.price),
-      0,
+    const commissionableItems = transactionItems.filter((i) => i.commission > 0)
+    const nonCommissionableItems = transactionItems.filter(
+      (i) => !i.commission || i.commission <= 0,
     )
 
-    const dbTotalCommission = transactionItems.reduce((acc, i) => acc + (i.commission || 0), 0)
+    const nonCommProducts = nonCommissionableItems.filter((i) => i.type === 'Produto')
+    const nonCommOthers = nonCommissionableItems.filter((i) => i.type !== 'Produto')
 
-    let impliedGrossCommission = dbTotalCommission
-    if (feePercentage > 0 && feePercentage < 100) {
-      impliedGrossCommission = dbTotalCommission / (1 - feePercentage / 100)
-    }
+    const totalPaid = transactionItems.reduce((acc, i) => acc + i.price, 0)
+    const commissionBase = commissionableItems.reduce((acc, i) => acc + i.price, 0)
 
-    const feeDeduction = impliedGrossCommission - dbTotalCommission
-
-    const isSocio = selectedBarberDetailed?.work_level === 'socio'
-    let commissionRate = selectedBarberDetailed?.commission_value || 0
-    if (isSocio) commissionRate = 100
-
-    if (!commissionRate || commissionRate === 0) {
-      const commGeneratingTotal = transactionItems
-        .filter((i) => i.commission > 0)
-        .reduce((acc, i) => acc + i.price, 0)
-      if (commGeneratingTotal > 0) {
-        commissionRate = Math.round((impliedGrossCommission / commGeneratingTotal) * 100)
+    // Gross commission per item
+    const itemsWithGross = commissionableItems.map((i) => {
+      let gross = i.commission
+      if (feePercentage > 0 && feePercentage < 100) {
+        gross = i.commission / (1 - feePercentage / 100)
       }
-    }
+      return { ...i, grossCommission: gross }
+    })
+
+    const grossTotal = itemsWithGross.reduce((acc, i) => acc + i.grossCommission, 0)
+    const netTotal = transactionItems.reduce((acc, i) => acc + (i.commission || 0), 0)
+    const feeDeduction = grossTotal - netTotal
+
+    // Grouping for memory calculation
+    const commGroups = itemsWithGross.reduce((acc: any, i) => {
+      if (!acc[i.type]) {
+        acc[i.type] = { type: i.type, base: 0, gross: 0, count: 0 }
+      }
+      acc[i.type].base += i.price
+      acc[i.type].gross += i.grossCommission
+      acc[i.type].count += 1
+      return acc
+    }, {})
+
+    const memoryLines = Object.values(commGroups).map((g: any) => {
+      // Find the percentage
+      let rateStr = ''
+      if (g.base > 0) {
+        const pct = Math.round((g.gross / g.base) * 100)
+        rateStr = `${pct}%`
+      } else {
+        rateStr = 'Fixo'
+      }
+      return {
+        label: `Comissão ${g.type}s (${rateStr})`,
+        value: g.gross,
+      }
+    })
 
     const isPackageUse = ticketItem.packageUsed
     const paymentMethodName = isPackageUse
@@ -602,22 +613,17 @@ export default function Staff() {
       date: ticketItem.date || ticketItem.commDate,
       paymentMethodName,
 
-      services,
-      products,
-      others,
-
-      servicesTotal,
-      productsTotal,
-      othersTotal,
       totalPaid,
-      totalDiscount,
+      nonCommProducts,
+      nonCommOthers,
+      commissionableItems,
+      commissionBase,
 
+      memoryLines,
       feePercentage,
       feeDeduction,
 
-      grossCommission: impliedGrossCommission,
-      netCommission: dbTotalCommission,
-      commissionRate,
+      netCommission: netTotal,
     }
   }, [ticketItem, selectedBarberDetailed, paymentMethods, reportItems])
 
@@ -895,63 +901,65 @@ export default function Staff() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportItems.map((item, i) => (
-                    <TableRow key={`${item.id}-${i}`}>
-                      <TableCell>
-                        {format(item.date, 'dd/MM/yyyy')} às {item.time}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            item.type === 'Serviço'
-                              ? 'bg-blue-100 text-blue-800 border-blue-200'
-                              : item.type === 'Produto'
-                                ? 'bg-purple-100 text-purple-800 border-purple-200'
-                                : 'bg-gray-100 text-gray-800 border-gray-200'
-                          }
-                        >
-                          {item.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{item.item}</TableCell>
-                      <TableCell>{item.client}</TableCell>
-                      <TableCell>
-                        {selectedBarberDetailed?.work_level === 'socio' ? (
-                          <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
-                            Pago na hora
+                  {reportItems
+                    .filter((i) => i.commission > 0)
+                    .map((item, i) => (
+                      <TableRow key={`${item.id}-${i}`}>
+                        <TableCell>
+                          {format(item.date, 'dd/MM/yyyy')} às {item.time}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              item.type === 'Serviço'
+                                ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                : item.type === 'Produto'
+                                  ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                  : 'bg-gray-100 text-gray-800 border-gray-200'
+                            }
+                          >
+                            {item.type}
                           </Badge>
-                        ) : (
-                          <span className="font-medium text-amber-600">
-                            {item.dueDate
-                              ? format(item.dueDate, 'dd/MM/yyyy')
-                              : format(
-                                  getNextPayDate(
-                                    item.commDate,
-                                    selectedBarberDetailed?.payment_schedule_config,
-                                  ),
-                                  'dd/MM/yyyy',
-                                )}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-right font-semibold text-emerald-600">
-                        R$ {item.commission.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setTicketItem(item)}
-                          title="Memória de Cálculo"
-                        >
-                          <Receipt className="size-4 text-slate-600" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {reportItems.length === 0 && (
+                        </TableCell>
+                        <TableCell>{item.item}</TableCell>
+                        <TableCell>{item.client}</TableCell>
+                        <TableCell>
+                          {selectedBarberDetailed?.work_level === 'socio' ? (
+                            <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
+                              Pago na hora
+                            </Badge>
+                          ) : (
+                            <span className="font-medium text-amber-600">
+                              {item.dueDate
+                                ? format(item.dueDate, 'dd/MM/yyyy')
+                                : format(
+                                    getNextPayDate(
+                                      item.commDate,
+                                      selectedBarberDetailed?.payment_schedule_config,
+                                    ),
+                                    'dd/MM/yyyy',
+                                  )}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-semibold text-emerald-600">
+                          R$ {item.commission.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setTicketItem(item)}
+                            title="Memória de Cálculo"
+                          >
+                            <Receipt className="size-4 text-slate-600" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {reportItems.filter((i) => i.commission > 0).length === 0 && (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Nenhuma comissão registrada para este período.
@@ -960,7 +968,7 @@ export default function Staff() {
                   )}
                 </TableBody>
               </Table>
-              {reportItems.length > 0 && (
+              {reportItems.filter((i) => i.commission > 0).length > 0 && (
                 <div className="summary flex flex-col gap-2 mt-6">
                   <div className="flex justify-between items-center text-lg">
                     <span>Total de Comissões no Período:</span>
@@ -1437,125 +1445,112 @@ export default function Staff() {
         </DialogContent>
       </Dialog>
       <Dialog open={!!ticketItem} onOpenChange={(v) => !v && setTicketItem(null)}>
-        <DialogContent className="sm:max-w-md bg-[#fcfaf8] text-slate-800 border-none shadow-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex flex-col items-center justify-center space-y-2 border-b border-dashed border-slate-300 pb-4">
-              <Receipt className="size-8 text-primary" />
-              <span className="text-xl font-bold uppercase tracking-widest text-slate-700">
-                Ticket de Comissão
+        <DialogContent className="sm:max-w-sm bg-white text-black font-mono shadow-xl max-h-[90vh] overflow-y-auto rounded-md border border-gray-300">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="flex flex-col items-center justify-center space-y-2">
+              <Receipt className="size-8 text-black" />
+              <span className="text-xl font-bold uppercase tracking-widest text-black">
+                Recibo de Comissão
               </span>
             </DialogTitle>
           </DialogHeader>
 
           {ticketData && (
-            <div className="space-y-4 font-mono text-sm py-2">
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Profissional:</span>
-                  <span className="font-semibold text-right max-w-[200px] truncate">
-                    {ticketData.professionalName}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Cliente:</span>
-                  <span className="font-semibold text-right max-w-[200px] truncate">
-                    {ticketData.clientName}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Data:</span>
-                  <span className="font-semibold">{format(ticketData.date, 'dd/MM/yyyy')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Método de Pgto:</span>
-                  <span className="font-semibold">{ticketData.paymentMethodName}</span>
-                </div>
+            <div className="space-y-4 text-sm">
+              <div className="space-y-1 text-center border-b border-dashed border-gray-400 pb-4">
+                <p className="font-bold text-base uppercase tracking-wider">{businessName}</p>
+                <p className="text-gray-600">Profissional: {ticketData.professionalName}</p>
+                <p className="text-gray-600">Cliente: {ticketData.clientName}</p>
+                <p className="text-gray-600">{format(ticketData.date, 'dd/MM/yyyy HH:mm')}</p>
+                <p className="text-gray-600">Pgto: {ticketData.paymentMethodName}</p>
               </div>
 
-              <div className="border-t border-dashed border-slate-300 my-2" />
-
-              <div className="space-y-1">
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span>Resumo da Transação</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Total Pago</span>
-                  <span className="font-semibold">R$ {ticketData.totalPaid.toFixed(2)}</span>
-                </div>
-                {ticketData.productsTotal > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Produtos</span>
-                    <span>R$ {ticketData.productsTotal.toFixed(2)}</span>
-                  </div>
-                )}
-                {ticketData.othersTotal > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Outros</span>
-                    <span>R$ {ticketData.othersTotal.toFixed(2)}</span>
-                  </div>
-                )}
-                {ticketData.totalDiscount > 0 && (
-                  <div className="flex justify-between text-red-500">
-                    <span>Desconto</span>
-                    <span>- R$ {ticketData.totalDiscount.toFixed(2)}</span>
-                  </div>
-                )}
+              <div className="flex justify-between font-bold text-base bg-gray-100 p-2 rounded">
+                <span>Total Pago:</span>
+                <span>R$ {ticketData.totalPaid.toFixed(2)}</span>
               </div>
 
-              <div className="border-t border-dashed border-slate-300 my-2" />
-
-              {ticketData.services.length > 0 && (
-                <>
-                  <div className="space-y-1">
-                    <div className="flex justify-between font-bold text-slate-700 mb-1">
-                      <span>Serviços Realizados</span>
+              {ticketData.nonCommProducts.length > 0 && (
+                <div className="space-y-1">
+                  <p className="font-bold uppercase text-gray-500 text-xs mt-4 mb-2">
+                    Produtos (Sem Comissão)
+                  </p>
+                  {ticketData.nonCommProducts.map((p: any, i: number) => (
+                    <div key={i} className="flex justify-between text-gray-500">
+                      <span className="truncate max-w-[200px]">{p.item}</span>
+                      <span>R$ {p.price.toFixed(2)}</span>
                     </div>
-                    {ticketData.services.map((svc: any, i: number) => (
-                      <div key={i} className="flex justify-between">
-                        <span className="text-slate-500">{svc.item}</span>
-                        <span>R$ {svc.price.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="border-t border-dashed border-slate-300 my-2" />
-                </>
+                  ))}
+                  <div className="border-t border-dashed border-gray-300 my-2" />
+                </div>
+              )}
+
+              {ticketData.nonCommOthers.length > 0 && (
+                <div className="space-y-1">
+                  <p className="font-bold uppercase text-gray-500 text-xs mt-4 mb-2">
+                    Outros (Sem Comissão)
+                  </p>
+                  {ticketData.nonCommOthers.map((p: any, i: number) => (
+                    <div key={i} className="flex justify-between text-gray-500">
+                      <span className="truncate max-w-[200px]">{p.item}</span>
+                      <span>R$ {p.price.toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className="border-t border-dashed border-gray-300 my-2" />
+                </div>
               )}
 
               <div className="space-y-1">
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span>Cálculo de Comissão</span>
-                </div>
-                <div className="flex justify-between text-emerald-700 font-semibold">
-                  <span>Comissão {ticketData.commissionRate}%</span>
-                  <span>R$ {ticketData.grossCommission.toFixed(2)}</span>
-                </div>
+                <p className="font-bold uppercase text-gray-800 text-xs mt-4 mb-2">
+                  Itens Comissionáveis
+                </p>
+                {ticketData.commissionableItems.map((i: any, idx: number) => (
+                  <div key={idx} className="flex justify-between text-gray-800">
+                    <span className="truncate max-w-[200px]">{i.item}</span>
+                    <span>R$ {i.price.toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="flex justify-between font-bold text-sm pt-2">
+                <span>Total Base de Cálculo:</span>
+                <span>R$ {ticketData.commissionBase.toFixed(2)}</span>
+              </div>
+
+              <div className="border-t border-dashed border-gray-400 my-4" />
 
               <div className="space-y-1">
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span>Deduções</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">
-                    Taxa Financeira ({ticketData.feePercentage}%)
-                  </span>
-                  <span className="text-red-500">- R$ {ticketData.feeDeduction.toFixed(2)}</span>
-                </div>
+                <p className="font-bold uppercase text-gray-800 text-xs mb-2">Memória de Cálculo</p>
+                {ticketData.memoryLines.map((line: any, idx: number) => (
+                  <div key={idx} className="flex justify-between text-gray-800">
+                    <span>{line.label}</span>
+                    <span>R$ {line.value.toFixed(2)}</span>
+                  </div>
+                ))}
+
+                {ticketData.feeDeduction > 0 && (
+                  <div className="flex justify-between text-gray-600 pt-1">
+                    <span>Taxa Financeira ({ticketData.feePercentage}%):</span>
+                    <span>- R$ {ticketData.feeDeduction.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="border-t border-black border-2 my-4" />
 
-              <div className="flex justify-between items-center text-lg font-bold text-slate-800 pt-1">
-                <span>Vlr a pagar:</span>
+              <div className="flex justify-between font-black text-lg uppercase tracking-wide">
+                <span>Total a Pagar:</span>
                 <span>R$ {ticketData.netCommission.toFixed(2)}</span>
               </div>
             </div>
           )}
 
-          <DialogFooter className="border-t border-dashed border-slate-300 pt-4 mt-2">
-            <Button variant="outline" className="w-full" onClick={() => setTicketItem(null)}>
+          <DialogFooter className="mt-4 border-t border-dashed border-gray-300 pt-4">
+            <Button
+              variant="outline"
+              className="w-full font-sans border-gray-300 hover:bg-gray-100"
+              onClick={() => setTicketItem(null)}
+            >
               Fechar
             </Button>
           </DialogFooter>
