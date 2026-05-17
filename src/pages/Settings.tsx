@@ -32,6 +32,7 @@ import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
 import { Badge } from '@/components/ui/badge'
 import { CategoriasTab } from '@/pages/produtos-categorias/CategoriasTab'
+import { Switch } from '@/components/ui/switch'
 
 export default function Settings() {
   const { user } = useAuth()
