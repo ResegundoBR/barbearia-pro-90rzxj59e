@@ -1,0 +1,10 @@
+onRecordAfterCreateSuccess((e) => {
+  const stockMovements = $app.findCollectionByNameOrId('stock_movements')
+  const movement = new Record(stockMovements)
+  movement.set('product_id', e.record.get('product_id'))
+  movement.set('type', 'purchase')
+  movement.set('quantity', e.record.getInt('quantity'))
+  movement.set('description', 'Compra de estoque (Fornecedor)')
+  $app.saveNoValidate(movement)
+  e.next()
+}, 'inventory_purchases')

@@ -23,7 +23,8 @@ export function FinancialView({
   paymentMethods = [],
 }: any) {
   const serviceRevenue = completedPeriod.reduce(
-    (acc: number, curr: any) => acc + (curr.price || curr.expand?.service_id?.price || 0),
+    (acc: number, curr: any) =>
+      acc + (curr.client_package_id ? 0 : curr.price || curr.expand?.service_id?.price || 0),
     0,
   )
   const productRevenue = productPurchasesPeriod.reduce(
@@ -83,7 +84,7 @@ export function FinancialView({
     }
 
     completedPeriod.forEach((a: any) =>
-      addVal(a, 'service', a.price || a.expand?.service_id?.price || 0),
+      addVal(a, 'service', a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0),
     )
     productPurchasesPeriod.forEach((p: any) =>
       addVal(p, 'product', p.price_at_sale || p.expand?.product_id?.price || 0),
@@ -144,7 +145,11 @@ export function FinancialView({
     }
 
     completedPeriod.forEach((a: any) =>
-      addTransfer(a, 'service', a.price || a.expand?.service_id?.price || 0),
+      addTransfer(
+        a,
+        'service',
+        a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0,
+      ),
     )
     productPurchasesPeriod.forEach((p: any) =>
       addTransfer(p, 'product', p.price_at_sale || p.expand?.product_id?.price || 0),
@@ -196,7 +201,7 @@ export function FinancialView({
     }
 
     completedPeriod.forEach((a: any) =>
-      addFee(a, 'service', a.price || a.expand?.service_id?.price || 0),
+      addFee(a, 'service', a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0),
     )
     productPurchasesPeriod.forEach((p: any) =>
       addFee(p, 'product', p.price_at_sale || p.expand?.product_id?.price || 0),
@@ -238,7 +243,7 @@ export function FinancialView({
         method: getMethodName(
           comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
         ),
-        value: a.price || a.expand?.service_id?.price || 0,
+        value: a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0,
         type: 'service',
       })
     })

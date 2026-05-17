@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Scissors } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -13,6 +13,23 @@ import { getProducts, deleteProduct } from '@/services/products'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ProductFormDialog } from './ProductFormDialog'
 import { useToast } from '@/hooks/use-toast'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import pb from '@/lib/pocketbase/client'
 
 export function ProductsTab() {
   const { toast } = useToast()
@@ -20,10 +37,17 @@ export function ProductsTab() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [productToEdit, setProductToEdit] = useState<any>(null)
 
+  const [consumeOpen, setConsumeOpen] = useState(false)
+  const [consumeProduct, setConsumeProduct] = useState<any>(null)
+  const [consumeForm, setConsumeForm] = useState({ quantity: 1, barber_id: '', description: '' })
+  const [barbers, setBarbers] = useState<any[]>([])
+
   const loadData = async () => {
     try {
       const data = await getProducts()
       setProducts(data)
+      const barbersData = await pb.collection('barbers').getFullList()
+      setBarbers(barbersData)
     } catch (err) {
       console.error(err)
     }
@@ -48,6 +72,38 @@ export function ProductsTab() {
       } catch (err: any) {
         toast({ title: 'Erro', description: err.message, variant: 'destructive' })
       }
+    }
+  }
+
+  const handleConsumeSubmit = async () => {
+    if (!consumeForm.barber_id) {
+      toast({ title: 'Selecione um profissional', variant: 'destructive' })
+      return
+    }
+    if (consumeForm.quantity <= 0) {
+      toast({ title: 'Quantidade inválida', variant: 'destructive' })
+      return
+    }
+
+    try {
+      await pb.send('/backend/v1/products/consume', {
+        method: 'POST',
+        body: JSON.stringify({
+          product_id: consumeProduct.id,
+          barber_id: consumeForm.barber_id,
+          quantity: consumeForm.quantity,
+          description: consumeForm.description,
+        }),
+      })
+      toast({ title: 'Consumo registrado com sucesso' })
+      setConsumeOpen(false)
+      loadData()
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao registrar consumo',
+        description: err.message,
+        variant: 'destructive',
+      })
     }
   }
 
@@ -95,12 +151,35 @@ export function ProductsTab() {
                   <TableCell>{p.expand?.category_id?.name || p.category || '-'}</TableCell>
                   <TableCell className="text-right">{formatCurrency(p.price)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(p.cost_price)}</TableCell>
-                  <TableCell className="text-right">{p.stock_quantity}</TableCell>
+                  <TableCell className="text-right font-medium">{p.stock_quantity || 0}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => {
+                        setConsumeProduct(p)
+                        setConsumeForm({ quantity: 1, barber_id: '', description: '' })
+                        setConsumeOpen(true)
+                      }}
+                      title="Registrar Consumo Profissional"
+                    >
+                      <Scissors className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(p)}
+                      title="Editar Produto"
+                    >
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(p.id)}
+                      title="Excluir Produto"
+                    >
                       <Trash2 className="w-4 h-4 text-red-500" />
                     </Button>
                   </TableCell>
@@ -117,6 +196,65 @@ export function ProductsTab() {
         productToEdit={productToEdit}
         onSuccess={loadData}
       />
+
+      <Dialog open={consumeOpen} onOpenChange={setConsumeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Consumo Profissional</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Produto</Label>
+              <Input value={consumeProduct?.name || ''} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label>Profissional</Label>
+              <Select
+                value={consumeForm.barber_id}
+                onValueChange={(v) => setConsumeForm({ ...consumeForm, barber_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o profissional" />
+                </SelectTrigger>
+                <SelectContent>
+                  {barbers.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Quantidade</Label>
+              <Input
+                type="number"
+                min={1}
+                value={consumeForm.quantity}
+                onChange={(e) =>
+                  setConsumeForm({ ...consumeForm, quantity: Number(e.target.value) })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Observação (Opcional)</Label>
+              <Input
+                value={consumeForm.description}
+                onChange={(e) => setConsumeForm({ ...consumeForm, description: e.target.value })}
+                placeholder="Ex: Uso em cliente especial"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConsumeOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConsumeSubmit} variant="destructive">
+              Registrar Consumo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

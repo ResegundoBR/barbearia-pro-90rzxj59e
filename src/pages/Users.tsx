@@ -250,7 +250,7 @@ export default function UsersPage() {
                         <div className="flex flex-col gap-1 text-sm">
                           <div className="flex items-center gap-2">
                             <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span className="truncate max-w-[150px] sm:max-w-xs">
+                            <span className="break-all whitespace-normal">
                               {u.email || (
                                 <span className="text-muted-foreground italic">Não informado</span>
                               )}
@@ -259,9 +259,7 @@ export default function UsersPage() {
                           {u.whatsapp && (
                             <div className="flex items-center gap-2 text-muted-foreground">
                               <span className="text-xs">WA:</span>
-                              <span className="truncate max-w-[150px] sm:max-w-xs">
-                                {u.whatsapp}
-                              </span>
+                              <span className="break-all whitespace-normal">{u.whatsapp}</span>
                             </div>
                           )}
                         </div>

@@ -3,57 +3,38 @@ routerAdd(
   '/backend/v1/products/consume',
   (e) => {
     const body = e.requestInfo().body || {}
+    const productId = body.product_id
+    const barberId = body.barber_id
+    const quantity = Number(body.quantity) || 1
+    const description = body.description || ''
 
-    if (!body.product_id || !body.barber_id || !body.quantity || body.quantity <= 0) {
-      return e.badRequestError('Dados inválidos. Barber, Product e Quantity são obrigatórios.')
+    if (!productId || !barberId) {
+      throw new BadRequestError('product_id and barber_id are required')
     }
 
     let success = false
-    let errorMsg = ''
 
     $app.runInTransaction((txApp) => {
-      try {
-        const product = txApp.findRecordById('products', body.product_id)
-        const costPrice = product.getFloat('cost_price') || 0
+      // Decrement stock
+      const product = txApp.findRecordById('products', productId)
+      const currentStock = product.getInt('stock_quantity')
+      product.set('stock_quantity', currentStock - quantity)
+      txApp.save(product)
 
-        if (costPrice <= 0) {
-          errorMsg = 'Produto não possui preço de custo definido.'
-          throw new Error(errorMsg)
-        }
+      // Create stock movement
+      const stockMovements = txApp.findCollectionByNameOrId('stock_movements')
+      const movement = new Record(stockMovements)
+      movement.set('product_id', productId)
+      movement.set('type', 'consumption')
+      movement.set('quantity', -quantity)
+      movement.set('barber_id', barberId)
+      movement.set('description', description)
+      txApp.save(movement)
 
-        const qty = parseInt(body.quantity, 10)
-        const currentStock = product.getInt('stock_quantity') || 0
-
-        if (currentStock < qty) {
-          errorMsg = 'Estoque insuficiente.'
-          throw new Error(errorMsg)
-        }
-
-        product.set('stock_quantity', currentStock - qty)
-        txApp.save(product)
-
-        const commissionsCol = txApp.findCollectionByNameOrId('commissions')
-        const comm = new Record(commissionsCol)
-        comm.set('barber_id', body.barber_id)
-        comm.set('amount', -(costPrice * qty))
-        comm.set('type', 'consumption')
-        comm.set('status', 'pending')
-        comm.set('date', new Date().toISOString())
-
-        txApp.save(comm)
-
-        success = true
-      } catch (err) {
-        errorMsg = err.message
-        throw err // trigger rollback
-      }
+      success = true
     })
 
-    if (!success) {
-      return e.badRequestError(errorMsg || 'Erro ao registrar consumo.')
-    }
-
-    return e.json(200, { success: true })
+    return e.json(200, { success })
   },
   $apis.requireAuth(),
 )

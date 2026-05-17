@@ -218,7 +218,8 @@ export default function Index() {
   const commissionsPeriod = filteredCommissions.filter((c) => isInPeriod(c.date || c.created))
 
   const periodRevenue = completedPeriod.reduce(
-    (acc, curr) => acc + (curr.price || curr.expand?.service_id?.price || 0),
+    (acc, curr) =>
+      acc + (curr.client_package_id ? 0 : curr.price || curr.expand?.service_id?.price || 0),
     0,
   )
 
@@ -267,12 +268,8 @@ export default function Index() {
   )
 
   const calcApptRevenue = (a: any) => {
-    let price = a.price || a.expand?.service_id?.price || 0
-    if (a.expand?.client_package_id?.expand?.package_id) {
-      const pkg = a.expand.client_package_id.expand.package_id
-      if (pkg.quantity > 0) price = pkg.price / pkg.quantity
-    }
-    return price
+    if (a.client_package_id) return 0
+    return a.price || a.expand?.service_id?.price || 0
   }
 
   const tomorrow = addDays(startOfDay(new Date()), 1)
@@ -333,7 +330,7 @@ export default function Index() {
 
     completedPeriod.forEach((a) => {
       const name = a.expand?.service_id?.name || 'Serviço Avulso'
-      const price = a.price || a.expand?.service_id?.price || 0
+      const price = a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0
       if (!counts[name]) counts[name] = { name, type: 'Serviço', count: 0, revenue: 0 }
       counts[name].count++
       counts[name].revenue += price
@@ -366,7 +363,7 @@ export default function Index() {
     completedPeriod.forEach((a) => {
       const d = a.date ? a.date.substring(0, 10) : a.updated.substring(0, 10)
       if (!dataMap[d]) dataMap[d] = { date: d, services: 0, products: 0 }
-      dataMap[d].services += a.price || a.expand?.service_id?.price || 0
+      dataMap[d].services += a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0
     })
 
     productPurchasesPeriod.forEach((p) => {
@@ -433,7 +430,7 @@ export default function Index() {
         method: getMethodName(
           comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
         ),
-        value: a.price || a.expand?.service_id?.price || 0,
+        value: a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0,
         type: 'service',
       })
     })
@@ -714,7 +711,11 @@ export default function Index() {
                         const attendance = barberApts.length
                         const revenue =
                           barberApts.reduce(
-                            (acc, a) => acc + (a.price || a.expand?.service_id?.price || 0),
+                            (acc, a) =>
+                              acc +
+                              (a.client_package_id
+                                ? 0
+                                : a.price || a.expand?.service_id?.price || 0),
                             0,
                           ) + barberPurchases.reduce((acc, p) => acc + (p.price_at_sale || 0), 0)
                         const value = gaugeMetric === 'revenue' ? revenue : attendance
@@ -1156,11 +1157,9 @@ export default function Index() {
                 </TableHeader>
                 <TableBody>
                   {aptsTomorrowList.map((a) => {
-                    let price = a.price || a.expand?.service_id?.price || 0
-                    if (a.expand?.client_package_id?.expand?.package_id) {
-                      const pkg = a.expand.client_package_id.expand.package_id
-                      if (pkg.quantity > 0) price = pkg.price / pkg.quantity
-                    }
+                    const price = a.client_package_id
+                      ? 0
+                      : a.price || a.expand?.service_id?.price || 0
                     return (
                       <TableRow key={a.id}>
                         <TableCell>{a.time}</TableCell>
@@ -1230,7 +1229,11 @@ export default function Index() {
                           <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
                           <TableCell>{getMethodName(comm?.payment_method || '-')}</TableCell>
                           <TableCell className="text-right">
-                            R$ {(a.price || a.expand?.service_id?.price || 0).toFixed(2)}
+                            R${' '}
+                            {(a.client_package_id
+                              ? 0
+                              : a.price || a.expand?.service_id?.price || 0
+                            ).toFixed(2)}
                           </TableCell>
                         </TableRow>
                       )
@@ -1390,7 +1393,11 @@ export default function Index() {
                         <TableCell>{a.expand?.service_id?.name || 'Serviço'}</TableCell>
                         <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
                         <TableCell className="text-right text-emerald-500 font-medium">
-                          R$ {(a.price || a.expand?.service_id?.price || 0).toFixed(2)}
+                          R${' '}
+                          {(a.client_package_id
+                            ? 0
+                            : a.price || a.expand?.service_id?.price || 0
+                          ).toFixed(2)}
                         </TableCell>
                       </TableRow>
                     ))}
