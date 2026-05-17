@@ -19,9 +19,9 @@ export default function ProdutosCategorias() {
   return (
     <div className="space-y-6 animate-fade-in pb-10">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Produtos & Categorias</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Produtos</h2>
         <p className="text-muted-foreground text-sm">
-          Gerencie o estoque e visualize o histórico de compras
+          Gerencie o estoque e visualize o histórico de compras de produtos
         </p>
       </div>
 

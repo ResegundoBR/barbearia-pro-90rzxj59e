@@ -210,6 +210,10 @@ export function PackagesTab() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[13px] text-muted-foreground mt-1">
+                Vincular um serviço permite que o sistema deduza automaticamente os usos deste
+                pacote ao realizar o serviço correspondente no checkout.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

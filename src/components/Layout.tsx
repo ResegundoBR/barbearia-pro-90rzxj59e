@@ -81,8 +81,8 @@ export default function Layout() {
     { id: 'estoque', title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
     {
       id: 'produtos',
-      title: 'Produtos e Categorias',
-      url: '/produtos-categorias',
+      title: 'Produtos',
+      url: '/produtos',
       icon: ShoppingBag,
     },
     { id: 'fornecedores', title: 'Compras/Fornec.', url: '/fornecedores', icon: Truck },

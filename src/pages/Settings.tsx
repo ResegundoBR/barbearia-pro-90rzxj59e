@@ -45,6 +45,7 @@ export default function Settings() {
   const [finForm, setFinForm] = useState({
     inventory_owner_id: '',
     default_product_commission: 10,
+    enable_third_party_commission: true,
   })
   const [barbers, setBarbers] = useState<any[]>([])
 
@@ -75,7 +76,13 @@ export default function Settings() {
       const finSett = sett.find((s) => s.key === 'financial_config')
       if (finSett) {
         setFinConfigId(finSett.id)
-        setFinForm(finSett.value || { inventory_owner_id: '', default_product_commission: 10 })
+        setFinForm(
+          finSett.value || {
+            inventory_owner_id: '',
+            default_product_commission: 10,
+            enable_third_party_commission: true,
+          },
+        )
       }
 
       const bList = await pb.collection('barbers').getFullList({ sort: 'name' })
@@ -373,14 +380,14 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Gestor de Estoque (Product Inventory Owner)</Label>
+              <div className="space-y-2 border-b pb-4">
+                <Label>Gestor Global de Estoque</Label>
                 <Select
                   value={finForm.inventory_owner_id}
                   onValueChange={(v) => setFinForm({ ...finForm, inventory_owner_id: v })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o recebedor principal..." />
+                    <SelectValue placeholder="Selecione o gestor de estoque..." />
                   </SelectTrigger>
                   <SelectContent>
                     {barbers.map((b) => (
@@ -391,28 +398,47 @@ export default function Settings() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  O gestor de estoque recebe a parte majoritária (ou total) das vendas de produtos.
+                  O gestor de estoque recebe o lucro das vendas de produtos não-comissionadas.
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Comissão Padrão de Produtos (%)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={finForm.default_product_commission}
-                  onChange={(e) =>
-                    setFinForm({ ...finForm, default_product_commission: Number(e.target.value) })
+              <div className="flex items-center justify-between rounded-lg border p-4 bg-card/50">
+                <div className="space-y-1 mr-4">
+                  <Label className="text-base">Comissão de Venda de Terceiros</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Ativa o repasse de comissão para barbeiros quando venderem produtos do gestor de
+                    estoque. Se desativado, toda a venda vai para o gestor.
+                  </p>
+                </div>
+                <Switch
+                  checked={finForm.enable_third_party_commission}
+                  onCheckedChange={(v) =>
+                    setFinForm({ ...finForm, enable_third_party_commission: v })
                   }
                 />
-                <p className="text-xs text-muted-foreground">
-                  Aplicada caso o produto não tenha uma comissão de categoria específica.
-                </p>
               </div>
 
+              {finForm.enable_third_party_commission && (
+                <div className="space-y-2 bg-muted/30 p-4 rounded-md border border-dashed">
+                  <Label>Comissão Padrão de Produtos (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={finForm.default_product_commission}
+                    onChange={(e) =>
+                      setFinForm({ ...finForm, default_product_commission: Number(e.target.value) })
+                    }
+                    className="max-w-[200px]"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Aplicada se o produto não possuir uma regra de categoria específica.
+                  </p>
+                </div>
+              )}
+
               <Button onClick={handleSaveFinConfig} className="mt-4">
-                Salvar Regras
+                Salvar Regras Financeiras
               </Button>
             </CardContent>
           </Card>
