@@ -36,6 +36,7 @@ import {
   Copy,
   CheckCircle2,
   Receipt,
+  RefreshCw,
 } from 'lucide-react'
 import {
   format,
@@ -104,6 +105,7 @@ export default function Staff() {
   const [paymentReceiptDetails, setPaymentReceiptDetails] = useState<any>(null)
   const [businessName, setBusinessName] = useState('Barbearia Pro')
   const [copied, setCopied] = useState(false)
+  const [isReconciling, setIsReconciling] = useState(false)
 
   const [form, setForm] = useState<any>({
     name: '',
@@ -425,6 +427,33 @@ export default function Staff() {
     category: 'Categoria',
   }
 
+  const handleReconcile = async () => {
+    setIsReconciling(true)
+    try {
+      const fromStr = startOfDay(range.from).toISOString().replace('T', ' ')
+      const toStr = endOfDay(range.to).toISOString().replace('T', ' ')
+
+      const res = await pb.send('/backend/v1/commissions/reconcile', {
+        method: 'POST',
+        body: JSON.stringify({ startDate: fromStr, endDate: toStr }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      toast({
+        title: 'Reconciliação concluída',
+        description: `Foram geradas ${res.createdCount} novas comissões.`,
+      })
+      loadData()
+    } catch (e) {
+      toast({
+        title: 'Erro',
+        description: getErrorMessage(e),
+        variant: 'destructive',
+      })
+    } finally {
+      setIsReconciling(false)
+    }
+  }
+
   const openPayModal = async (b: any) => {
     setBarberToPay(b)
     try {
@@ -737,9 +766,15 @@ export default function Staff() {
           </Popover>
         </div>
         {canEdit && (
-          <Button onClick={openBarber}>
-            <Plus className="size-4 mr-2" /> Adicionar Profissional
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleReconcile} disabled={isReconciling}>
+              <RefreshCw className={`size-4 mr-2 ${isReconciling ? 'animate-spin' : ''}`} />
+              Reconciliar
+            </Button>
+            <Button onClick={openBarber}>
+              <Plus className="size-4 mr-2" /> Adicionar Profissional
+            </Button>
+          </div>
         )}
       </div>
 
