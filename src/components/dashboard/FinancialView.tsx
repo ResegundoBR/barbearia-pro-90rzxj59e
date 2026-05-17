@@ -62,6 +62,12 @@ export function FinancialView({
             c.type === type &&
             Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
         )
+      } else if (type === 'package') {
+        comm = commissions.find(
+          (c: any) =>
+            (c.type === 'package' || c.type === 'package_sale') &&
+            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
+        )
       } else {
         comm = commissions.find(
           (c: any) =>
@@ -93,9 +99,62 @@ export function FinancialView({
     .filter((c: any) => c.expand?.barber_id?.work_level === 'autonomo')
     .reduce((acc: number, c: any) => acc + (c.amount || 0), 0)
 
-  const partnerTransfers = commissions
-    .filter((c: any) => c.expand?.barber_id?.work_level === 'socio')
-    .reduce((acc: number, c: any) => acc + (c.amount || 0), 0)
+  const partnerTransfers = useMemo(() => {
+    let transfers = 0
+
+    const addTransfer = (item: any, type: string, val: number) => {
+      const barber = item.expand?.barber_id
+      if (barber?.work_level !== 'socio') return
+
+      let comm
+      if (type === 'service') {
+        comm = commissions.find(
+          (c: any) =>
+            c.barber_id === item.barber_id &&
+            c.type === type &&
+            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
+        )
+      } else if (type === 'package') {
+        comm = commissions.find(
+          (c: any) =>
+            (c.type === 'package' || c.type === 'package_sale') &&
+            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
+        )
+      } else {
+        comm = commissions.find(
+          (c: any) =>
+            c.type === type &&
+            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
+        )
+      }
+
+      const methodRaw = comm?.payment_method || 'other'
+      const methodMapping: Record<string, string> = {
+        credito: 'credit_card',
+        debito: 'debit_card',
+        pix: 'pix',
+        cash: 'cash',
+      }
+      const pmType = methodMapping[methodRaw] || methodRaw
+      const pmRecord = paymentMethods.find((p: any) => p.type === pmType)
+      const feePct = pmRecord?.fee_percentage || 0
+      const feeVal = val * (feePct / 100)
+
+      transfers += val - feeVal
+    }
+
+    completedPeriod.forEach((a: any) =>
+      addTransfer(a, 'service', a.price || a.expand?.service_id?.price || 0),
+    )
+    productPurchasesPeriod.forEach((p: any) =>
+      addTransfer(p, 'product', p.price_at_sale || p.expand?.product_id?.price || 0),
+    )
+    packagesPeriod.forEach((pkg: any) =>
+      addTransfer(pkg, 'package', pkg.expand?.package_id?.price || 0),
+    )
+
+    return transfers
+  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions, paymentMethods])
 
   // Total Financial Fees (Taxas das transações)
   const totalFinancialFees = useMemo(() => {
@@ -107,6 +166,12 @@ export function FinancialView({
           (c: any) =>
             c.barber_id === item.barber_id &&
             c.type === type &&
+            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
+        )
+      } else if (type === 'package') {
+        comm = commissions.find(
+          (c: any) =>
+            (c.type === 'package' || c.type === 'package_sale') &&
             Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
         )
       } else {
@@ -201,7 +266,7 @@ export function FinancialView({
     packagesPeriod.forEach((pkg: any) => {
       const comm = commissions.find(
         (c: any) =>
-          c.type === 'package' &&
+          (c.type === 'package' || c.type === 'package_sale') &&
           Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) < 15000,
       )
       list.push({
