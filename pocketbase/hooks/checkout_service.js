@@ -59,9 +59,15 @@ routerAdd(
       }
 
       let pmFeePct = 0
+      let commissionPm = 'pix'
       try {
         const pm = txApp.findRecordById('payment_methods', svcForm.payment_method)
         pmFeePct = pm.getFloat('fee_percentage')
+        const pType = pm.getString('type')
+        if (pType === 'credit_card') commissionPm = 'credito'
+        else if (pType === 'debit_card') commissionPm = 'debito'
+        else if (pType === 'cash') commissionPm = 'cash'
+        else if (pType === 'pix') commissionPm = 'pix'
       } catch (_) {}
 
       const servicePrice = Number(svcForm.service_price) || 0
@@ -87,7 +93,7 @@ routerAdd(
           comm.set('amount', netComm)
           comm.set('type', 'service')
           comm.set('date', new Date().toISOString())
-          comm.set('payment_method', svcForm.payment_method)
+          comm.set('payment_method', commissionPm)
           comm.set('status', 'available')
 
           try {
@@ -139,7 +145,7 @@ routerAdd(
             pComm.set('amount', netComm)
             pComm.set('type', 'product')
             pComm.set('date', new Date().toISOString())
-            pComm.set('payment_method', svcForm.payment_method)
+            pComm.set('payment_method', commissionPm)
             pComm.set('status', 'available')
 
             try {

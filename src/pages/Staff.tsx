@@ -769,7 +769,7 @@ export default function Staff() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleReconcile} disabled={isReconciling}>
               <RefreshCw className={`size-4 mr-2 ${isReconciling ? 'animate-spin' : ''}`} />
-              Reconciliar
+              Recalcular
             </Button>
             <Button onClick={openBarber}>
               <Plus className="size-4 mr-2" /> Adicionar Profissional
@@ -916,9 +916,25 @@ export default function Staff() {
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle>Relatório Detalhado - {selectedBarberDetailed?.name}</DialogTitle>
-            <Button variant="outline" size="sm" onClick={printReport} className="mr-4">
-              <Printer className="size-4 mr-2" /> Gerar PDF
-            </Button>
+            <div className="flex gap-2 mr-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  await handleReconcile()
+                  if (selectedBarberDetailed) {
+                    openDetailedReport(selectedBarberDetailed)
+                  }
+                }}
+                disabled={isReconciling}
+              >
+                <RefreshCw className={`size-4 mr-2 ${isReconciling ? 'animate-spin' : ''}`} />
+                Recalcular
+              </Button>
+              <Button variant="outline" size="sm" onClick={printReport}>
+                <Printer className="size-4 mr-2" /> Gerar PDF
+              </Button>
+            </div>
           </DialogHeader>
           <div className="overflow-auto flex-1 mt-4 p-1">
             <div id="printable-report">

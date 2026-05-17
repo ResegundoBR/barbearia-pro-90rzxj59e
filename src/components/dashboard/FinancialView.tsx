@@ -38,9 +38,10 @@ export function FinancialView({
   const totalRevenue = serviceRevenue + productRevenue + packagesRevenue
 
   const getMethodName = (m: string) => {
+    if (!m) return 'Outro'
     const mappedType = m === 'debito' ? 'debit_card' : m === 'credito' ? 'credit_card' : m
     const pm = paymentMethods.find(
-      (p: any) => p.type === mappedType || p.name.toLowerCase() === m.toLowerCase(),
+      (p: any) => p.id === m || p.type === mappedType || p.name.toLowerCase() === m.toLowerCase(),
     )
     if (pm) return pm.name
 
@@ -48,7 +49,7 @@ export function FinancialView({
     if (m === 'pix') return 'Pix'
     if (m === 'debito') return 'Cartão de Débito'
     if (m === 'credito') return 'Cartão de Crédito'
-    return m
+    return m === 'other' ? 'Outro' : m
   }
 
   const paymentMethodsDist = useMemo(() => {

@@ -252,7 +252,7 @@ export default function Checkout() {
       }
 
       const pmRecord = paymentMethods.find((p) => p.id === svcForm.payment_method)
-      let commissionPm = ''
+      let commissionPm = 'pix'
       if (pmRecord) {
         if (pmRecord.type === 'credit_card') commissionPm = 'credito'
         else if (pmRecord.type === 'debit_card') commissionPm = 'debito'

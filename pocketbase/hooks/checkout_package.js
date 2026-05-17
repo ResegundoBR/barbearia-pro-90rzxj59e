@@ -33,9 +33,15 @@ routerAdd(
       txApp.save(cp)
 
       let pmFeePct = 0
+      let commissionPm = 'pix'
       try {
         const pm = txApp.findRecordById('payment_methods', payment_method)
         pmFeePct = pm.getFloat('fee_percentage')
+        const pType = pm.getString('type')
+        if (pType === 'credit_card') commissionPm = 'credito'
+        else if (pType === 'debit_card') commissionPm = 'debito'
+        else if (pType === 'cash') commissionPm = 'cash'
+        else if (pType === 'pix') commissionPm = 'pix'
       } catch (_) {}
 
       let catCommPct = 0
@@ -57,7 +63,7 @@ routerAdd(
         comm.set('amount', netComm)
         comm.set('type', 'package_sale')
         comm.set('date', new Date().toISOString())
-        comm.set('payment_method', payment_method)
+        comm.set('payment_method', commissionPm)
         comm.set('status', 'available')
 
         try {

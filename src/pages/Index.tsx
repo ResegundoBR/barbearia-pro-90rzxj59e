@@ -215,6 +215,7 @@ export default function Index() {
   const productPurchasesPeriod = filteredProductPurchases.filter((p) =>
     isInPeriod(p.date || p.created),
   )
+  const commissionsPeriod = filteredCommissions.filter((c) => isInPeriod(c.date || c.created))
 
   const periodRevenue = completedPeriod.reduce(
     (acc, curr) => acc + (curr.price || curr.expand?.service_id?.price || 0),
@@ -401,9 +402,10 @@ export default function Index() {
   }, [completedPeriod])
 
   const getMethodName = (m: string) => {
+    if (!m) return 'Outro'
     const mappedType = m === 'debito' ? 'debit_card' : m === 'credito' ? 'credit_card' : m
     const pm = paymentMethods.find(
-      (p: any) => p.type === mappedType || p.name.toLowerCase() === m.toLowerCase(),
+      (p: any) => p.id === m || p.type === mappedType || p.name.toLowerCase() === m.toLowerCase(),
     )
     if (pm) return pm.name
 
@@ -411,8 +413,75 @@ export default function Index() {
     if (m === 'pix') return 'Pix'
     if (m === 'debito') return 'Cartão de Débito'
     if (m === 'credito') return 'Cartão de Crédito'
-    return m
+    return m === 'other' ? 'Outro' : m
   }
+
+  const transactions = useMemo(() => {
+    const list: any[] = []
+
+    completedPeriod.forEach((a: any) => {
+      const comm = commissions.find(
+        (c: any) =>
+          c.barber_id === a.barber_id &&
+          c.type === 'service' &&
+          Math.abs(new Date(c.created).getTime() - new Date(a.updated).getTime()) < 15000,
+      )
+      list.push({
+        id: `apt_${a.id}`,
+        date: new Date(a.updated || a.created),
+        client: a.expand?.client_id?.name || 'Avulso',
+        item: a.expand?.service_id?.name || 'Serviço',
+        barber: a.expand?.barber_id?.name || '-',
+        method: getMethodName(
+          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+        ),
+        value: a.price || a.expand?.service_id?.price || 0,
+        type: 'service',
+      })
+    })
+
+    productPurchasesPeriod.forEach((p: any) => {
+      const comm = commissions.find(
+        (c: any) =>
+          c.type === 'product' &&
+          Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) < 15000,
+      )
+      list.push({
+        id: `prod_${p.id}`,
+        date: new Date(p.created),
+        client: p.expand?.client_id?.name || 'Avulso',
+        item: p.expand?.product_id?.name || 'Produto',
+        barber: p.expand?.barber_id?.name || '-',
+        method: getMethodName(
+          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+        ),
+        value: p.price_at_sale || p.expand?.product_id?.price || 0,
+        type: 'product',
+      })
+    })
+
+    packagesPeriod.forEach((pkg: any) => {
+      const comm = commissions.find(
+        (c: any) =>
+          (c.type === 'package' || c.type === 'package_sale') &&
+          Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) < 15000,
+      )
+      list.push({
+        id: `pkg_${pkg.id}`,
+        date: new Date(pkg.created),
+        client: pkg.expand?.client_id?.name || 'Avulso',
+        item: pkg.expand?.package_id?.name || 'Pacote',
+        barber: pkg.expand?.barber_id?.name || '-',
+        method: getMethodName(
+          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+        ),
+        value: pkg.expand?.package_id?.price || 0,
+        type: 'package',
+      })
+    })
+
+    return list.sort((a, b) => b.date.getTime() - a.date.getTime())
+  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions, paymentMethods])
 
   return (
     <div className="space-y-6 pb-20 md:pb-6 max-w-5xl mx-auto">
@@ -906,7 +975,7 @@ export default function Index() {
                     Alertas
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {lowStockProductsList.length > 0 && (
                     <div
                       className="flex items-center justify-between gap-3 bg-orange-500/10 text-orange-500 p-2 rounded-md cursor-pointer"
@@ -969,6 +1038,53 @@ export default function Index() {
               </Card>
             </div>
           )}
+
+          <div className="grid grid-cols-1 gap-4 mt-6">
+            <Card className="bg-glass border-none">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Lista de Transações (Período)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[700px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Profissional</TableHead>
+                        <TableHead>Método de Pagamento</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {transactions.map((t) => (
+                        <TableRow key={t.id}>
+                          <TableCell>{format(t.date, 'dd/MM/yyyy HH:mm')}</TableCell>
+                          <TableCell>{t.client}</TableCell>
+                          <TableCell>{t.item}</TableCell>
+                          <TableCell>{t.barber}</TableCell>
+                          <TableCell>{t.method}</TableCell>
+                          <TableCell className="text-right font-medium text-emerald-500">
+                            R$ {t.value.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {transactions.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                            Nenhuma transação encontrada no período.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
@@ -977,7 +1093,7 @@ export default function Index() {
           completedPeriod={completedPeriod}
           productPurchasesPeriod={productPurchasesPeriod}
           packagesPeriod={packagesPeriod}
-          commissions={filteredCommissions}
+          commissions={commissionsPeriod}
           isAdmin={isAdmin}
           effectiveBarberFilter={effectiveBarberFilter}
           paymentMethods={paymentMethods}
@@ -1303,6 +1419,7 @@ export default function Index() {
                     <TableHead>Data/Hora</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Item</TableHead>
+                    <TableHead>Profissional</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1320,6 +1437,7 @@ export default function Index() {
                         </TableCell>
                         <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
                         <TableCell>{a.expand?.service_id?.name || 'Serviço'}</TableCell>
+                        <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
                         <TableCell className="text-right text-emerald-500 font-medium">
                           R$ {(a.price || a.expand?.service_id?.price || 0).toFixed(2)}
                         </TableCell>
@@ -1338,6 +1456,7 @@ export default function Index() {
                         </TableCell>
                         <TableCell>{p.expand?.client_id?.name || 'Avulso'}</TableCell>
                         <TableCell>{p.expand?.product_id?.name || 'Produto'}</TableCell>
+                        <TableCell>{p.expand?.barber_id?.name || '-'}</TableCell>
                         <TableCell className="text-right text-emerald-500 font-medium">
                           R$ {(p.price_at_sale || p.expand?.product_id?.price || 0).toFixed(2)}
                         </TableCell>
@@ -1352,6 +1471,7 @@ export default function Index() {
                         </TableCell>
                         <TableCell>{pkg.expand?.client_id?.name || 'Avulso'}</TableCell>
                         <TableCell>{pkg.expand?.package_id?.name || 'Pacote'}</TableCell>
+                        <TableCell>{pkg.expand?.barber_id?.name || '-'}</TableCell>
                         <TableCell className="text-right text-emerald-500 font-medium">
                           R$ {(pkg.expand?.package_id?.price || 0).toFixed(2)}
                         </TableCell>
