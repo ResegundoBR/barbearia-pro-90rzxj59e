@@ -58,63 +58,33 @@ routerAdd(
         txApp.save(pkg)
       }
 
-      let rules = []
+      let pmFeePct = 0
       try {
-        rules = txApp.findRecordsByFilter(
-          'commission_rules',
-          `barber_id='${barberId}' || barber_id=''`,
-          '',
-          100,
-          0,
-        )
+        const pm = txApp.findRecordById('payment_methods', svcForm.payment_method)
+        pmFeePct = pm.getFloat('fee_percentage')
       } catch (_) {}
 
       const servicePrice = Number(svcForm.service_price) || 0
 
-      let serviceRule = rules.find(
-        (r) =>
-          r.getString('item_type') === 'service' &&
-          r.getString('item_id') === serviceId &&
-          r.getString('barber_id') === barberId,
-      )
-      if (!serviceRule) {
-        serviceRule = rules.find(
-          (r) =>
-            r.getString('item_type') === 'service' &&
-            r.getString('item_id') === '' &&
-            r.getString('barber_id') === barberId,
-        )
-      }
-      if (!serviceRule) {
-        serviceRule = rules.find(
-          (r) => r.getString('item_type') === 'service' && r.getString('item_id') === '',
-        )
-      }
-
-      if (serviceRule || servicePrice > 0) {
-        let commissionAmount = 0
-        if (serviceRule) {
-          if (serviceRule.getString('type') === 'percentage') {
-            commissionAmount = servicePrice * (serviceRule.getFloat('value') / 100)
-          } else {
-            commissionAmount = serviceRule.getFloat('value')
+      if (servicePrice > 0) {
+        let catCommPct = 0
+        try {
+          if (serviceId) {
+            const svc = txApp.findRecordById('services', serviceId)
+            const cat = txApp.findRecordById('categories', svc.getString('category_id'))
+            catCommPct = cat.getFloat('commission_percentage')
           }
-        } else {
-          try {
-            const barber = txApp.findRecordById('barbers', barberId)
-            if (barber.getString('work_level') === 'socio') {
-              commissionAmount = servicePrice
-            } else if (barber.getString('commission_type') === 'percentage') {
-              commissionAmount = servicePrice * (barber.getFloat('commission_value') / 100)
-            }
-          } catch (_) {}
-        }
+        } catch (_) {}
 
-        if (commissionAmount > 0) {
+        const grossComm = servicePrice * (catCommPct / 100)
+        const feeVal = servicePrice * (pmFeePct / 100)
+        const netComm = grossComm - feeVal
+
+        if (netComm !== 0 || grossComm !== 0) {
           const commCol = txApp.findCollectionByNameOrId('commissions')
           const comm = new Record(commCol)
           comm.set('barber_id', barberId)
-          comm.set('amount', commissionAmount)
+          comm.set('amount', netComm)
           comm.set('type', 'service')
           comm.set('date', new Date().toISOString())
           comm.set('payment_method', svcForm.payment_method)
@@ -147,56 +117,39 @@ routerAdd(
           purchase.set('product_id', item.product_id)
           purchase.set('barber_id', barberId)
           const itemPrice = item.product?.price || prod.getFloat('price')
-          purchase.set('price_at_sale', itemPrice * qty)
+          const totalProdPrice = itemPrice * qty
+          purchase.set('price_at_sale', totalProdPrice)
           purchase.set('date', new Date().toISOString())
           txApp.save(purchase)
 
-          let prodRule = rules.find(
-            (r) =>
-              r.getString('item_type') === 'product' &&
-              r.getString('item_id') === item.product_id &&
-              r.getString('barber_id') === barberId,
-          )
-          if (!prodRule)
-            prodRule = rules.find(
-              (r) =>
-                r.getString('item_type') === 'product' &&
-                r.getString('item_id') === '' &&
-                r.getString('barber_id') === barberId,
-            )
-          if (!prodRule)
-            prodRule = rules.find(
-              (r) => r.getString('item_type') === 'product' && r.getString('item_id') === '',
-            )
+          let catCommPct = 0
+          try {
+            const cat = txApp.findRecordById('categories', prod.getString('category_id'))
+            catCommPct = cat.getFloat('commission_percentage')
+          } catch (_) {}
 
-          if (prodRule) {
-            let cAmt = 0
-            const totalProdPrice = itemPrice * qty
-            if (prodRule.getString('type') === 'percentage') {
-              cAmt = totalProdPrice * (prodRule.getFloat('value') / 100)
-            } else {
-              cAmt = prodRule.getFloat('value') * qty
-            }
+          const grossComm = totalProdPrice * (catCommPct / 100)
+          const feeVal = totalProdPrice * (pmFeePct / 100)
+          const netComm = grossComm - feeVal
 
-            if (cAmt > 0) {
-              const commCol = txApp.findCollectionByNameOrId('commissions')
-              const pComm = new Record(commCol)
-              pComm.set('barber_id', barberId)
-              pComm.set('amount', cAmt)
-              pComm.set('type', 'product')
-              pComm.set('date', new Date().toISOString())
-              pComm.set('payment_method', svcForm.payment_method)
-              pComm.set('status', 'available')
+          if (netComm !== 0 || grossComm !== 0) {
+            const commCol = txApp.findCollectionByNameOrId('commissions')
+            const pComm = new Record(commCol)
+            pComm.set('barber_id', barberId)
+            pComm.set('amount', netComm)
+            pComm.set('type', 'product')
+            pComm.set('date', new Date().toISOString())
+            pComm.set('payment_method', svcForm.payment_method)
+            pComm.set('status', 'available')
 
-              try {
-                const barber = txApp.findRecordById('barbers', barberId)
-                if (barber.getString('work_level') === 'socio') {
-                  pComm.set('status', 'paid')
-                }
-              } catch (_) {}
+            try {
+              const barber = txApp.findRecordById('barbers', barberId)
+              if (barber.getString('work_level') === 'socio') {
+                pComm.set('status', 'paid')
+              }
+            } catch (_) {}
 
-              txApp.save(pComm)
-            }
+            txApp.save(pComm)
           }
         }
       }

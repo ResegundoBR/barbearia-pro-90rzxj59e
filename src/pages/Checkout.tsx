@@ -110,7 +110,7 @@ export default function Checkout() {
       getClients(),
       getPackages(),
       getAppointments(`status != 'Concluído' && status != 'Cancelado'`),
-      getProducts(),
+      pb.collection('products').getFullList({ filter: 'is_active=true', expand: 'category_id' }),
       getClientPackages(),
       pb.collection('services').getFullList({ filter: 'is_active=true' }),
       pb
@@ -261,9 +261,6 @@ export default function Checkout() {
       }
 
       const barber = barbers.find((b) => b.id === barberId)
-      const rules = await pb
-        .collection('commission_rules')
-        .getFullList({ filter: `barber_id='${barberId}'` })
 
       const createComm = async (amount: number, type: string) => {
         if (amount > 0 && barber) {
@@ -278,15 +275,14 @@ export default function Checkout() {
         }
       }
 
+      const feePct = pmRecord?.fee_percentage || 0
+
       const getServiceComm = (svcId: string, itemPrice: number) => {
-        if (barber?.work_level === 'socio') return itemPrice
-        const rule = rules.find((r) => r.item_type === 'service' && r.item_id === svcId)
-        if (rule) return rule.type === 'percentage' ? (itemPrice * rule.value) / 100 : rule.value
         const svc = services.find((s) => s.id === svcId)
-        if (svc && svc.commission_rate) return (itemPrice * svc.commission_rate) / 100
-        if (barber?.commission_type === 'percentage')
-          return (itemPrice * (barber.commission_value || 0)) / 100
-        return barber?.commission_value || 0
+        const catCommPct = svc?.expand?.category_id?.commission_percentage || 0
+        const grossComm = itemPrice * (catCommPct / 100)
+        const feeVal = itemPrice * (feePct / 100)
+        return grossComm - feeVal
       }
 
       if (scheduledPrice > 0) {
@@ -302,12 +298,10 @@ export default function Checkout() {
       for (const extra of manualExtras) {
         if (extra.price > 0) {
           const p = extra.price * proportion
-          let c = 0
-          if (barber?.work_level === 'socio') c = p
-          else if (barber?.commission_type === 'percentage')
-            c = (p * (barber.commission_value || 0)) / 100
-          else c = barber?.commission_value || 0
-          await createComm(c, 'service')
+          const catCommPct = barber?.commission_value || 0
+          const grossComm = p * (catCommPct / 100)
+          const feeVal = p * (feePct / 100)
+          await createComm(grossComm - feeVal, 'service')
         }
       }
 
@@ -326,26 +320,10 @@ export default function Checkout() {
           stock_quantity: Math.max(0, (currentProd.stock_quantity || 0) - sp.quantity),
         })
 
-        let c = 0
-        if (barber?.work_level === 'socio') c = itemPrice
-        else {
-          const rule = rules.find((r) => r.item_type === 'product' && r.item_id === sp.product_id)
-          if (rule) {
-            c =
-              rule.type === 'percentage' ? (itemPrice * rule.value) / 100 : rule.value * sp.quantity
-          } else {
-            const catRule = rules.find(
-              (r) => r.item_type === 'category' && r.item_id === sp.product.category_id,
-            )
-            if (catRule) {
-              c =
-                catRule.type === 'percentage'
-                  ? (itemPrice * catRule.value) / 100
-                  : catRule.value * sp.quantity
-            }
-          }
-        }
-        await createComm(c, 'product')
+        const catCommPct = sp.product.expand?.category_id?.commission_percentage || 0
+        const grossComm = itemPrice * (catCommPct / 100)
+        const feeVal = itemPrice * (feePct / 100)
+        await createComm(grossComm - feeVal, 'product')
       }
 
       setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })

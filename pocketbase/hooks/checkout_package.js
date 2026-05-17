@@ -32,63 +32,42 @@ routerAdd(
 
       txApp.save(cp)
 
-      let rules = []
+      let pmFeePct = 0
       try {
-        rules = txApp.findRecordsByFilter(
-          'commission_rules',
-          `barber_id='${barber_id}' || barber_id=''`,
-          '',
-          100,
-          0,
-        )
+        const pm = txApp.findRecordById('payment_methods', payment_method)
+        pmFeePct = pm.getFloat('fee_percentage')
       } catch (_) {}
 
-      let rule = rules.find(
-        (r) =>
-          r.getString('item_type') === 'package' &&
-          r.getString('item_id') === package_id &&
-          r.getString('barber_id') === barber_id,
-      )
-      if (!rule)
-        rule = rules.find(
-          (r) =>
-            r.getString('item_type') === 'package' &&
-            r.getString('item_id') === '' &&
-            r.getString('barber_id') === barber_id,
-        )
-      if (!rule)
-        rule = rules.find(
-          (r) => r.getString('item_type') === 'package' && r.getString('item_id') === '',
-        )
+      let catCommPct = 0
+      try {
+        const svc = txApp.findRecordById('services', pkg.getString('service_id'))
+        const cat = txApp.findRecordById('categories', svc.getString('category_id'))
+        catCommPct = cat.getFloat('commission_percentage')
+      } catch (_) {}
 
-      if (rule) {
-        let cAmt = 0
-        const price = pkg.getFloat('price')
-        if (rule.getString('type') === 'percentage') {
-          cAmt = price * (rule.getFloat('value') / 100)
-        } else {
-          cAmt = rule.getFloat('value')
-        }
+      const price = pkg.getFloat('price')
+      const grossComm = price * (catCommPct / 100)
+      const feeVal = price * (pmFeePct / 100)
+      const netComm = grossComm - feeVal
 
-        if (cAmt > 0) {
-          const commCol = txApp.findCollectionByNameOrId('commissions')
-          const comm = new Record(commCol)
-          comm.set('barber_id', barber_id)
-          comm.set('amount', cAmt)
-          comm.set('type', 'package_sale')
-          comm.set('date', new Date().toISOString())
-          comm.set('payment_method', payment_method)
-          comm.set('status', 'available')
+      if (netComm !== 0 || grossComm !== 0) {
+        const commCol = txApp.findCollectionByNameOrId('commissions')
+        const comm = new Record(commCol)
+        comm.set('barber_id', barber_id)
+        comm.set('amount', netComm)
+        comm.set('type', 'package_sale')
+        comm.set('date', new Date().toISOString())
+        comm.set('payment_method', payment_method)
+        comm.set('status', 'available')
 
-          try {
-            const barber = txApp.findRecordById('barbers', barber_id)
-            if (barber.getString('work_level') === 'socio') {
-              comm.set('status', 'paid')
-            }
-          } catch (_) {}
+        try {
+          const barber = txApp.findRecordById('barbers', barber_id)
+          if (barber.getString('work_level') === 'socio') {
+            comm.set('status', 'paid')
+          }
+        } catch (_) {}
 
-          txApp.save(comm)
-        }
+        txApp.save(comm)
       }
     })
 

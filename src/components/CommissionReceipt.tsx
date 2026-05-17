@@ -41,18 +41,16 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
       const pm = paymentMethods.find((p) => p.type === item.paymentMethodType)
       const feePercentage = pm?.fee_percentage || 0
       const feeValue = item.serviceValue * (feePercentage / 100)
-      const grossCommission = item.commissionRate
-        ? item.serviceValue * (item.commissionRate / 100)
-        : item.commissionValue + feeValue
+      const rate = item.commissionRate || 0
+      const grossCommission = item.serviceValue * (rate / 100)
       const netCommission = grossCommission - feeValue
 
       text += `Nome do Cliente  : ${item.clientName}\n`
       text += `Serviço          : ${item.serviceName}\n`
       text += `Valor do Serviço : R$ ${item.serviceValue.toFixed(2)}\n`
-      text += `Comissão Bruta   : R$ ${grossCommission.toFixed(2)}\n`
+      text += `Comissão Bruta (${rate}%) : R$ ${grossCommission.toFixed(2)}\n`
       text += `Taxa Financeira  : - R$ ${feeValue.toFixed(2)}\n`
-      text += `Total a Pagar    : R$ ${netCommission.toFixed(2)}\n`
-      text += `--------------------------------\n`
+      text += `Total a Pagar    : R$ ${netCommission.toFixed(2)}\n`      text += `--------------------------------\n`
     })
 
     text += `\nValor Total Pago: R$ ${totalPaid.toFixed(2)}\n`
@@ -103,13 +101,11 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
                 <span>R$ {item.serviceValue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 pb-1">
-                <span className="text-gray-500 text-xs uppercase">Comissão Bruta</span>
+                <span className="text-gray-500 text-xs uppercase">Comissão Bruta ({rate}%)</span>
                 <span>R$ {grossCommission.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 pb-1">
-                <span className="text-gray-500 text-xs uppercase text-red-600">
-                  Taxa Financeira
-                </span>
+                <span className="text-red-600 text-xs uppercase">Taxa Financeira</span>
                 <span className="text-red-600">- R$ {feeValue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between pt-1">

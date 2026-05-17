@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { getClients, getAppointments, getProductPurchases, getClientLogs } from '@/services/api'
 import { ArrowUpRight, AlertTriangle, Medal, Star } from 'lucide-react'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -132,15 +133,27 @@ export function RankingDashboard() {
 
         <TabsContent value="top" className="space-y-4 mt-0">
           <div className="flex justify-end">
-            <Select value={metric} onValueChange={setMetric}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Ordenar por" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="revenue">Maior Receita</SelectItem>
-                <SelectItem value="frequency">Mais Frequentes</SelectItem>
-              </SelectContent>
-            </Select>
+            <ToggleGroup
+              type="single"
+              value={metric}
+              onValueChange={(v) => {
+                if (v) setMetric(v)
+              }}
+              className="bg-muted p-1 rounded-md"
+            >
+              <ToggleGroupItem
+                value="revenue"
+                className="px-4 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+              >
+                Faturamento
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="frequency"
+                className="px-4 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+              >
+                Atendimento
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
           <Card>
             <CardContent className="p-0 overflow-x-auto">

@@ -96,7 +96,7 @@ export function PurchasesTab() {
               <TableHead>Fornecedor</TableHead>
               <TableHead className="text-right">Qtd</TableHead>
               <TableHead className="text-right">Vlr Unit</TableHead>
-              <TableHead className="text-right">Vlr da compra</TableHead>
+              <TableHead className="text-right">Vlr Compra</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>

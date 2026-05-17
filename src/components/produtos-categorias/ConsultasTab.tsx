@@ -144,7 +144,6 @@ export function ConsultasTab() {
               <TableHead>Categoria</TableHead>
               <TableHead>Fornecedor</TableHead>
               <TableHead className="text-right">Qtd</TableHead>
-              <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead></TableHead>
             </TableRow>
@@ -180,9 +179,6 @@ export function ConsultasTab() {
                     </TableCell>
                     <TableCell>{purch.expand?.supplier_id?.name || '-'}</TableCell>
                     <TableCell className="text-right">{purch.quantity}</TableCell>
-                    <TableCell className="text-right font-bold text-emerald-500">
-                      R$ {((purch.price_paid || purch.unit_price || 0) * purch.quantity).toFixed(2)}
-                    </TableCell>
                     <TableCell className="text-center">
                       <Badge
                         variant={isPending ? 'outline' : 'default'}

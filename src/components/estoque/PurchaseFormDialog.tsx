@@ -31,6 +31,8 @@ export function PurchaseFormDialog({
   const [unitPrice, setUnitPrice] = useState<number | ''>('')
   const [purchaseDate, setPurchaseDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [status, setStatus] = useState('pending')
+  const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('fixed')
+  const [discountValue, setDiscountValue] = useState<number | ''>('')
 
   useEffect(() => {
     if (open) {
@@ -52,6 +54,8 @@ export function PurchaseFormDialog({
         setUnitPrice('')
         setPurchaseDate(format(new Date(), 'yyyy-MM-dd'))
         setStatus('pending')
+        setDiscountType('fixed')
+        setDiscountValue('')
       }
     }
   }, [open, purchaseToEdit])
@@ -66,7 +70,12 @@ export function PurchaseFormDialog({
     }
   }
 
-  const vlrDaCompra = (Number(quantity) || 0) * (Number(unitPrice) || 0)
+  const grossTotal = (Number(quantity) || 0) * (Number(unitPrice) || 0)
+  const discountAmt =
+    discountType === 'percentage'
+      ? grossTotal * ((Number(discountValue) || 0) / 100)
+      : Number(discountValue) || 0
+  const vlrDaCompra = Math.max(0, grossTotal - discountAmt)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -169,6 +178,31 @@ export function PurchaseFormDialog({
               />
             </div>
             <div className="space-y-2">
+              <Label>Desconto</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={discountType}
+                  onValueChange={(v: 'fixed' | 'percentage') => setDiscountType(v)}
+                >
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">R$</SelectItem>
+                    <SelectItem value="percentage">%</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value ? Number(e.target.value) : '')}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
               <Label>Status</Label>
               <Select value={status} onValueChange={setStatus} required>
                 <SelectTrigger>
@@ -183,7 +217,7 @@ export function PurchaseFormDialog({
           </div>
 
           <div className="bg-muted p-3 rounded-md flex justify-between items-center border">
-            <span className="font-semibold text-sm">Total da Compra:</span>
+            <span className="font-semibold text-sm">Vlr Compra:</span>
             <span className="font-bold text-lg">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
                 vlrDaCompra,
