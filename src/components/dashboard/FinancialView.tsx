@@ -116,12 +116,7 @@ export function FinancialView({
 
   const normalizedCommissions = useMemo(() => {
     return commissions.map((c) => {
-      let effectiveStatus =
-        c.payment_method === 'credito' ||
-        c.payment_method === 'credit_card' ||
-        c.payment_method === 'card'
-          ? 'paid'
-          : c.status
+      let effectiveStatus = c.status
       if (effectiveStatus === 'available') effectiveStatus = 'pending'
       return { ...c, status: effectiveStatus }
     })
@@ -200,8 +195,12 @@ export function FinancialView({
   useEffect(() => {
     const loadTransactions = async () => {
       try {
-        const startStr = date?.from ? format(date.from, 'yyyy-MM-dd') + ' 00:00:00' : ''
-        const endStr = date?.to ? format(date.to, 'yyyy-MM-dd') + ' 23:59:59' : ''
+        const startStr = date?.from
+          ? new Date(new Date(date.from).setHours(0, 0, 0, 0)).toISOString()
+          : ''
+        const endStr = date?.to
+          ? new Date(new Date(date.to).setHours(23, 59, 59, 999)).toISOString()
+          : ''
 
         let aptFilter = `status = 'Concluído'`
         let prodFilter = ''
@@ -214,11 +213,12 @@ export function FinancialView({
         }
 
         if (startStr && endStr) {
-          aptFilter += ` && date >= "${startStr}" && date <= "${endStr}"`
-          prodFilter += (prodFilter ? ' && ' : '') + `date >= "${startStr}" && date <= "${endStr}"`
+          aptFilter += ` && updated >= "${startStr}" && updated <= "${endStr}"`
+          prodFilter +=
+            (prodFilter ? ' && ' : '') + `created >= "${startStr}" && created <= "${endStr}"`
         } else if (startStr) {
-          aptFilter += ` && date >= "${startStr}"`
-          prodFilter += (prodFilter ? ' && ' : '') + `date >= "${startStr}"`
+          aptFilter += ` && updated >= "${startStr}"`
+          prodFilter += (prodFilter ? ' && ' : '') + `created >= "${startStr}"`
         }
 
         const [aptsRes, prodsRes, pkgsRes, futureAptsRes] = await Promise.all([
@@ -252,13 +252,13 @@ export function FinancialView({
           const prods = prodsRes.filter(
             (p) =>
               p.client_id === apt.client_id &&
-              Math.abs(new Date(p.created).getTime() - aptTime) < 15000,
+              Math.abs(new Date(p.created).getTime() - aptTime) < 120000,
           )
           const comms = filteredCommissions.filter(
             (c) =>
               c.barber_id === apt.barber_id &&
               !c.is_advance &&
-              Math.abs(new Date(c.created).getTime() - aptTime) < 15000,
+              Math.abs(new Date(c.created).getTime() - aptTime) < 120000,
           )
 
           comms.forEach((c) => usedComms.add(c.id))
@@ -303,7 +303,7 @@ export function FinancialView({
             (c) =>
               c.barber_id === pkg.barber_id &&
               !c.is_advance &&
-              Math.abs(new Date(c.created).getTime() - pkgTime) < 15000,
+              Math.abs(new Date(c.created).getTime() - pkgTime) < 120000,
           )
 
           comms.forEach((c) => usedComms.add(c.id))

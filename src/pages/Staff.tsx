@@ -226,7 +226,7 @@ export default function Staff() {
           const c = matchedComms.find(
             (cm) =>
               cm.type === 'service' &&
-              Math.abs(new Date(cm.created).getTime() - new Date(a.updated).getTime()) < 15000,
+              Math.abs(new Date(cm.created).getTime() - new Date(a.updated).getTime()) < 120000,
           )
           return {
             id: a.id,
@@ -248,7 +248,7 @@ export default function Staff() {
           const c = matchedComms.find(
             (cm) =>
               cm.type === 'product' &&
-              Math.abs(new Date(cm.created).getTime() - new Date(p.created).getTime()) < 15000,
+              Math.abs(new Date(cm.created).getTime() - new Date(p.created).getTime()) < 120000,
           )
           return {
             id: p.id,
@@ -269,8 +269,8 @@ export default function Staff() {
         ...packs.map((pk) => {
           const c = matchedComms.find(
             (cm) =>
-              cm.type === 'package_sale' &&
-              Math.abs(new Date(cm.created).getTime() - new Date(pk.created).getTime()) < 15000,
+              (cm.type === 'package_sale' || cm.type === 'package') &&
+              Math.abs(new Date(cm.created).getTime() - new Date(pk.created).getTime()) < 120000,
           )
           return {
             id: pk.id,
@@ -539,7 +539,7 @@ export default function Staff() {
     const transactionItems = reportItems.filter(
       (i) =>
         i.client === ticketItem.client &&
-        Math.abs(i.commDate.getTime() - ticketItem.commDate.getTime()) < 60000 &&
+        Math.abs(i.commDate.getTime() - ticketItem.commDate.getTime()) < 120000 &&
         (!i.commissionObj ||
           !ticketItem.commissionObj ||
           i.commissionObj.payment_method === ticketItem.commissionObj.payment_method),
