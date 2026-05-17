@@ -39,7 +39,15 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
     text += `--------------------------------\n`
 
     items.forEach((item) => {
-      const pm = paymentMethods.find((p) => p.type === item.paymentMethodType)
+      const pm = paymentMethods.find(
+        (p) =>
+          p.type === item.paymentMethodType ||
+          p.id === item.paymentMethodType ||
+          (item.paymentMethodType === 'credito' && p.type === 'credit_card') ||
+          (item.paymentMethodType === 'debito' && p.type === 'debit_card') ||
+          (item.paymentMethodType === 'pix' && p.type === 'pix') ||
+          (item.paymentMethodType === 'cash' && p.type === 'cash'),
+      )
       const feePercentage = pm?.fee_percentage || 0
       const feeValue = item.serviceValue * (feePercentage / 100)
 
@@ -94,7 +102,15 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
 
       <div className="space-y-4 mb-6 border-b border-dashed border-gray-400 pb-6">
         {items.map((item, i) => {
-          const pm = paymentMethods.find((p) => p.type === item.paymentMethodType)
+          const pm = paymentMethods.find(
+            (p) =>
+              p.type === item.paymentMethodType ||
+              p.id === item.paymentMethodType ||
+              (item.paymentMethodType === 'credito' && p.type === 'credit_card') ||
+              (item.paymentMethodType === 'debito' && p.type === 'debit_card') ||
+              (item.paymentMethodType === 'pix' && p.type === 'pix') ||
+              (item.paymentMethodType === 'cash' && p.type === 'cash'),
+          )
           const feePercentage = pm?.fee_percentage || 0
           const feeValue = item.serviceValue * (feePercentage / 100)
           const info = item.commissionInfo

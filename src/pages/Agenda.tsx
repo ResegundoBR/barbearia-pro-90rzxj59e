@@ -93,6 +93,7 @@ export default function Agenda() {
   })
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState<'day' | 'week' | 'month'>('week')
+  const [agendaFormat, setAgendaFormat] = useState<'grid' | 'list'>('grid')
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
 
   const [form, setForm] = useState({
@@ -505,6 +506,92 @@ export default function Agenda() {
     )
   }
 
+  const renderListView = () => {
+    let daysToRender: Date[] = []
+    if (view === 'day') daysToRender = [selectedDate]
+    if (view === 'week') {
+      daysToRender = eachDayOfInterval({
+        start: startOfWeek(selectedDate, { weekStartsOn: 0 }),
+        end: endOfWeek(selectedDate, { weekStartsOn: 0 }),
+      })
+    }
+    if (view === 'month') {
+      daysToRender = eachDayOfInterval({
+        start: startOfWeek(startOfMonth(selectedDate), { weekStartsOn: 0 }),
+        end: endOfWeek(endOfMonth(selectedDate), { weekStartsOn: 0 }),
+      })
+    }
+
+    const allEvents = daysToRender
+      .flatMap((day) => {
+        return getEventsForDay(day).map((e) => ({ ...e, displayDate: day }))
+      })
+      .sort((a, b) => {
+        const dateA = new Date(`${a.date.split(' ')[0]}T${a.time}:00`)
+        const dateB = new Date(`${b.date.split(' ')[0]}T${b.time}:00`)
+        return dateA.getTime() - dateB.getTime()
+      })
+
+    return (
+      <div className="flex-1 bg-card rounded-xl border shadow-inner overflow-hidden flex flex-col">
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
+            {allEvents.length === 0 ? (
+              <div className="text-center text-muted-foreground py-10">
+                Nenhum agendamento encontrado no período.
+              </div>
+            ) : (
+              allEvents.map((apt) => {
+                const isCompleted = apt.status === 'Concluído'
+                const isCanceled = apt.status === 'Cancelado'
+                return (
+                  <div
+                    key={apt.id}
+                    className={cn(
+                      'flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer',
+                      isCompleted && 'opacity-60',
+                      isCanceled && 'opacity-50 grayscale',
+                    )}
+                    onClick={() => handleOpenDetail(apt)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-md flex flex-col items-center justify-center bg-primary/10 text-primary">
+                        <span className="text-sm font-bold">
+                          {apt.displayDate ? format(apt.displayDate, 'dd/MM') : ''}
+                        </span>
+                        <span className="text-xs font-medium">{apt.time}</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-lg">{apt.expand?.client_id?.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {apt.expand?.service_id?.name} com {apt.expand?.barber_id?.name}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                          apt.status === 'Concluído'
+                            ? 'bg-green-100 text-green-800'
+                            : apt.status === 'Cancelado'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800',
+                        )}
+                      >
+                        {apt.status}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    )
+  }
+
   const headerLabel =
     view === 'day'
       ? format(selectedDate, "dd 'de' MMMM, yyyy", { locale: ptBR })
@@ -545,13 +632,29 @@ export default function Agenda() {
               <TabsTrigger value="month">Mês</TabsTrigger>
             </TabsList>
           </Tabs>
+
+          <Tabs
+            value={agendaFormat}
+            onValueChange={(v) => setAgendaFormat(v as any)}
+            className="w-[140px] shrink-0"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="grid">Grid</TabsTrigger>
+              <TabsTrigger value="list">Lista</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <Button onClick={() => handleOpen()} className="gap-2 shrink-0">
             <Plus className="size-4" /> <span className="hidden sm:inline">Agendar</span>
           </Button>
         </div>
       </div>
 
-      {view === 'month' ? renderMonthView() : renderGrid()}
+      {agendaFormat === 'list'
+        ? renderListView()
+        : view === 'month'
+          ? renderMonthView()
+          : renderGrid()}
 
       {/* CREATE APPOINTMENT DIALOG */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

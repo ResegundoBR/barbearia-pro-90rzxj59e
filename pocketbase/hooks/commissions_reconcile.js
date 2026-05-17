@@ -17,6 +17,12 @@ routerAdd(
 
     const rules = $app.findRecordsByFilter('commission_rules', '1=1', '', 10000, 0)
 
+    const paymentMethods = $app.findRecordsByFilter('payment_methods', '1=1', '', 100, 0)
+    const pmFeeMap = {}
+    for (const pm of paymentMethods) {
+      pmFeeMap[pm.getString('type')] = pm.getFloat('fee_percentage')
+    }
+
     function getCommission(barberId, type, itemId, basePrice) {
       const barber = barbersMap[barberId]
       if (!barber) return 0
@@ -93,7 +99,7 @@ routerAdd(
 
     const apts = $app.findRecordsByFilter(
       'appointments',
-      `status = 'Concluído' && updated >= '${startDate}' && updated <= '${endDate}'`,
+      `status = 'Concluído' && created >= '${startDate}' && created <= '${endDate}'`,
       '',
       10000,
       0,
@@ -121,14 +127,14 @@ routerAdd(
         const barberId = apt.getString('barber_id')
         if (!barberId) continue
 
-        const updatedTime = new Date(apt.getString('updated')).getTime()
+        const createdTime = new Date(apt.getString('created')).getTime()
 
         let found = false
         let inferredPm = 'pix'
 
         for (const c of existingCommsArr) {
           const cTime = new Date(c.getString('created')).getTime()
-          const diff = Math.abs(cTime - updatedTime)
+          const diff = Math.abs(cTime - createdTime)
 
           if (diff < 120000 && c.getString('payment_method')) {
             inferredPm = c.getString('payment_method')
@@ -165,6 +171,15 @@ routerAdd(
           if (amount === 0 && barber && barber.getString('work_level') !== 'socio' && cRate > 0) {
             amount = price * (cRate / 100)
           }
+
+          let pmType = 'pix'
+          if (inferredPm === 'credito') pmType = 'credit_card'
+          if (inferredPm === 'debito') pmType = 'debit_card'
+          if (inferredPm === 'cash') pmType = 'cash'
+
+          const feePct = pmFeeMap[pmType] || 0
+          const feeVal = price * (feePct / 100)
+          amount = amount - feeVal
 
           if (amount > 0 || (barber && barber.getString('work_level') === 'socio')) {
             const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
@@ -212,8 +227,17 @@ routerAdd(
         if (!found) {
           const price = prod.getFloat('price_at_sale')
           const productId = prod.getString('product_id')
-          const amount = getCommission(barberId, 'product', productId, price)
+          let amount = getCommission(barberId, 'product', productId, price)
           const barber = barbersMap[barberId]
+
+          let pmType = 'pix'
+          if (inferredPm === 'credito') pmType = 'credit_card'
+          if (inferredPm === 'debito') pmType = 'debit_card'
+          if (inferredPm === 'cash') pmType = 'cash'
+
+          const feePct = pmFeeMap[pmType] || 0
+          const feeVal = price * (feePct / 100)
+          amount = amount - feeVal
 
           if (amount > 0 || (barber && barber.getString('work_level') === 'socio')) {
             const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
@@ -269,8 +293,17 @@ routerAdd(
             price = pkg.getFloat('price')
           } catch (e) {}
 
-          const amount = getCommission(barberId, 'package', packageId, price)
+          let amount = getCommission(barberId, 'package', packageId, price)
           const barber = barbersMap[barberId]
+
+          let pmType = 'pix'
+          if (inferredPm === 'credito') pmType = 'credit_card'
+          if (inferredPm === 'debito') pmType = 'debit_card'
+          if (inferredPm === 'cash') pmType = 'cash'
+
+          const feePct = pmFeeMap[pmType] || 0
+          const feeVal = price * (feePct / 100)
+          amount = amount - feeVal
 
           if (amount > 0 || (barber && barber.getString('work_level') === 'socio')) {
             const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))

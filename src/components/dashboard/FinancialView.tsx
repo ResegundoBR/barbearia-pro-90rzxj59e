@@ -60,7 +60,7 @@ export function FinancialView({
           (c: any) =>
             c.barber_id === item.barber_id &&
             c.type === type &&
-            Math.abs(new Date(c.created).getTime() - new Date(item.updated).getTime()) < 15000,
+            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
         )
       } else {
         comm = commissions.find(
@@ -118,11 +118,11 @@ export function FinancialView({
         (c: any) =>
           c.barber_id === a.barber_id &&
           c.type === 'service' &&
-          Math.abs(new Date(c.created).getTime() - new Date(a.updated).getTime()) < 15000,
+          Math.abs(new Date(c.created).getTime() - new Date(a.created).getTime()) < 15000,
       )
       list.push({
         id: `apt_${a.id}`,
-        date: new Date(a.updated || a.created),
+        date: new Date(a.created),
         client: a.expand?.client_id?.name || 'Avulso',
         item: a.expand?.service_id?.name || 'Serviço',
         barber: a.expand?.barber_id?.name || '-',
