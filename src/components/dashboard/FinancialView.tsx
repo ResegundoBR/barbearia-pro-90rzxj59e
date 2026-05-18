@@ -139,7 +139,7 @@ export function FinancialView({
       const pmType = methodMapping[methodRaw] || methodRaw
       const pmRecord = paymentMethods.find((p: any) => p.type === pmType)
       const feePct = pmRecord?.fee_percentage || 0
-      const feeVal = val * (feePct / 100)
+      const feeVal = Number((val * (feePct / 100)).toFixed(2))
 
       transfers += val - feeVal
     }
@@ -197,7 +197,7 @@ export function FinancialView({
       const pmType = methodMapping[methodRaw] || methodRaw
       const pmRecord = paymentMethods.find((p: any) => p.type === pmType)
       const feePct = pmRecord?.fee_percentage || 0
-      fees += val * (feePct / 100)
+      fees += Number((val * (feePct / 100)).toFixed(2))
     }
 
     completedPeriod.forEach((a: any) =>

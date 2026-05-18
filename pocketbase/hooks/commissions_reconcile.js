@@ -79,7 +79,7 @@ routerAdd(
           const cat = $app.findRecordById('categories', svc.getString('category_id'))
           catRate = cat.getFloat('commission_percentage')
         }
-      } catch (e) {}
+      } catch (err) {}
 
       if (svcRate > 0) return basePrice * (svcRate / 100)
       return basePrice * (catRate / 100)
@@ -178,10 +178,12 @@ routerAdd(
           if (inferredPm === 'cash') pmType = 'cash'
 
           const feePct = pmFeeMap[pmType] || 0
-          const feeVal = price * (feePct / 100)
+          let feeVal = price * (feePct / 100)
+          feeVal = Math.round(feeVal * 100) / 100
           amount = amount - feeVal
+          amount = Math.round(amount * 100) / 100
 
-          if (amount > 0 || (barber && barber.getString('work_level') === 'socio')) {
+          if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
             const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
             newComm.set('barber_id', barberId)
             newComm.set('amount', amount)
@@ -236,10 +238,12 @@ routerAdd(
           if (inferredPm === 'cash') pmType = 'cash'
 
           const feePct = pmFeeMap[pmType] || 0
-          const feeVal = price * (feePct / 100)
+          let feeVal = price * (feePct / 100)
+          feeVal = Math.round(feeVal * 100) / 100
           amount = amount - feeVal
+          amount = Math.round(amount * 100) / 100
 
-          if (amount > 0 || (barber && barber.getString('work_level') === 'socio')) {
+          if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
             const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
             newComm.set('barber_id', barberId)
             newComm.set('amount', amount)
@@ -302,10 +306,12 @@ routerAdd(
           if (inferredPm === 'cash') pmType = 'cash'
 
           const feePct = pmFeeMap[pmType] || 0
-          const feeVal = price * (feePct / 100)
+          let feeVal = price * (feePct / 100)
+          feeVal = Math.round(feeVal * 100) / 100
           amount = amount - feeVal
+          amount = Math.round(amount * 100) / 100
 
-          if (amount > 0 || (barber && barber.getString('work_level') === 'socio')) {
+          if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
             const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
             newComm.set('barber_id', barberId)
             newComm.set('amount', amount)

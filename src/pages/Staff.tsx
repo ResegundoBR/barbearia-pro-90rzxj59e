@@ -674,14 +674,17 @@ export default function Staff() {
       } else if (i.commissionInfo?.type === 'fixed') {
         gross = i.commissionInfo.value
       } else if (feePercentage > 0 && feePercentage < 100) {
-        gross = i.commission / (1 - feePercentage / 100)
+        gross = i.commission + Number((i.price * (feePercentage / 100)).toFixed(2))
       }
       return { ...i, grossCommission: gross }
     })
 
     const grossTotal = itemsWithGross.reduce((acc, i) => acc + i.grossCommission, 0)
     const netTotal = transactionItems.reduce((acc, i) => acc + (i.commission || 0), 0)
-    const feeDeduction = Math.max(0, grossTotal - netTotal)
+    const feeDeduction = itemsWithGross.reduce(
+      (acc, i) => acc + Number((i.price * (feePercentage / 100)).toFixed(2)),
+      0,
+    )
 
     const memoryLines = itemsWithGross.map((i: any) => {
       let rateStr = ''
@@ -1716,7 +1719,7 @@ export default function Staff() {
                 ))}
 
                 {ticketData.feeDeduction > 0 && (
-                  <div className="flex justify-between text-gray-600 pt-1">
+                  <div className="flex justify-between text-red-600 pt-1">
                     <span>Taxa Financeira ({ticketData.feePercentage}%):</span>
                     <span>- R$ {ticketData.feeDeduction.toFixed(2)}</span>
                   </div>

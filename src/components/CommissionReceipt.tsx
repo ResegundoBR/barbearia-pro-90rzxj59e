@@ -49,7 +49,7 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
           (item.paymentMethodType === 'cash' && p.type === 'cash'),
       )
       const feePercentage = pm?.fee_percentage || 0
-      const feeValue = item.serviceValue * (feePercentage / 100)
+      const feeValue = Number((item.serviceValue * (feePercentage / 100)).toFixed(2))
 
       const info = item.commissionInfo
       let rateLabel = ''
@@ -112,7 +112,7 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
               (item.paymentMethodType === 'cash' && p.type === 'cash'),
           )
           const feePercentage = pm?.fee_percentage || 0
-          const feeValue = item.serviceValue * (feePercentage / 100)
+          const feeValue = Number((item.serviceValue * (feePercentage / 100)).toFixed(2))
           const info = item.commissionInfo
           let rateLabel = ''
           if (info?.type === 'percentage') {
