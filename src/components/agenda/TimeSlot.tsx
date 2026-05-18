@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn, getContrastColor } from '@/lib/utils'
 
 interface TimeSlotProps {
   time: string
@@ -30,50 +30,43 @@ export function TimeSlot({
     const isPast = aptDateTime < new Date()
     const isMissed = isPast && !isCompleted && !isCanceled
 
+    const barberColor = appointment.expand?.barber_id?.color || 'hsl(var(--primary))'
+    const bgColor = isMissed ? '#000000' : isCompleted ? 'transparent' : barberColor
+    const textColor = isCompleted ? 'inherit' : getContrastColor(bgColor)
+
     return (
       <div
         className={cn(
-          'h-14 rounded-md p-1.5 flex justify-between items-center border cursor-pointer transition-colors shadow-sm',
-          isMissed
-            ? 'bg-black text-white border-black'
-            : isCompleted
-              ? 'bg-muted/50 border-border opacity-25'
-              : 'bg-card border-l-4 hover:bg-muted/30 border-l-primary',
-          !isCompleted && isCanceled && 'opacity-50 grayscale',
-          isCompleted ? 'opacity-25' : 'opacity-100',
+          'h-14 rounded-md p-2 flex justify-between items-center border cursor-pointer transition-all shadow-sm hover:scale-[1.02]',
+          isCompleted ? 'bg-muted/50 border-border opacity-50' : 'border-black/5',
+          !isCompleted && isCanceled && 'opacity-50 grayscale bg-muted/50',
         )}
+        style={{
+          backgroundColor: isCompleted || isCanceled ? undefined : bgColor,
+          color: isCompleted || isCanceled ? undefined : textColor,
+        }}
       >
         <div className="flex flex-col overflow-hidden">
-          <div
-            className={cn('font-medium text-xs truncate', isMissed && 'text-white')}
-            title={customerName}
-          >
+          <div className="font-semibold text-sm truncate leading-tight" title={customerName}>
             {customerName}
           </div>
-          <div
-            className={cn(
-              'text-[10px] truncate',
-              isMissed ? 'text-white/80' : 'text-muted-foreground',
-            )}
-          >
+          <div className="text-xs truncate opacity-90 leading-tight mt-0.5">
             {appointment.expand?.service_id?.name || 'Serviço'}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1 ml-1 shrink-0">
-          <span
-            className={cn(
-              'text-[10px] font-medium',
-              isMissed ? 'text-white' : 'text-muted-foreground',
-            )}
-          >
-            {time}
-          </span>
+        <div className="flex flex-col items-end gap-1 ml-2 shrink-0">
+          <span className="text-xs font-medium opacity-90">{time}</span>
           <Badge
             variant={isCompleted ? 'outline' : isPending ? 'secondary' : 'default'}
             className={cn(
-              'text-[8px] px-1 py-0 h-4',
-              isPending && !isMissed && 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30',
-              isMissed && 'bg-white/20 text-white hover:bg-white/30',
+              'text-[9px] px-1.5 py-0 h-4 font-bold uppercase tracking-wider',
+              isPending &&
+                !isMissed &&
+                !isCompleted &&
+                !isCanceled &&
+                'bg-amber-500 text-white hover:bg-amber-600 border-none',
+              isMissed && 'bg-white text-black hover:bg-white/90 border-none',
+              isCompleted && 'bg-emerald-100 text-emerald-800 border-emerald-200',
             )}
           >
             {appointment.status}

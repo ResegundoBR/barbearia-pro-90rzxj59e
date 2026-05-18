@@ -19,3 +19,20 @@ export function phoneMask(value: string) {
   if (v.length > 0) return `(${v}`
   return ''
 }
+
+export function getContrastColor(hexcolor: string) {
+  if (!hexcolor) return 'white'
+  let c = hexcolor.replace('#', '')
+  if (c.startsWith('hsl') || c.startsWith('rgb')) return 'white'
+  if (c.length === 3)
+    c = c
+      .split('')
+      .map((x) => x + x)
+      .join('')
+  if (c.length !== 6) return 'white'
+  const r = parseInt(c.substr(0, 2), 16)
+  const g = parseInt(c.substr(2, 2), 16)
+  const b = parseInt(c.substr(4, 2), 16)
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000
+  return yiq >= 128 ? '#000000' : '#ffffff'
+}

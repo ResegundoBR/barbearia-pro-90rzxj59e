@@ -76,7 +76,7 @@ import {
   subMonths,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { cn } from '@/lib/utils'
+import { cn, getContrastColor } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8) // 08:00 to 20:00
@@ -333,7 +333,8 @@ export default function Agenda() {
             const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
             const [eH, eM] = (apt.end_time || apt.time || '00:00').split(':').map(Number)
             const top = (sH - 8 + sM / 60) * 60
-            const height = Math.max(15, (eH - sH + (eM - sM) / 60) * 60)
+            const durationMinutes = (eH - sH) * 60 + (eM - sM)
+            const height = Math.max(30, durationMinutes > 0 ? durationMinutes : 30)
             const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
             const isCanceled = apt.status === 'Cancelado'
             const isCompleted = apt.status === 'Concluído'
@@ -344,31 +345,33 @@ export default function Agenda() {
             const isPast = aptDateTime < new Date()
             const isMissed = isPast && !isCompleted && !isCanceled
 
+            const bgColor = isMissed ? '#000000' : barberColor
+            const textColor = getContrastColor(bgColor)
+
             return (
               <div
                 key={apt.id}
                 className={cn(
-                  'absolute inset-x-1 rounded-md text-white p-1.5 overflow-hidden shadow-sm transition-all hover:scale-[1.02] cursor-pointer',
-                  isCompleted ? 'opacity-25' : 'opacity-100',
+                  'absolute inset-x-1 rounded-md p-2 overflow-hidden shadow-sm transition-all hover:scale-[1.02] cursor-pointer border border-black/5',
+                  isCompleted ? 'opacity-40' : 'opacity-100',
                   !isCompleted && isCanceled && 'opacity-50 grayscale',
                 )}
                 style={{
                   top,
                   height,
-                  backgroundColor: isMissed ? 'black' : barberColor,
-                  color: 'white',
+                  backgroundColor: bgColor,
+                  color: textColor,
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
                   handleOpenDetail(apt)
                 }}
               >
-                <div className="text-xs font-semibold leading-tight drop-shadow-sm">
-                  {apt.expand?.client_id?.name}
+                <div className="text-sm font-semibold leading-tight truncate">
+                  {apt.expand?.client_id?.name} {apt.expand?.client_id?.surname || ''}
                 </div>
-                <div className="text-[10px] opacity-90 drop-shadow-sm leading-tight mt-0.5">
-                  {apt.time} - {apt.expand?.barber_id?.name?.split(' ')[0] || 'Profissional'} •{' '}
-                  {apt.expand?.service_id?.name || 'Serviço'}
+                <div className="text-xs opacity-90 leading-tight mt-1 truncate">
+                  {apt.time} • {apt.expand?.service_id?.name || 'Serviço'}
                 </div>
               </div>
             )
@@ -433,27 +436,29 @@ export default function Agenda() {
                     const isPast = aptDateTime < new Date()
                     const isMissed = isPast && !isCompleted && !isCanceled
 
+                    const bgColor = isMissed
+                      ? '#000000'
+                      : apt.expand?.barber_id?.color || 'hsl(var(--primary))'
+                    const textColor = getContrastColor(bgColor)
+
                     return (
                       <div
                         key={apt.id}
                         className={cn(
-                          'text-[10px] truncate px-1 py-0.5 rounded text-white shadow-sm',
-                          isCompleted ? 'opacity-25' : 'opacity-100',
+                          'text-[10px] truncate px-1.5 py-1 mb-0.5 rounded shadow-sm font-medium border border-black/5',
+                          isCompleted ? 'opacity-40' : 'opacity-100',
                           !isCompleted && isCanceled && 'opacity-50 grayscale',
                         )}
                         style={{
-                          backgroundColor: isMissed
-                            ? 'black'
-                            : apt.expand?.barber_id?.color || 'hsl(var(--primary))',
-                          color: 'white',
+                          backgroundColor: bgColor,
+                          color: textColor,
                         }}
                         onClick={(e) => {
                           e.stopPropagation()
                           handleOpenDetail(apt)
                         }}
                       >
-                        {apt.time} - {apt.expand?.barber_id?.name?.split(' ')[0]} -{' '}
-                        {apt.expand?.service_id?.name} ({apt.expand?.client_id?.name})
+                        {apt.time} • {apt.expand?.client_id?.name}
                       </div>
                     )
                   })}
@@ -557,7 +562,7 @@ export default function Agenda() {
                     onClick={() => handleOpenDetail(apt)}
                   >
                     <div
-                      className="absolute left-0 top-0 bottom-0 w-1.5 sm:rounded-l-xl"
+                      className="absolute left-0 top-0 bottom-0 w-2 sm:rounded-l-xl"
                       style={{ backgroundColor: barberColor }}
                     />
 
@@ -569,18 +574,18 @@ export default function Agenda() {
                         <span className="text-xs font-bold text-foreground">{apt.time}</span>
                       </div>
                       <div className="flex flex-col">
-                        <div className="font-bold text-base sm:text-lg text-foreground">
+                        <div className="font-semibold text-base sm:text-lg text-foreground leading-tight">
                           {apt.expand?.client_id?.name} {apt.expand?.client_id?.surname || ''}
                         </div>
-                        <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                          <span>{apt.expand?.service_id?.name}</span>
+                        <div className="text-sm font-medium text-muted-foreground flex items-center gap-2 mt-0.5">
+                          <span>{apt.expand?.service_id?.name || 'Serviço'}</span>
                           <span className="w-1 h-1 rounded-full bg-border" />
                           <span className="flex items-center gap-1">
                             <span
                               className="w-2 h-2 rounded-full shadow-sm"
                               style={{ backgroundColor: barberColor }}
                             />
-                            {apt.expand?.barber_id?.name}
+                            {apt.expand?.barber_id?.name || 'Profissional'}
                           </span>
                         </div>
                       </div>
