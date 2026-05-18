@@ -47,10 +47,10 @@ export function TimeSlot({
         }}
       >
         <div className="flex flex-col overflow-hidden">
-          <div className="font-semibold text-sm truncate leading-tight" title={customerName}>
+          <div className="font-semibold text-xs truncate leading-tight" title={customerName}>
             {customerName}
           </div>
-          <div className="text-xs truncate opacity-90 leading-tight mt-0.5">
+          <div className="text-[10px] truncate opacity-90 leading-tight mt-1">
             {appointment.expand?.service_id?.name || 'Serviço'}
           </div>
         </div>

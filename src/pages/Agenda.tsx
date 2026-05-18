@@ -367,16 +367,16 @@ export default function Agenda() {
                   handleOpenDetail(apt)
                 }}
               >
-                <div className="text-sm font-bold leading-tight truncate">
+                <div className="text-xs font-bold leading-tight truncate">
                   {apt.expand?.client_id?.name} {apt.expand?.client_id?.surname || ''}
                 </div>
                 {height >= 45 && (
-                  <div className="text-xs font-medium opacity-95 leading-tight mt-0.5 truncate">
+                  <div className="text-[10px] font-medium opacity-95 leading-tight mt-1 truncate">
                     {apt.expand?.service_id?.name || 'Serviço'}
                   </div>
                 )}
                 {height >= 60 && (
-                  <div className="text-xs opacity-80 leading-tight mt-0.5 font-medium truncate">
+                  <div className="text-[10px] opacity-80 leading-tight mt-0.5 font-medium truncate">
                     {apt.time} - {apt.end_time || '--:--'}
                   </div>
                 )}
@@ -439,7 +439,6 @@ export default function Agenda() {
                     const [y, m, d] = datePart.split('-').map(Number)
                     const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
                     const aptDateTime = new Date(y, m - 1, d, sH, sM)
-                    const isFuture = aptDateTime > new Date()
                     const isPast = aptDateTime < new Date()
                     const isMissed = isPast && !isCompleted && !isCanceled
 
@@ -452,7 +451,7 @@ export default function Agenda() {
                       <div
                         key={apt.id}
                         className={cn(
-                          'text-[10px] truncate px-1.5 py-0.5 mb-0.5 rounded shadow-sm font-bold border border-black/5 leading-tight flex flex-col',
+                          'text-[9px] truncate px-1.5 py-1 mb-0.5 rounded shadow-sm font-bold border border-black/5 leading-tight flex flex-col gap-0.5',
                           isCompleted ? 'opacity-40' : 'opacity-100',
                           !isCompleted && isCanceled && 'opacity-50 grayscale',
                         )}
@@ -466,7 +465,7 @@ export default function Agenda() {
                         }}
                       >
                         <span className="truncate">{apt.expand?.client_id?.name}</span>
-                        <span className="truncate text-[9px] font-medium opacity-90">
+                        <span className="truncate text-[8px] font-medium opacity-90">
                           {apt.time}
                         </span>
                       </div>
@@ -576,18 +575,18 @@ export default function Agenda() {
                       style={{ backgroundColor: barberColor }}
                     />
 
-                    <div className="flex items-center gap-4 pl-3">
+                    <div className="flex items-center gap-4 pl-3 py-1">
                       <div className="flex flex-col items-center justify-center w-16 h-14 bg-muted/30 rounded-md border shadow-sm">
                         <span className="text-sm font-extrabold text-foreground">
                           {apt.displayDate ? format(apt.displayDate, 'dd/MM') : ''}
                         </span>
                         <span className="text-xs font-bold text-foreground">{apt.time}</span>
                       </div>
-                      <div className="flex flex-col">
-                        <div className="font-semibold text-base sm:text-lg text-foreground leading-tight">
+                      <div className="flex flex-col justify-center">
+                        <div className="font-semibold text-sm sm:text-base text-foreground leading-tight">
                           {apt.expand?.client_id?.name} {apt.expand?.client_id?.surname || ''}
                         </div>
-                        <div className="text-sm font-medium text-muted-foreground flex items-center gap-2 mt-0.5">
+                        <div className="text-xs font-medium text-muted-foreground flex items-center gap-2 mt-1">
                           <span>{apt.expand?.service_id?.name || 'Serviço'}</span>
                           <span className="w-1 h-1 rounded-full bg-border" />
                           <span className="flex items-center gap-1">
