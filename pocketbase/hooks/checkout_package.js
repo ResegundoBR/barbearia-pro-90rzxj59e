@@ -94,8 +94,7 @@ routerAdd(
       }
 
       const price = pkg.getFloat('price')
-      const feeVal = price * (pmFeePct / 100)
-      const netBase = price - feeVal
+      const feeVal = Number((price * (pmFeePct / 100)).toFixed(2))
 
       let isSocio = false
       try {
@@ -105,12 +104,14 @@ routerAdd(
         }
       } catch (_) {}
 
-      let netComm = 0
+      let grossComm = 0
       if (isSocio) {
-        netComm = netBase
+        grossComm = price
       } else {
-        netComm = calculateComm('package', package_id, netBase, barber_id)
+        grossComm = calculateComm('package', package_id, price, barber_id)
       }
+
+      const netComm = Number((grossComm - feeVal).toFixed(2))
 
       if (netComm !== 0) {
         const commCol = txApp.findCollectionByNameOrId('commissions')

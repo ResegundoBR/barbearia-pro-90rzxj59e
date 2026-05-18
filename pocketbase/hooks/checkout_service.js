@@ -151,15 +151,16 @@ routerAdd(
           }
         } catch (_) {}
 
-        const feeVal = servicePrice * (pmFeePct / 100)
-        const netBase = servicePrice - feeVal
-        let netComm = 0
+        const feeVal = Number((servicePrice * (pmFeePct / 100)).toFixed(2))
+        let grossComm = 0
 
         if (isSocio) {
-          netComm = netBase
+          grossComm = servicePrice
         } else {
-          netComm = calculateComm('service', serviceId, netBase, barberId)
+          grossComm = calculateComm('service', serviceId, servicePrice, barberId)
         }
+
+        const netComm = Number((grossComm - feeVal).toFixed(2))
 
         if (netComm !== 0) {
           const commCol = txApp.findCollectionByNameOrId('commissions')
@@ -203,22 +204,23 @@ routerAdd(
             }
           } catch (_) {}
 
-          const feeVal = totalProdPrice * (pmFeePct / 100)
-          const netBase = totalProdPrice - feeVal
+          const feeVal = Number((totalProdPrice * (pmFeePct / 100)).toFixed(2))
 
-          let sellerComm = 0
+          let grossSellerComm = 0
           let ownerComm = 0
 
           if (inventoryOwnerId && barberId === inventoryOwnerId) {
-            sellerComm = netBase
+            grossSellerComm = totalProdPrice
           } else if (!inventoryOwnerId && isSocioProd) {
-            sellerComm = netBase
+            grossSellerComm = totalProdPrice
           } else {
             if (enableThirdParty) {
-              sellerComm = calculateComm('product', item.product_id, netBase, barberId)
+              grossSellerComm = calculateComm('product', item.product_id, totalProdPrice, barberId)
             }
-            ownerComm = netBase - sellerComm
+            ownerComm = Number((totalProdPrice - grossSellerComm).toFixed(2))
           }
+
+          const sellerComm = Number((grossSellerComm - feeVal).toFixed(2))
 
           if (sellerComm > 0) {
             const commCol = txApp.findCollectionByNameOrId('commissions')

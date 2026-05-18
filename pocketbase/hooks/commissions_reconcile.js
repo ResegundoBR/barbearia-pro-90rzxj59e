@@ -178,10 +178,8 @@ routerAdd(
           if (inferredPm === 'cash') pmType = 'cash'
 
           const feePct = pmFeeMap[pmType] || 0
-          let feeVal = price * (feePct / 100)
-          feeVal = Math.round(feeVal * 100) / 100
-          amount = amount - feeVal
-          amount = Math.round(amount * 100) / 100
+          const feeVal = Number((price * (feePct / 100)).toFixed(2))
+          amount = Number((amount - feeVal).toFixed(2))
 
           if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
             const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
@@ -238,10 +236,8 @@ routerAdd(
           if (inferredPm === 'cash') pmType = 'cash'
 
           const feePct = pmFeeMap[pmType] || 0
-          let feeVal = price * (feePct / 100)
-          feeVal = Math.round(feeVal * 100) / 100
-          amount = amount - feeVal
-          amount = Math.round(amount * 100) / 100
+          const feeVal = Number((price * (feePct / 100)).toFixed(2))
+          amount = Number((amount - feeVal).toFixed(2))
 
           if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
             const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
@@ -306,10 +302,8 @@ routerAdd(
           if (inferredPm === 'cash') pmType = 'cash'
 
           const feePct = pmFeeMap[pmType] || 0
-          let feeVal = price * (feePct / 100)
-          feeVal = Math.round(feeVal * 100) / 100
-          amount = amount - feeVal
-          amount = Math.round(amount * 100) / 100
+          const feeVal = Number((price * (feePct / 100)).toFixed(2))
+          amount = Number((amount - feeVal).toFixed(2))
 
           if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
             const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))

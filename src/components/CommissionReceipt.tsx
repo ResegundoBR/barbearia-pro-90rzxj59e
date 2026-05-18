@@ -63,13 +63,13 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
 
       let grossCommission = item.commissionValue + feeValue
       if (info?.type === 'percentage') {
-        grossCommission = item.serviceValue * (info.value / 100)
+        grossCommission = Number((item.serviceValue * (info.value / 100)).toFixed(2))
       } else if (info?.type === 'fixed') {
         grossCommission = info.value
       } else if (item.commissionRate) {
-        grossCommission = item.serviceValue * (item.commissionRate / 100)
+        grossCommission = Number((item.serviceValue * (item.commissionRate / 100)).toFixed(2))
       }
-      const netCommission = grossCommission - feeValue
+      const netCommission = Number((grossCommission - feeValue).toFixed(2))
 
       text += `Nome do Cliente  : ${item.clientName}\n`
       text += `Serviço          : ${item.serviceName}\n`
@@ -125,13 +125,13 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
 
           let grossCommission = item.commissionValue + feeValue
           if (info?.type === 'percentage') {
-            grossCommission = item.serviceValue * (info.value / 100)
+            grossCommission = Number((item.serviceValue * (info.value / 100)).toFixed(2))
           } else if (info?.type === 'fixed') {
             grossCommission = info.value
           } else if (item.commissionRate) {
-            grossCommission = item.serviceValue * (item.commissionRate / 100)
+            grossCommission = Number((item.serviceValue * (item.commissionRate / 100)).toFixed(2))
           }
-          const netCommission = grossCommission - feeValue
+          const netCommission = Number((grossCommission - feeValue).toFixed(2))
 
           return (
             <div

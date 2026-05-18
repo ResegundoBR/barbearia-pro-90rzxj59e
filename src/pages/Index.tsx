@@ -708,6 +708,9 @@ export default function Index() {
                         const barberPurchases = productPurchasesPeriod.filter(
                           (p) => p.barber_id === barber.id,
                         )
+                        const barberPackages = packagesPeriod.filter(
+                          (pkg) => pkg.barber_id === barber.id,
+                        )
                         const attendance = barberApts.length
                         const revenue =
                           barberApts.reduce(
@@ -717,7 +720,13 @@ export default function Index() {
                                 ? 0
                                 : a.price || a.expand?.service_id?.price || 0),
                             0,
-                          ) + barberPurchases.reduce((acc, p) => acc + (p.price_at_sale || 0), 0)
+                          ) +
+                          barberPurchases.reduce((acc, p) => acc + (p.price_at_sale || 0), 0) +
+                          barberPackages.reduce(
+                            (acc, pkg) => acc + (pkg.expand?.package_id?.price || 0),
+                            0,
+                          )
+
                         const value = gaugeMetric === 'revenue' ? revenue : attendance
                         const max =
                           gaugeMetric === 'revenue'

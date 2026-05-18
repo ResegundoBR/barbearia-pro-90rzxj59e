@@ -666,29 +666,61 @@ export default function Staff() {
     const totalPaid = transactionItems.reduce((acc, i) => acc + i.price, 0)
     const commissionBase = commissionableItems.reduce((acc, i) => acc + i.price, 0)
 
-    // Gross commission per item (no reverse calc)
-    const itemsWithGross = commissionableItems.map((i) => {
+    const isSocio = selectedBarberDetailed?.work_level === 'socio'
+
+    // Use current rules to recalculate items
+    const itemsWithCalculations = transactionItems.map((i) => {
+      if (i.commission <= 0)
+        return {
+          ...i,
+          grossCommission: 0,
+          feeDeduction: 0,
+          netCommission: 0,
+          isCommissionable: false,
+        }
+
       let gross = i.commission
-      if (i.commissionInfo?.type === 'percentage') {
-        gross = i.price * (i.commissionInfo.value / 100)
+      if (isSocio) {
+        gross = i.price
+      } else if (i.commissionInfo?.type === 'percentage') {
+        gross = Number((i.price * (i.commissionInfo.value / 100)).toFixed(2))
       } else if (i.commissionInfo?.type === 'fixed') {
         gross = i.commissionInfo.value
-      } else if (feePercentage > 0 && feePercentage < 100) {
+      } else {
         gross = i.commission + Number((i.price * (feePercentage / 100)).toFixed(2))
       }
-      return { ...i, grossCommission: gross }
+
+      const fee = Number((i.price * (feePercentage / 100)).toFixed(2))
+      const net = Number((gross - fee).toFixed(2))
+
+      return {
+        ...i,
+        grossCommission: gross,
+        feeDeduction: fee,
+        netCommission: net,
+        isCommissionable: true,
+      }
     })
 
-    const grossTotal = itemsWithGross.reduce((acc, i) => acc + i.grossCommission, 0)
-    const netTotal = transactionItems.reduce((acc, i) => acc + (i.commission || 0), 0)
-    const feeDeduction = itemsWithGross.reduce(
-      (acc, i) => acc + Number((i.price * (feePercentage / 100)).toFixed(2)),
+    const nonCommissionableItemsWithCalc = itemsWithCalculations.filter((i) => !i.isCommissionable)
+    const nonCommProductsLocal = nonCommissionableItemsWithCalc.filter((i) => i.type === 'Produto')
+    const nonCommOthersLocal = nonCommissionableItemsWithCalc.filter((i) => i.type !== 'Produto')
+
+    const commissionableItemsCalc = itemsWithCalculations.filter((i) => i.isCommissionable)
+
+    const commissionBaseCalc = commissionableItemsCalc.reduce((acc, i) => acc + i.price, 0)
+    const grossTotal = commissionableItemsCalc.reduce((acc, i) => acc + i.grossCommission, 0)
+    const feeDeductionCalc = commissionableItemsCalc.reduce((acc, i) => acc + i.feeDeduction, 0)
+    const recalculatedNetTotal = commissionableItemsCalc.reduce(
+      (acc, i) => acc + i.netCommission,
       0,
     )
 
-    const memoryLines = itemsWithGross.map((i: any) => {
+    const memoryLines = commissionableItemsCalc.map((i: any) => {
       let rateStr = ''
-      if (i.commissionInfo?.type === 'percentage') {
+      if (isSocio) {
+        rateStr = `Sócio 100%`
+      } else if (i.commissionInfo?.type === 'percentage') {
         rateStr = `${i.commissionInfo.value}%`
       } else if (i.commissionInfo?.type === 'fixed') {
         rateStr = `Fixo R$ ${i.commissionInfo.value.toFixed(2)}`
@@ -713,16 +745,16 @@ export default function Staff() {
       paymentMethodName,
 
       totalPaid,
-      nonCommProducts,
-      nonCommOthers,
-      commissionableItems,
-      commissionBase,
+      nonCommProducts: nonCommProductsLocal,
+      nonCommOthers: nonCommOthersLocal,
+      commissionableItems: commissionableItemsCalc,
+      commissionBase: commissionBaseCalc,
 
       memoryLines,
       feePercentage,
-      feeDeduction,
+      feeDeduction: feeDeductionCalc,
 
-      netCommission: netTotal,
+      netCommission: recalculatedNetTotal,
     }
   }, [ticketItem, selectedBarberDetailed, paymentMethods, reportItems])
 
@@ -1454,7 +1486,7 @@ export default function Staff() {
                                   'dd/MM/yyyy',
                                 )}
                               </TableCell>
-                              <TableCell className="text-red-700">
+                              <TableCell className="text-red-600">
                                 {typeMap[c.type] || c.type}
                               </TableCell>
                               <TableCell className="text-right text-red-600 font-medium">
@@ -1573,7 +1605,7 @@ export default function Staff() {
                   {paymentReceiptDetails?.items
                     .filter((i: any) => (i.amount || 0) < 0)
                     .map((item: any, i: number) => (
-                      <div key={`deduction-${i}`} className="grid grid-cols-12 text-red-700 py-0.5">
+                      <div key={`deduction-${i}`} className="grid grid-cols-12 text-red-600 py-0.5">
                         <div
                           className="col-span-8 truncate pr-2"
                           title={`${format(item.date ? new Date(item.date) : new Date(item.created), 'dd/MM/yy')} - ${typeMap[item.type] || item.type}`}
