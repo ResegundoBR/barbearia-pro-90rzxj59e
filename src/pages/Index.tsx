@@ -103,6 +103,7 @@ export default function Index() {
   const [forecastModal, setForecastModal] = useState<'tomorrow' | 'week' | 'month' | null>(null)
 
   const [historyModalDate, setHistoryModalDate] = useState<string | null>(null)
+  const [selectedTeamMember, setSelectedTeamMember] = useState<any>(null)
   const [historyType, setHistoryType] = useState<'services' | 'products'>('services')
   const [gaugeMetric, setGaugeMetric] = useState<'revenue' | 'attendance'>('revenue')
 
@@ -639,7 +640,7 @@ export default function Index() {
                     >
                       <AreaChart
                         data={peakData}
-                        margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                        margin={{ left: 12, right: 12, top: 12, bottom: 24 }}
                       >
                         <defs>
                           <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
@@ -648,8 +649,8 @@ export default function Index() {
                           </linearGradient>
                         </defs>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                        <XAxis dataKey="hour" tickLine={false} axisLine={false} />
-                        <YAxis tickLine={false} axisLine={false} width={30} />
+                        <XAxis dataKey="hour" tickLine={false} axisLine={false} tickMargin={10} />
+                        <YAxis tickLine={false} axisLine={false} width={40} />
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Area
                           type="monotone"
@@ -750,7 +751,8 @@ export default function Index() {
                         return (
                           <div
                             key={barber.id}
-                            className="flex flex-col items-center justify-center p-4 border rounded-xl bg-card/50"
+                            className="flex flex-col items-center justify-center p-4 border rounded-xl bg-card/50 cursor-pointer hover:bg-card/80 transition-colors"
+                            onClick={() => setSelectedTeamMember(barber)}
                           >
                             <h4 className="font-semibold mb-4 text-center">{barber.name}</h4>
                             <svg
@@ -1460,6 +1462,98 @@ export default function Index() {
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
                           Nenhuma venda registrada nesta data.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedTeamMember} onOpenChange={(v) => !v && setSelectedTeamMember(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Vendas - {selectedTeamMember?.name}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 w-full mt-4">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(() => {
+                    if (!selectedTeamMember) return null
+                    const memberSales: any[] = []
+
+                    completedPeriod
+                      .filter((a) => a.barber_id === selectedTeamMember.id)
+                      .forEach((a) => {
+                        memberSales.push({
+                          id: `apt_${a.id}`,
+                          date: new Date(a.date ? a.date : a.updated),
+                          client: a.expand?.client_id?.name || 'Avulso',
+                          item: a.expand?.service_id?.name || 'Serviço',
+                          val: a.client_package_id
+                            ? 0
+                            : a.price || a.expand?.service_id?.price || 0,
+                        })
+                      })
+
+                    productPurchasesPeriod
+                      .filter((p) => p.barber_id === selectedTeamMember.id)
+                      .forEach((p) => {
+                        memberSales.push({
+                          id: `prod_${p.id}`,
+                          date: new Date(p.date ? p.date : p.created),
+                          client: p.expand?.client_id?.name || 'Avulso',
+                          item: p.expand?.product_id?.name || 'Produto',
+                          val: p.price_at_sale || p.expand?.product_id?.price || 0,
+                        })
+                      })
+
+                    packagesPeriod
+                      .filter((pkg) => pkg.barber_id === selectedTeamMember.id)
+                      .forEach((pkg) => {
+                        memberSales.push({
+                          id: `pkg_${pkg.id}`,
+                          date: new Date(pkg.created),
+                          client: pkg.expand?.client_id?.name || 'Avulso',
+                          item: pkg.expand?.package_id?.name || 'Pacote',
+                          val: pkg.expand?.package_id?.price || 0,
+                        })
+                      })
+
+                    memberSales.sort((a, b) => b.date.getTime() - a.date.getTime())
+
+                    return memberSales.map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell>{format(sale.date, 'dd/MM/yyyy HH:mm')}</TableCell>
+                        <TableCell>{sale.client}</TableCell>
+                        <TableCell>{sale.item}</TableCell>
+                        <TableCell className="text-right font-medium text-emerald-500">
+                          R$ {sale.val.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  })()}
+                  {selectedTeamMember &&
+                    completedPeriod.filter((a) => a.barber_id === selectedTeamMember.id).length ===
+                      0 &&
+                    productPurchasesPeriod.filter((p) => p.barber_id === selectedTeamMember.id)
+                      .length === 0 &&
+                    packagesPeriod.filter((pkg) => pkg.barber_id === selectedTeamMember.id)
+                      .length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                          Nenhuma venda encontrada para este profissional no período.
                         </TableCell>
                       </TableRow>
                     )}

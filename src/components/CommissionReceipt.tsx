@@ -19,9 +19,16 @@ interface CommissionReceiptProps {
   barberName: string
   items: ReceiptItem[]
   totalPaid: number
+  checkoutNumber?: string | number
 }
 
-export function CommissionReceipt({ date, barberName, items, totalPaid }: CommissionReceiptProps) {
+export function CommissionReceipt({
+  date,
+  barberName,
+  items,
+  totalPaid,
+  checkoutNumber,
+}: CommissionReceiptProps) {
   const [copied, setCopied] = useState(false)
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
 
@@ -33,6 +40,7 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
     let text = `================================\n`
     text += `       RECIBO DE COMISSÃO\n`
     text += `================================\n\n`
+    if (checkoutNumber) text += `Pedido #${checkoutNumber}\n`
     text += `Data: ${format(new Date(date), 'dd/MM/yyyy HH:mm')}\n`
     text += `Profissional: ${barberName}\n\n`
     text += `DETALHES DOS SERVIÇOS:\n`
@@ -70,6 +78,11 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
     <div className="w-full max-w-sm mx-auto shadow-md border border-border bg-white text-black font-mono p-6 rounded-md">
       <div className="text-center mb-6 border-b border-dashed border-gray-400 pb-4">
         <h3 className="font-bold text-lg uppercase tracking-widest">Recibo de Comissão</h3>
+        {checkoutNumber && (
+          <p className="text-lg font-black uppercase tracking-widest text-primary mt-1 mb-2">
+            Pedido #{checkoutNumber}
+          </p>
+        )}
         <p className="text-sm mt-1 text-gray-600">
           Profissional: <span className="font-bold text-black">{barberName}</span>
         </p>

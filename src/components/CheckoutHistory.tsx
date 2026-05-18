@@ -165,7 +165,9 @@ export function CheckoutHistory() {
                   <div className="flex justify-between">
                     <span>
                       {selectedTicket.items_snapshot.service}{' '}
-                      <span className="text-xs text-gray-500">(Base)</span>
+                      <span className="text-xs text-gray-500">
+                        ({selectedTicket.items_snapshot.packageUsed ? 'Pacote' : 'Base'})
+                      </span>
                     </span>
                     <span>
                       R$ {Number(selectedTicket.items_snapshot.scheduledPrice || 0).toFixed(2)}

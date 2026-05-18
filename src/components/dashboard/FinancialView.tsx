@@ -38,6 +38,10 @@ export function FinancialView({
 
   const totalRevenue = serviceRevenue + productRevenue + packagesRevenue
 
+  const servicePct = totalRevenue > 0 ? ((serviceRevenue / totalRevenue) * 100).toFixed(1) : '0.0'
+  const productPct = totalRevenue > 0 ? ((productRevenue / totalRevenue) * 100).toFixed(1) : '0.0'
+  const packagePct = totalRevenue > 0 ? ((packagesRevenue / totalRevenue) * 100).toFixed(1) : '0.0'
+
   const getMethodName = (m: string) => {
     if (!m) return 'Não Informado'
     const pmById = paymentMethods.find((p: any) => p.id === m)
@@ -231,6 +235,21 @@ export function FinancialView({
       })
     })
 
+    const outflows = commissions
+      .filter((c: any) => c.status === 'paid' && c.amount > 0)
+      .map((c: any) => ({
+        id: `comm_${c.id}`,
+        date: new Date(c.updated || c.created),
+        client: '-',
+        item: `Pagamento - ${c.expand?.barber_id?.work_level === 'socio' ? 'Sócio' : 'Comissão'}`,
+        barber: c.expand?.barber_id?.name || 'Profissional',
+        method: getMethodName(c.payment_method || '-'),
+        value: -(c.amount || 0),
+        type: 'outflow',
+      }))
+
+    list.push(...outflows)
+
     return list.sort((a, b) => b.date.getTime() - a.date.getTime())
   }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions, paymentMethods])
 
@@ -356,6 +375,11 @@ export function FinancialView({
                 <span className="font-bold">Total</span>
                 <span className="font-bold text-emerald-500">R$ {totalRevenue.toFixed(2)}</span>
               </div>
+              <div className="pt-4 flex justify-between text-xs text-muted-foreground border-t mt-4">
+                <span>Serviços: {servicePct}%</span>
+                <span>Produtos: {productPct}%</span>
+                <span>Pacotes: {packagePct}%</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -383,11 +407,19 @@ export function FinancialView({
                   <TableRow key={t.id}>
                     <TableCell>{format(t.date, 'dd/MM/yyyy HH:mm')}</TableCell>
                     <TableCell>{t.client}</TableCell>
-                    <TableCell>{t.item}</TableCell>
+                    <TableCell>
+                      {t.type === 'outflow' ? (
+                        <span className="text-amber-600 font-medium">{t.item}</span>
+                      ) : (
+                        t.item
+                      )}
+                    </TableCell>
                     <TableCell>{t.barber}</TableCell>
                     <TableCell>{t.method}</TableCell>
-                    <TableCell className="text-right font-medium text-emerald-500">
-                      R$ {t.value.toFixed(2)}
+                    <TableCell
+                      className={`text-right font-medium ${t.type === 'outflow' ? 'text-red-500' : 'text-emerald-500'}`}
+                    >
+                      {t.type === 'outflow' ? '- ' : ''}R$ {Math.abs(t.value).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -171,6 +171,28 @@ export default function Checkout() {
         body: JSON.stringify(pkgForm),
         headers: { 'Content-Type': 'application/json' },
       })
+
+      const pkg = packages.find((p) => p.id === pkgForm.package_id)
+      const pmRecord = paymentMethods.find((p) => p.id === pkgForm.payment_method)
+
+      try {
+        await pb.send('/backend/v1/checkouts/log', {
+          method: 'POST',
+          body: JSON.stringify({
+            client_id: pkgForm.client_id,
+            barber_id: pkgForm.barber_id,
+            total_amount: pkg?.price || 0,
+            payment_method: pmRecord?.name || pkgForm.payment_method,
+            items_snapshot: {
+              packages: [{ name: pkg?.name || 'Pacote', price: pkg?.price || 0, quantity: 1 }],
+              discount: 0,
+            },
+          }),
+        })
+      } catch {
+        /* intentionally ignored */
+      }
+
       setPkgForm({ barber_id: '', client_id: '', package_id: '', payment_method: '' })
       setSuccessState({ type: 'package', message: 'Pacote vendido com sucesso!' })
       loadData()
@@ -429,6 +451,7 @@ export default function Checkout() {
             items_snapshot: {
               service: ticketServiceName,
               scheduledPrice,
+              packageUsed: !!packageToConsume,
               additionalServices,
               manualExtras,
               products: selectedProducts.map((p) => ({

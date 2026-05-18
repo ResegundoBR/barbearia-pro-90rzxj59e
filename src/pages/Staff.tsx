@@ -263,6 +263,13 @@ export default function Staff() {
       const apts = await getAppointments(`barber_id='${b.id}' && status='Concluído'`)
       const prods = await getProductPurchases(`barber_id='${b.id}'`)
       const packs = await getClientPackages(`barber_id='${b.id}'`)
+      const checks = await pb
+        .collection('checkouts')
+        .getFullList({ filter: `barber_id='${b.id}'` })
+        .catch(() => [])
+
+      const cmMatch = (date1: string | Date, date2: string | Date) =>
+        Math.abs(new Date(date1).getTime() - new Date(date2).getTime()) < 120000
 
       const matchedComms = commissions.filter(
         (c) => c.barber_id === b.id && c.status !== 'paid' && !c.is_advance,
@@ -278,8 +285,12 @@ export default function Staff() {
               (cm.type === 'service' &&
                 Math.abs(new Date(cm.created).getTime() - new Date(a.updated).getTime()) < 120000),
           )
+          const checkout = checks.find(
+            (chk: any) => cmMatch(chk.date, a.updated) && chk.client_id === a.client_id,
+          )
           return {
             id: a.id,
+            checkoutNumber: checkout?.checkout_number,
             type: 'Serviço',
             client: a.expand?.client_id?.name || 'Avulso',
             item: a.expand?.service_id?.name || 'Serviço',
@@ -302,8 +313,12 @@ export default function Staff() {
               (cm.type === 'product' &&
                 Math.abs(new Date(cm.created).getTime() - new Date(p.created).getTime()) < 120000),
           )
+          const checkout = checks.find(
+            (chk: any) => cmMatch(chk.date, p.created) && chk.client_id === p.client_id,
+          )
           return {
             id: p.id,
+            checkoutNumber: checkout?.checkout_number,
             type: 'Produto',
             client: p.expand?.client_id?.name || 'Avulso',
             item: p.expand?.product_id?.name || 'Produto',
@@ -326,8 +341,12 @@ export default function Staff() {
               ((cm.type === 'package_sale' || cm.type === 'package') &&
                 Math.abs(new Date(cm.created).getTime() - new Date(pk.created).getTime()) < 120000),
           )
+          const checkout = checks.find(
+            (chk: any) => cmMatch(chk.date, pk.created) && chk.client_id === pk.client_id,
+          )
           return {
             id: pk.id,
+            checkoutNumber: checkout?.checkout_number,
             type: 'Pacote',
             client: pk.expand?.client_id?.name || 'Avulso',
             item: pk.expand?.package_id?.name || 'Pacote',
@@ -345,6 +364,7 @@ export default function Staff() {
         }),
         ...consumptionComms.map((c) => ({
           id: c.id,
+          checkoutNumber: null,
           type: 'Consumo',
           client: '-',
           item: 'Consumo Interno',
@@ -411,22 +431,6 @@ export default function Staff() {
       name: '',
       work_level: 'autonomo',
       payment_schedule_config: {
-        frequency: 'semanal',
-        cycles: [
-          { workDays: [1, 2, 3], paymentDay: 4 },
-          { workDays: [4, 5, 6], paymentDay: 1 },
-        ],
-      },
-    })
-    setBDialog(true)
-  }
-
-  const editBarber = (b: any) => {
-    setForm({
-      id: b.id,
-      name: b.name,
-      work_level: b.work_level || 'autonomo',
-      payment_schedule_config: b.payment_schedule_config || {
         frequency: 'semanal',
         cycles: [
           { workDays: [1, 2, 3], paymentDay: 4 },
@@ -739,6 +743,7 @@ export default function Staff() {
       clientName: ticketItem.client,
       date: ticketItem.date || ticketItem.commDate,
       paymentMethodName,
+      checkoutNumber: ticketItem.checkoutNumber,
 
       totalPaid,
       nonCommProducts: nonCommProductsLocal,
@@ -1666,6 +1671,11 @@ export default function Staff() {
             <div className="space-y-4 text-sm">
               <div className="space-y-1 text-center border-b border-dashed border-gray-400 pb-4">
                 <p className="font-bold text-base uppercase tracking-wider">{businessName}</p>
+                {ticketData.checkoutNumber && (
+                  <p className="text-lg font-black uppercase tracking-widest text-primary mt-1 mb-2">
+                    Pedido #{ticketData.checkoutNumber}
+                  </p>
+                )}
                 <p className="text-gray-600">Profissional: {ticketData.professionalName}</p>
                 <p className="text-gray-600">Cliente: {ticketData.clientName}</p>
                 <p className="text-gray-600">{format(ticketData.date, 'dd/MM/yyyy HH:mm')}</p>
@@ -1745,7 +1755,45 @@ export default function Staff() {
             </div>
           )}
 
-          <DialogFooter className="mt-4 border-t border-dashed border-gray-300 pt-4">
+          <DialogFooter className="mt-4 flex-col sm:flex-col gap-2 border-t border-dashed border-gray-300 pt-4">
+            <Button
+              className="w-full font-sans font-medium bg-[#F97316] hover:bg-[#EA580C] text-black border-none"
+              onClick={() => {
+                let text = `================================\n`
+                text += `       RECIBO DE COMISSÃO\n`
+                text += `================================\n\n`
+                text += `Pedido #${ticketData?.checkoutNumber || 'N/A'}\n`
+                text += `Data: ${format(ticketData?.date || new Date(), 'dd/MM/yyyy HH:mm')}\n`
+                text += `Profissional: ${ticketData?.professionalName}\n`
+                text += `Cliente: ${ticketData?.clientName}\n\n`
+                text += `DETALHES DA VENDA:\n`
+                text += `--------------------------------\n`
+                ticketData?.commissionableItems?.forEach((i: any) => {
+                  text += `${i.item}\n`
+                  text += `Valor: R$ ${i.price.toFixed(2)}\n`
+                  text += `--------------------------------\n`
+                })
+                text += `\nBase de Cálculo: R$ ${ticketData?.commissionBase?.toFixed(2)}\n\n`
+                text += `MEMÓRIA DE CÁLCULO:\n`
+                ticketData?.memoryLines?.forEach((l: any) => {
+                  text += `${l.label}: R$ ${l.value.toFixed(2)}\n`
+                })
+                text += `--------------------------------\n`
+                text += `TOTAL A PAGAR: R$ ${ticketData?.netCommission?.toFixed(2)}\n`
+                text += `================================\n`
+
+                navigator.clipboard.writeText(text)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+              }}
+            >
+              {copied ? (
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+              ) : (
+                <Copy className="w-4 h-4 mr-2" />
+              )}
+              {copied ? 'Copiado!' : 'Copiar Recibo'}
+            </Button>
             <Button
               variant="outline"
               className="w-full font-sans border-gray-300 hover:bg-gray-100"
