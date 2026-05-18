@@ -37,7 +37,7 @@ export function TimeSlot({
     return (
       <div
         className={cn(
-          'h-14 rounded-md p-2 flex justify-between items-center border cursor-pointer transition-all shadow-sm hover:scale-[1.02]',
+          'h-14 rounded-md p-1 flex justify-between items-center border cursor-pointer transition-all shadow-sm hover:scale-[1.02]',
           isCompleted ? 'bg-muted/50 border-border opacity-50' : 'border-black/5',
           !isCompleted && isCanceled && 'opacity-50 grayscale bg-muted/50',
         )}
@@ -47,19 +47,19 @@ export function TimeSlot({
         }}
       >
         <div className="flex flex-col overflow-hidden">
-          <div className="font-semibold text-xs truncate leading-tight" title={customerName}>
+          <div className="font-semibold text-[11px] truncate leading-none" title={customerName}>
             {customerName}
           </div>
-          <div className="text-[10px] truncate opacity-90 leading-tight mt-1">
+          <div className="text-[9px] truncate opacity-90 leading-none mt-1">
             {appointment.expand?.service_id?.name || 'Serviço'}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1 ml-2 shrink-0">
-          <span className="text-xs font-medium opacity-90">{time}</span>
+        <div className="flex flex-col items-end gap-0.5 ml-2 shrink-0">
+          <span className="text-[10px] font-medium opacity-90">{time}</span>
           <Badge
             variant={isCompleted ? 'outline' : isPending ? 'secondary' : 'default'}
             className={cn(
-              'text-[9px] px-1.5 py-0 h-4 font-bold uppercase tracking-wider',
+              'text-[8px] px-1 py-0 h-4 font-bold uppercase tracking-wider',
               isPending &&
                 !isMissed &&
                 !isCompleted &&

@@ -169,7 +169,7 @@ routerAdd(
 
         const feePct = pmFeeMap[pmType] || 0
         const feeVal = Number((price * (feePct / 100)).toFixed(2))
-        const amount = Number((grossComm - feeVal).toFixed(2))
+        const amount = grossComm // No longer deducting feeVal
 
         if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
           const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
@@ -238,7 +238,7 @@ routerAdd(
 
         const feePct = pmFeeMap[pmType] || 0
         const feeVal = Number((price * (feePct / 100)).toFixed(2))
-        const amount = Number((grossComm - feeVal).toFixed(2))
+        const amount = grossComm // No longer deducting feeVal
 
         if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
           const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
@@ -303,7 +303,7 @@ routerAdd(
 
         const feePct = pmFeeMap[pmType] || 0
         const feeVal = Number((price * (feePct / 100)).toFixed(2))
-        const amount = Number((grossComm - feeVal).toFixed(2))
+        const amount = grossComm // No longer deducting feeVal
 
         if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
           const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))

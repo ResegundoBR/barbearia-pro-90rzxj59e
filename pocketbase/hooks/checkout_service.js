@@ -160,7 +160,7 @@ routerAdd(
           grossComm = calculateComm('service', serviceId, servicePrice, barberId)
         }
 
-        const netComm = Number((grossComm - feeVal).toFixed(2))
+        const netComm = grossComm // No longer deducting feeVal
 
         if (netComm !== 0 || isSocio) {
           const commCol = txApp.findCollectionByNameOrId('commissions')
@@ -223,7 +223,7 @@ routerAdd(
             ownerComm = Number((totalProdPrice - grossSellerComm).toFixed(2))
           }
 
-          const sellerComm = Number((grossSellerComm - feeVal).toFixed(2))
+          const sellerComm = grossSellerComm // No longer deducting feeVal
 
           if (sellerComm > 0 || isSocioProd) {
             const commCol = txApp.findCollectionByNameOrId('commissions')

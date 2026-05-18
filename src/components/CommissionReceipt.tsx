@@ -39,13 +39,6 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
     text += `--------------------------------\n`
 
     items.forEach((item) => {
-      const rawItem = item as any
-      const feeValue = rawItem.fee_amount !== undefined ? rawItem.fee_amount : 0
-      const grossCommission =
-        rawItem.gross_amount !== undefined
-          ? rawItem.gross_amount
-          : Number((item.commissionValue + feeValue).toFixed(2))
-
       const info = item.commissionInfo
       let rateLabel = ''
       if (info?.type === 'percentage') {
@@ -61,9 +54,7 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
       text += `Nome do Cliente  : ${item.clientName}\n`
       text += `Serviço          : ${item.serviceName}\n`
       text += `Valor do Serviço : R$ ${item.serviceValue.toFixed(2)}\n`
-      text += `Comissão Bruta ${rateLabel} : R$ ${grossCommission.toFixed(2)}\n`
-      text += `Taxa Financeira  : - R$ ${feeValue.toFixed(2)}\n`
-      text += `Total a Pagar    : R$ ${netCommission.toFixed(2)}\n`
+      text += `Comissão ${rateLabel} : R$ ${netCommission.toFixed(2)}\n`
       text += `--------------------------------\n`
     })
 
@@ -90,12 +81,6 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
       <div className="space-y-4 mb-6 border-b border-dashed border-gray-400 pb-6">
         {items.map((item, i) => {
           const rawItem = item as any
-          const feeValue = rawItem.fee_amount !== undefined ? rawItem.fee_amount : 0
-          const grossCommission =
-            rawItem.gross_amount !== undefined
-              ? rawItem.gross_amount
-              : Number((item.commissionValue + feeValue).toFixed(2))
-
           const info = item.commissionInfo
           let rateLabel = ''
           if (info?.type === 'percentage') {
@@ -125,17 +110,9 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
                 <span className="text-gray-500 text-xs uppercase">Valor do Serviço</span>
                 <span>R$ {item.serviceValue.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-b border-gray-200 pb-1">
-                <span className="text-gray-500 text-xs uppercase">Comissão Bruta {rateLabel}</span>
-                <span>R$ {grossCommission.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between border-b border-gray-200 pb-1">
-                <span className="text-red-600 text-xs uppercase">Taxa Financeira</span>
-                <span className="text-red-600">- R$ {feeValue.toFixed(2)}</span>
-              </div>
               <div className="flex justify-between pt-1">
                 <span className="text-gray-500 text-xs uppercase font-bold text-primary">
-                  Total a Pagar
+                  Comissão {rateLabel}
                 </span>
                 <span className="font-bold text-primary">R$ {netCommission.toFixed(2)}</span>
               </div>

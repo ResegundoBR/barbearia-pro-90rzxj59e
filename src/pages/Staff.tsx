@@ -288,8 +288,6 @@ export default function Staff() {
             packageUsed: !!a.client_package_id,
             price: a.price || a.expand?.service_id?.price || 0,
             commission: c?.amount || 0,
-            grossCommission: c?.gross_amount || 0,
-            feeDeduction: c?.fee_amount || 0,
             dueDate: c?.due_date ? new Date(c.due_date) : null,
             commDate: c?.date ? new Date(c.date) : new Date(a.updated),
             commissionObj: c,
@@ -314,8 +312,6 @@ export default function Staff() {
             packageUsed: false,
             price: p.price_at_sale || 0,
             commission: c?.amount || 0,
-            grossCommission: c?.gross_amount || 0,
-            feeDeduction: c?.fee_amount || 0,
             dueDate: c?.due_date ? new Date(c.due_date) : null,
             commDate: c?.date ? new Date(c.date) : new Date(p.created),
             commissionObj: c,
@@ -340,8 +336,6 @@ export default function Staff() {
             packageUsed: false,
             price: pk.expand?.package_id?.price || 0,
             commission: c?.amount || 0,
-            grossCommission: c?.gross_amount || 0,
-            feeDeduction: c?.fee_amount || 0,
             dueDate: c?.due_date ? new Date(c.due_date) : null,
             commDate: c?.date ? new Date(c.date) : new Date(pk.created),
             commissionObj: c,
@@ -677,40 +671,30 @@ export default function Staff() {
 
     const isSocio = selectedBarberDetailed?.work_level === 'socio'
 
-    // Use exact values from DB if available, fallback to recalculation only if missing
+    // Use exact values from DB
     const itemsWithCalculations = transactionItems.map((i) => {
       if (i.commission <= 0)
         return {
           ...i,
-          grossCommission: 0,
-          feeDeduction: 0,
           netCommission: 0,
           isCommissionable: false,
         }
 
-      let gross = i.grossCommission || 0
-      let fee = i.feeDeduction || 0
       let net = i.commission || 0
 
       // Fallback if the fields are not present (old un-migrated record)
-      if (!gross && !fee) {
-        if (isSocio) {
-          gross = i.price
-        } else if (i.commissionInfo?.type === 'percentage') {
-          gross = Number((i.price * (i.commissionInfo.value / 100)).toFixed(2))
+      if (!net && isSocio) {
+        net = i.price
+      } else if (!net) {
+        if (i.commissionInfo?.type === 'percentage') {
+          net = Number((i.price * (i.commissionInfo.value / 100)).toFixed(2))
         } else if (i.commissionInfo?.type === 'fixed') {
-          gross = i.commissionInfo.value
-        } else {
-          gross = i.commission + Number((i.price * (feePercentage / 100)).toFixed(2))
+          net = i.commissionInfo.value
         }
-        fee = Number((i.price * (feePercentage / 100)).toFixed(2))
-        net = Number((gross - fee).toFixed(2))
       }
 
       return {
         ...i,
-        grossCommission: gross,
-        feeDeduction: fee,
         netCommission: net,
         isCommissionable: true,
       }
@@ -723,8 +707,6 @@ export default function Staff() {
     const commissionableItemsCalc = itemsWithCalculations.filter((i) => i.isCommissionable)
 
     const commissionBaseCalc = commissionableItemsCalc.reduce((acc, i) => acc + i.price, 0)
-    const grossTotal = commissionableItemsCalc.reduce((acc, i) => acc + i.grossCommission, 0)
-    const feeDeductionCalc = commissionableItemsCalc.reduce((acc, i) => acc + i.feeDeduction, 0)
     const recalculatedNetTotal = commissionableItemsCalc.reduce(
       (acc, i) => acc + i.netCommission,
       0,
@@ -743,7 +725,7 @@ export default function Staff() {
       }
       return {
         label: `${i.item} (${rateStr})`,
-        value: i.grossCommission,
+        value: i.netCommission,
       }
     })
 
@@ -766,8 +748,6 @@ export default function Staff() {
 
       memoryLines,
       feePercentage,
-      feeDeduction: feeDeductionCalc,
-
       netCommission: recalculatedNetTotal,
     }
   }, [ticketItem, selectedBarberDetailed, paymentMethods, reportItems])
@@ -1763,13 +1743,6 @@ export default function Staff() {
                     <span>R$ {line.value.toFixed(2)}</span>
                   </div>
                 ))}
-
-                {ticketData.feeDeduction > 0 && (
-                  <div className="flex justify-between text-red-600 pt-1">
-                    <span>Taxa Financeira ({ticketData.feePercentage}%):</span>
-                    <span>- R$ {ticketData.feeDeduction.toFixed(2)}</span>
-                  </div>
-                )}
               </div>
 
               <div className="border-t border-black border-2 my-4" />

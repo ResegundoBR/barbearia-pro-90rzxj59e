@@ -111,7 +111,7 @@ routerAdd(
         grossComm = calculateComm('package', package_id, price, barber_id)
       }
 
-      const netComm = Number((grossComm - feeVal).toFixed(2))
+      const netComm = grossComm // No longer deducting feeVal
 
       if (netComm !== 0 || isSocio) {
         const commCol = txApp.findCollectionByNameOrId('commissions')
