@@ -213,7 +213,7 @@ routerAdd(
 
         let grossComm = getCommission(barberId, 'product', productId, price)
         if (barber && barber.getString('work_level') === 'socio') {
-          grossComm = price
+          grossComm = 0 // Sócio não recebe repasse por produto, fica pro caixa
         }
 
         let existingComm = existingCommsArr.find(

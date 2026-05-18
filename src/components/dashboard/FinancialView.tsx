@@ -241,7 +241,7 @@ export function FinancialView({
         id: `comm_${c.id}`,
         date: new Date(c.updated || c.created),
         client: '-',
-        item: `Pagamento - ${c.expand?.barber_id?.work_level === 'socio' ? 'Sócio' : 'Comissão'}`,
+        item: `Repasse/Pagamento - ${c.expand?.barber_id?.work_level === 'socio' ? 'Sócio' : 'Autônomo'}`,
         barber: c.expand?.barber_id?.name || 'Profissional',
         method: getMethodName(c.payment_method || '-'),
         value: -(c.amount || 0),

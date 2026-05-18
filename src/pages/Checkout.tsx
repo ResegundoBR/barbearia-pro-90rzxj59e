@@ -349,7 +349,10 @@ export default function Checkout() {
         const netBase = itemPrice - feeVal
         const isSocio = barber?.work_level === 'socio'
 
-        if (isSocio) return netBase
+        if (isSocio) {
+          if (type === 'product') return 0 // Sócio não recebe repasse/comissão de produtos
+          return netBase
+        }
         if (info.type === 'percentage') {
           return netBase * (info.value / 100)
         }
@@ -413,21 +416,28 @@ export default function Checkout() {
 
           if (barberId === inventoryOwnerId) {
             // Owner sale
-            await createComm(netBase, 'product', inventoryOwnerId)
+            const ownerBarber = barbers.find((b) => b.id === inventoryOwnerId)
+            if (ownerBarber?.work_level !== 'socio') {
+              await createComm(netBase, 'product', inventoryOwnerId)
+            }
           } else {
             // Staff sale
             const defaultProductCommission = financialConfig.default_product_commission ?? 10
             const catRate =
               sp.product?.expand?.category_id?.commission_percentage ?? defaultProductCommission
 
-            const sellerComm = netBase * (catRate / 100)
+            const isSellerSocio = barber?.work_level === 'socio'
+            const sellerComm = isSellerSocio ? 0 : netBase * (catRate / 100)
             const ownerComm = netBase - sellerComm
 
             if (sellerComm > 0) {
               await createComm(sellerComm, 'product', barberId)
             }
             if (ownerComm > 0) {
-              await createComm(ownerComm, 'product', inventoryOwnerId)
+              const ownerBarber = barbers.find((b) => b.id === inventoryOwnerId)
+              if (ownerBarber?.work_level !== 'socio') {
+                await createComm(ownerComm, 'product', inventoryOwnerId)
+              }
             }
           }
         } else {

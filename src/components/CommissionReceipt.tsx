@@ -58,15 +58,20 @@ export function CommissionReceipt({
       }
 
       const netCommission = item.commissionValue
+      const grossAmount = item.serviceValue
 
       text += `Nome do Cliente  : ${item.clientName}\n`
-      text += `Serviço          : ${item.serviceName}\n`
-      text += `Valor do Serviço : R$ ${item.serviceValue.toFixed(2)}\n`
-      text += `Comissão ${rateLabel} : R$ ${netCommission.toFixed(2)}\n`
+      text += `Item             : ${item.serviceName}\n`
+      text += `Valor Bruto      : R$ ${grossAmount.toFixed(2)}\n`
+      if (item.serviceValue === 0) {
+        text += `Info             : Pacote/Retorno (R$ 0,00)\n`
+      }
+      text += `Comissão Líquida ${rateLabel} : R$ ${netCommission.toFixed(2)}\n`
       text += `--------------------------------\n`
     })
 
-    text += `\nValor Total Pago: R$ ${totalPaid.toFixed(2)}\n`
+    text += `\nRESUMO FINANCEIRO:\n`
+    text += `Comissão Total Líquida: R$ ${totalPaid.toFixed(2)}\n`
     text += `================================\n`
 
     navigator.clipboard.writeText(text)
@@ -120,9 +125,15 @@ export function CommissionReceipt({
                 <span className="font-semibold truncate max-w-[150px]">{item.serviceName}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 pb-1">
-                <span className="text-gray-500 text-xs uppercase">Valor do Serviço</span>
+                <span className="text-gray-500 text-xs uppercase">Valor Bruto</span>
                 <span>R$ {item.serviceValue.toFixed(2)}</span>
               </div>
+              {item.serviceValue === 0 && (
+                <div className="flex justify-between border-b border-gray-200 pb-1">
+                  <span className="text-gray-500 text-xs uppercase">Info</span>
+                  <span className="text-emerald-500 font-bold">Pacote / Isento</span>
+                </div>
+              )}
               <div className="flex justify-between pt-1">
                 <span className="text-gray-500 text-xs uppercase font-bold text-primary">
                   Comissão {rateLabel}

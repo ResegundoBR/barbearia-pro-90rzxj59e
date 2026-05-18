@@ -634,13 +634,14 @@ export default function Index() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[250px] w-full mt-4">
+                  <div className="h-[280px] w-full mt-4 pb-4">
                     <ChartContainer
                       config={{ count: { label: 'Agendamentos', color: 'hsl(var(--primary))' } }}
+                      className="h-full w-full"
                     >
                       <AreaChart
                         data={peakData}
-                        margin={{ left: 12, right: 12, top: 12, bottom: 24 }}
+                        margin={{ left: -10, right: 12, top: 12, bottom: 0 }}
                       >
                         <defs>
                           <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
@@ -649,8 +650,14 @@ export default function Index() {
                           </linearGradient>
                         </defs>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                        <XAxis dataKey="hour" tickLine={false} axisLine={false} tickMargin={10} />
-                        <YAxis tickLine={false} axisLine={false} width={40} />
+                        <XAxis
+                          dataKey="hour"
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={10}
+                          minTickGap={10}
+                        />
+                        <YAxis tickLine={false} axisLine={false} width={40} tickMargin={5} />
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Area
                           type="monotone"
@@ -1485,6 +1492,7 @@ export default function Index() {
                     <TableHead>Data/Hora</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Item</TableHead>
+                    <TableHead className="text-center">Qtd</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1501,6 +1509,7 @@ export default function Index() {
                           date: new Date(a.date ? a.date : a.updated),
                           client: a.expand?.client_id?.name || 'Avulso',
                           item: a.expand?.service_id?.name || 'Serviço',
+                          qty: 1,
                           val: a.client_package_id
                             ? 0
                             : a.price || a.expand?.service_id?.price || 0,
@@ -1515,6 +1524,7 @@ export default function Index() {
                           date: new Date(p.date ? p.date : p.created),
                           client: p.expand?.client_id?.name || 'Avulso',
                           item: p.expand?.product_id?.name || 'Produto',
+                          qty: 1,
                           val: p.price_at_sale || p.expand?.product_id?.price || 0,
                         })
                       })
@@ -1527,6 +1537,7 @@ export default function Index() {
                           date: new Date(pkg.created),
                           client: pkg.expand?.client_id?.name || 'Avulso',
                           item: pkg.expand?.package_id?.name || 'Pacote',
+                          qty: 1,
                           val: pkg.expand?.package_id?.price || 0,
                         })
                       })
@@ -1538,6 +1549,7 @@ export default function Index() {
                         <TableCell>{format(sale.date, 'dd/MM/yyyy HH:mm')}</TableCell>
                         <TableCell>{sale.client}</TableCell>
                         <TableCell>{sale.item}</TableCell>
+                        <TableCell className="text-center">{sale.qty}</TableCell>
                         <TableCell className="text-right font-medium text-emerald-500">
                           R$ {sale.val.toFixed(2)}
                         </TableCell>
@@ -1552,7 +1564,7 @@ export default function Index() {
                     packagesPeriod.filter((pkg) => pkg.barber_id === selectedTeamMember.id)
                       .length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                           Nenhuma venda encontrada para este profissional no período.
                         </TableCell>
                       </TableRow>
