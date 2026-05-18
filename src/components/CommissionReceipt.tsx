@@ -12,6 +12,7 @@ export interface ReceiptItem {
   paymentMethodType?: string
   commissionRate?: number
   commissionInfo?: { type: string; value: number }
+  isPackage?: boolean
 }
 
 interface CommissionReceiptProps {
@@ -121,17 +122,17 @@ export function CommissionReceipt({
                 <span className="font-bold truncate max-w-[150px]">{item.clientName}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 pb-1">
-                <span className="text-gray-500 text-xs uppercase">Serviço</span>
+                <span className="text-gray-500 text-xs uppercase">Serviço / Item</span>
                 <span className="font-semibold truncate max-w-[150px]">{item.serviceName}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 pb-1">
                 <span className="text-gray-500 text-xs uppercase">Valor Bruto</span>
                 <span>R$ {item.serviceValue.toFixed(2)}</span>
               </div>
-              {item.serviceValue === 0 && (
+              {(item.isPackage || item.serviceValue === 0) && (
                 <div className="flex justify-between border-b border-gray-200 pb-1">
                   <span className="text-gray-500 text-xs uppercase">Info</span>
-                  <span className="text-emerald-500 font-bold">Pacote / Isento</span>
+                  <span className="text-emerald-500 font-bold">Pacote / Isento (R$ 0,00)</span>
                 </div>
               )}
               <div className="flex justify-between pt-1">
@@ -146,6 +147,37 @@ export function CommissionReceipt({
         {items.length === 0 && (
           <div className="text-center text-xs text-gray-500 italic">Nenhum serviço listado</div>
         )}
+      </div>
+
+      <div className="mb-6 border-b border-dashed border-gray-400 pb-6">
+        <h4 className="font-bold text-sm mb-3 uppercase tracking-widest text-gray-500">
+          Memória de Cálculo
+        </h4>
+        <div className="space-y-2">
+          {items.map((item, i) => {
+            const info = item.commissionInfo
+            let rateLabel = ''
+            if (info?.type === 'percentage') {
+              rateLabel = `${info.value}%`
+            } else if (info?.type === 'fixed') {
+              rateLabel = `Fixo R$ ${info.value.toFixed(2)}`
+            } else if (item.commissionRate) {
+              rateLabel = `${item.commissionRate}%`
+            } else {
+              rateLabel = `Integral`
+            }
+            return (
+              <div key={`mem_${i}`} className="flex justify-between text-xs text-gray-700">
+                <span className="truncate max-w-[180px]">
+                  {item.serviceName} (Base: R$ {item.serviceValue.toFixed(2)})
+                </span>
+                <span>
+                  {rateLabel} &rarr; R$ {item.commissionValue.toFixed(2)}
+                </span>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       <div className="flex justify-between items-center font-bold text-base mb-6 bg-gray-100 p-3 rounded">

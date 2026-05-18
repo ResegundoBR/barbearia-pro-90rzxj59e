@@ -111,6 +111,8 @@ export default function Index() {
   const [advanceBarber, setAdvanceBarber] = useState('')
   const [advanceAmount, setAdvanceAmount] = useState('')
 
+  const [checkouts, setCheckouts] = useState<any[]>([])
+
   const loadData = async () => {
     setIsLoading(true)
     setAppointments(await getAppointments(''))
@@ -121,6 +123,11 @@ export default function Index() {
     setCommissions(await getCommissions(''))
     setProductPurchases(await getProductPurchases(''))
     setPaymentMethods(await getPaymentMethods())
+    try {
+      setCheckouts(await pb.collection('checkouts').getFullList())
+    } catch {
+      /* intentionally ignored */
+    }
     setIsLoading(false)
   }
 
@@ -641,7 +648,7 @@ export default function Index() {
                     >
                       <AreaChart
                         data={peakData}
-                        margin={{ left: -10, right: 12, top: 12, bottom: 0 }}
+                        margin={{ left: 0, right: 20, top: 20, bottom: 10 }}
                       >
                         <defs>
                           <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
@@ -1067,6 +1074,7 @@ export default function Index() {
           isAdmin={isAdmin}
           effectiveBarberFilter={effectiveBarberFilter}
           paymentMethods={paymentMethods}
+          checkouts={checkouts}
         />
       )}
       {activeTab === 'packages' && <PackagesView packages={filteredPackages} />}

@@ -21,6 +21,7 @@ export function FinancialView({
   isAdmin,
   effectiveBarberFilter,
   paymentMethods = [],
+  checkouts = [],
 }: any) {
   const serviceRevenue = completedPeriod.reduce(
     (acc: number, curr: any) =>
@@ -174,6 +175,14 @@ export function FinancialView({
   const transactions = useMemo(() => {
     const list: any[] = []
 
+    const findCheckout = (clientId: string, date: Date) => {
+      return checkouts.find(
+        (c: any) =>
+          c.client_id === clientId &&
+          Math.abs(new Date(c.created).getTime() - date.getTime()) < 60000,
+      )
+    }
+
     completedPeriod.forEach((a: any) => {
       const comm = commissions.find(
         (c: any) =>
@@ -181,8 +190,10 @@ export function FinancialView({
           c.type === 'service' &&
           Math.abs(new Date(c.created).getTime() - new Date(a.created).getTime()) < 15000,
       )
+      const ck = findCheckout(a.client_id, new Date(a.created))
       list.push({
         id: `apt_${a.id}`,
+        checkoutNumber: ck ? ck.checkout_number : '-',
         date: new Date(a.created),
         client: a.expand?.client_id?.name || 'Avulso',
         item: a.expand?.service_id?.name || 'Serviço',
@@ -201,8 +212,10 @@ export function FinancialView({
           c.type === 'product' &&
           Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) < 15000,
       )
+      const ck = findCheckout(p.client_id, new Date(p.created))
       list.push({
         id: `prod_${p.id}`,
+        checkoutNumber: ck ? ck.checkout_number : '-',
         date: new Date(p.created),
         client: p.expand?.client_id?.name || 'Avulso',
         item: p.expand?.product_id?.name || 'Produto',
@@ -221,8 +234,10 @@ export function FinancialView({
           (c.type === 'package' || c.type === 'package_sale') &&
           Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) < 15000,
       )
+      const ck = findCheckout(pkg.client_id, new Date(pkg.created))
       list.push({
         id: `pkg_${pkg.id}`,
+        checkoutNumber: ck ? ck.checkout_number : '-',
         date: new Date(pkg.created),
         client: pkg.expand?.client_id?.name || 'Avulso',
         item: pkg.expand?.package_id?.name || 'Pacote',
@@ -237,21 +252,34 @@ export function FinancialView({
 
     const outflows = commissions
       .filter((c: any) => c.status === 'paid' && c.amount > 0)
-      .map((c: any) => ({
-        id: `comm_${c.id}`,
-        date: new Date(c.updated || c.created),
-        client: '-',
-        item: `Repasse/Pagamento - ${c.expand?.barber_id?.work_level === 'socio' ? 'Sócio' : 'Autônomo'}`,
-        barber: c.expand?.barber_id?.name || 'Profissional',
-        method: getMethodName(c.payment_method || '-'),
-        value: -(c.amount || 0),
-        type: 'outflow',
-      }))
+      .map((c: any) => {
+        const rel =
+          c.expand?.appointment_id || c.expand?.product_purchase_id || c.expand?.client_package_id
+        const ck = rel ? findCheckout(rel.client_id, new Date(rel.created)) : null
+        return {
+          id: `comm_${c.id}`,
+          checkoutNumber: ck ? ck.checkout_number : '-',
+          date: new Date(c.updated || c.created),
+          client: '-',
+          item: `Repasse/Pagamento - ${c.expand?.barber_id?.work_level === 'socio' ? 'Sócio' : 'Autônomo'}`,
+          barber: c.expand?.barber_id?.name || 'Profissional',
+          method: getMethodName(c.payment_method || '-'),
+          value: -(c.amount || 0),
+          type: 'outflow',
+        }
+      })
 
     list.push(...outflows)
 
     return list.sort((a, b) => b.date.getTime() - a.date.getTime())
-  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions, paymentMethods])
+  }, [
+    completedPeriod,
+    productPurchasesPeriod,
+    packagesPeriod,
+    commissions,
+    paymentMethods,
+    checkouts,
+  ])
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -394,6 +422,7 @@ export function FinancialView({
             <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
+                  <TableHead>Checkout #</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Item</TableHead>
@@ -405,6 +434,9 @@ export function FinancialView({
               <TableBody>
                 {transactions.map((t) => (
                   <TableRow key={t.id}>
+                    <TableCell className="font-mono text-muted-foreground font-medium">
+                      {t.checkoutNumber !== '-' ? `#${t.checkoutNumber}` : '-'}
+                    </TableCell>
                     <TableCell>{format(t.date, 'dd/MM/yyyy HH:mm')}</TableCell>
                     <TableCell>{t.client}</TableCell>
                     <TableCell>

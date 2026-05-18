@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { useRealtime } from '@/hooks/use-realtime'
+import { cn } from '@/lib/utils'
 import pb from '@/lib/pocketbase/client'
 
 interface PackagesViewProps {
@@ -80,7 +81,19 @@ export function PackagesView({ packages: initialPackages }: PackagesViewProps) {
                     {used} / {total}
                   </span>
                 </div>
-                <Progress value={progress} className="h-2" />
+                <Progress
+                  value={progress}
+                  className={cn(
+                    'h-2',
+                    progress <= 25
+                      ? '[&>div]:bg-emerald-500'
+                      : progress <= 50
+                        ? '[&>div]:bg-blue-500'
+                        : progress <= 75
+                          ? '[&>div]:bg-orange-500'
+                          : '[&>div]:bg-red-500',
+                  )}
+                />
                 <div className="flex justify-between items-center text-xs text-muted-foreground mt-4 pt-2 border-t border-border/50">
                   <span>
                     Vence: {p.expires_at ? format(new Date(p.expires_at), 'dd/MM/yyyy') : '-'}

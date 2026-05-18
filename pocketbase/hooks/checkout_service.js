@@ -3,7 +3,8 @@ routerAdd(
   '/backend/v1/checkout/service',
   (e) => {
     const body = e.requestInfo().body || {}
-    const { isManual, manualForm, svcForm, selectedProducts, packageToConsume } = body
+    const { isManual, manualForm, svcForm, selectedProducts, packageToConsume, extraServices } =
+      body
 
     if (!svcForm || !svcForm.payment_method) {
       throw new BadRequestError('Método de pagamento é obrigatório.')
@@ -142,41 +143,42 @@ routerAdd(
 
       const servicePrice = Number(svcForm.service_price) || 0
 
-      if (servicePrice > 0) {
-        let isSocio = false
-        try {
-          const barber = txApp.findRecordById('barbers', barberId)
-          if (barber.getString('work_level') === 'socio') {
-            isSocio = true
-          }
-        } catch (_) {}
-
-        const feeVal = Number((servicePrice * (pmFeePct / 100)).toFixed(2))
-        let grossComm = 0
-
-        if (isSocio) {
-          grossComm = servicePrice
-        } else {
-          grossComm = calculateComm('service', serviceId, servicePrice, barberId)
+      let isSocio = false
+      try {
+        const barber = txApp.findRecordById('barbers', barberId)
+        if (barber.getString('work_level') === 'socio') {
+          isSocio = true
         }
+      } catch (_) {}
 
-        const netComm = grossComm // No longer deducting feeVal
+      const feeVal = Number((servicePrice * (pmFeePct / 100)).toFixed(2))
+      let grossComm = 0
 
-        if (netComm !== 0 || isSocio) {
-          const commCol = txApp.findCollectionByNameOrId('commissions')
-          const comm = new Record(commCol)
-          comm.set('appointment_id', appointmentId)
-          comm.set('barber_id', barberId)
-          comm.set('amount', netComm)
-          comm.set('gross_amount', grossComm)
-          comm.set('fee_amount', feeVal)
-          comm.set('type', 'service')
-          comm.set('date', new Date().toISOString())
-          comm.set('payment_method', commissionPm)
-          comm.set('status', isSocio ? 'paid' : 'pending')
-          txApp.save(comm)
-        }
+      if (isSocio) {
+        grossComm = servicePrice
+      } else {
+        grossComm = calculateComm('service', serviceId, servicePrice, barberId)
       }
+
+      const netComm = grossComm
+
+      if (netComm !== 0 || isSocio || servicePrice > 0) {
+        const commCol = txApp.findCollectionByNameOrId('commissions')
+        const comm = new Record(commCol)
+        comm.set('appointment_id', appointmentId)
+        comm.set('barber_id', barberId)
+        comm.set('amount', netComm)
+        comm.set('gross_amount', grossComm)
+        comm.set('fee_amount', feeVal)
+        comm.set('type', 'service')
+        comm.set('date', new Date().toISOString())
+        comm.set('payment_method', commissionPm)
+        comm.set('status', isSocio ? 'paid' : 'pending')
+        txApp.save(comm)
+      }
+
+      let totalAmount = servicePrice
+      const snapshotProducts = []
 
       if (selectedProducts && Array.isArray(selectedProducts) && selectedProducts.length > 0) {
         for (const item of selectedProducts) {
@@ -188,11 +190,13 @@ routerAdd(
           prod.set('stock_quantity', Math.max(0, stock))
           txApp.save(prod)
 
+          const itemBarberId = item.barber_id || barberId
+
           const purchaseCol = txApp.findCollectionByNameOrId('product_purchases')
           const purchase = new Record(purchaseCol)
           purchase.set('client_id', clientId)
           purchase.set('product_id', item.product_id)
-          purchase.set('barber_id', barberId)
+          purchase.set('barber_id', itemBarberId)
           const itemPrice = item.product?.price || prod.getFloat('price')
           const totalProdPrice = itemPrice * qty
           purchase.set('price_at_sale', totalProdPrice)
@@ -201,51 +205,52 @@ routerAdd(
 
           let isSocioProd = false
           try {
-            const barber = txApp.findRecordById('barbers', barberId)
-            if (barber.getString('work_level') === 'socio') {
+            const barberProd = txApp.findRecordById('barbers', itemBarberId)
+            if (barberProd.getString('work_level') === 'socio') {
               isSocioProd = true
             }
           } catch (_) {}
 
-          const feeVal = Number((totalProdPrice * (pmFeePct / 100)).toFixed(2))
+          const feeValP = Number((totalProdPrice * (pmFeePct / 100)).toFixed(2))
 
           let grossSellerComm = 0
           let ownerComm = 0
 
-          if (inventoryOwnerId && barberId === inventoryOwnerId) {
+          if (inventoryOwnerId && itemBarberId === inventoryOwnerId) {
             grossSellerComm = totalProdPrice
           } else if (!inventoryOwnerId && isSocioProd) {
-            grossSellerComm = totalProdPrice
+            grossSellerComm = 0 // Fixed to shop
           } else {
             if (enableThirdParty) {
-              grossSellerComm = calculateComm('product', item.product_id, totalProdPrice, barberId)
+              grossSellerComm = calculateComm(
+                'product',
+                item.product_id,
+                totalProdPrice,
+                itemBarberId,
+              )
             }
             ownerComm = Number((totalProdPrice - grossSellerComm).toFixed(2))
           }
 
-          const sellerComm = grossSellerComm // No longer deducting feeVal
+          const sellerComm = grossSellerComm
 
-          if (sellerComm > 0 || isSocioProd) {
+          if (sellerComm > 0 || (isSocioProd && !inventoryOwnerId === false)) {
             const commCol = txApp.findCollectionByNameOrId('commissions')
             const pComm = new Record(commCol)
             pComm.set('product_purchase_id', purchase.id)
-            pComm.set('barber_id', barberId)
+            pComm.set('barber_id', itemBarberId)
             pComm.set('amount', sellerComm)
             pComm.set('gross_amount', grossSellerComm)
-            pComm.set('fee_amount', feeVal)
+            pComm.set('fee_amount', feeValP)
             pComm.set('type', 'product')
             pComm.set('date', new Date().toISOString())
             pComm.set('payment_method', commissionPm)
-            const st =
-              (inventoryOwnerId && barberId === inventoryOwnerId) ||
-              (!inventoryOwnerId && isSocioProd)
-                ? 'paid'
-                : 'pending'
+            const st = inventoryOwnerId && itemBarberId === inventoryOwnerId ? 'paid' : 'pending'
             pComm.set('status', st)
             txApp.save(pComm)
           }
 
-          if (ownerComm > 0 && inventoryOwnerId && barberId !== inventoryOwnerId) {
+          if (ownerComm > 0 && inventoryOwnerId && itemBarberId !== inventoryOwnerId) {
             const commCol = txApp.findCollectionByNameOrId('commissions')
             const pComm = new Record(commCol)
             pComm.set('barber_id', inventoryOwnerId)
@@ -256,6 +261,63 @@ routerAdd(
             pComm.set('status', 'paid')
             txApp.save(pComm)
           }
+
+          totalAmount += totalProdPrice
+          snapshotProducts.push({
+            name: item.product?.name || prod.getString('name') || 'Produto',
+            price: totalProdPrice,
+            quantity: qty,
+            barber_id: itemBarberId,
+          })
+        }
+      }
+
+      const extraServicesSnapshot = []
+      if (extraServices && Array.isArray(extraServices) && extraServices.length > 0) {
+        for (const ext of extraServices) {
+          if (!ext.service_id) continue
+          const extBarberId = ext.barber_id || barberId
+          const extPrice = Number(ext.price) || 0
+
+          const extApt = new Record(txApp.findCollectionByNameOrId('appointments'))
+          extApt.set('client_id', clientId)
+          extApt.set('barber_id', extBarberId)
+          extApt.set('service_id', ext.service_id)
+          extApt.set('price', extPrice)
+          extApt.set('date', new Date().toISOString())
+          extApt.set('status', 'Concluído')
+          txApp.save(extApt)
+
+          let isExtSocio = false
+          try {
+            const b = txApp.findRecordById('barbers', extBarberId)
+            if (b.getString('work_level') === 'socio') isExtSocio = true
+          } catch (_) {}
+
+          let extGross = 0
+          if (isExtSocio) extGross = extPrice
+          else extGross = calculateComm('service', ext.service_id, extPrice, extBarberId)
+
+          if (extGross !== 0 || isExtSocio || extPrice > 0) {
+            const cComm = new Record(txApp.findCollectionByNameOrId('commissions'))
+            cComm.set('appointment_id', extApt.id)
+            cComm.set('barber_id', extBarberId)
+            cComm.set('amount', extGross)
+            cComm.set('gross_amount', extGross)
+            cComm.set('fee_amount', Number((extPrice * (pmFeePct / 100)).toFixed(2)))
+            cComm.set('type', 'service')
+            cComm.set('date', new Date().toISOString())
+            cComm.set('payment_method', commissionPm)
+            cComm.set('status', isExtSocio ? 'paid' : 'pending')
+            txApp.save(cComm)
+          }
+
+          totalAmount += extPrice
+          extraServicesSnapshot.push({
+            name: ext.name || 'Serviço Extra',
+            price: extPrice,
+            barber_id: extBarberId,
+          })
         }
       }
 
@@ -266,21 +328,6 @@ routerAdd(
           nextCheckoutNumber = records[0].getInt('checkout_number') + 1
         }
       } catch (_) {}
-
-      let totalAmount = servicePrice
-      const snapshotProducts = []
-      if (selectedProducts && Array.isArray(selectedProducts)) {
-        for (const item of selectedProducts) {
-          const itemPrice = item.product?.price || 0
-          const qty = Number(item.quantity) || 1
-          totalAmount += itemPrice * qty
-          snapshotProducts.push({
-            name: item.product?.name || 'Produto',
-            price: itemPrice,
-            quantity: qty,
-          })
-        }
-      }
 
       let svcName = 'Serviço'
       try {
@@ -300,9 +347,13 @@ routerAdd(
       checkout.set('payment_method', svcForm.payment_method)
 
       const itemsSnapshot = {
-        service: svcName,
-        scheduledPrice: servicePrice,
+        service: {
+          name: svcName,
+          price: servicePrice,
+          barber_id: barberId,
+        },
         products: snapshotProducts,
+        extraServices: extraServicesSnapshot,
       }
       checkout.set('items_snapshot', itemsSnapshot)
       txApp.save(checkout)
