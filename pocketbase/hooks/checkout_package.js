@@ -127,6 +127,41 @@ routerAdd(
         comm.set('status', isSocio ? 'paid' : 'pending')
         txApp.save(comm)
       }
+
+      let nextCheckoutNumber = 5500
+      try {
+        const records = txApp.findRecordsByFilter('checkouts', '', '-checkout_number', 1, 0)
+        if (records.length > 0) {
+          nextCheckoutNumber = records[0].getInt('checkout_number') + 1
+        }
+      } catch (_) {}
+
+      let pkgName = 'Pacote'
+      try {
+        const p = txApp.findRecordById('packages', package_id)
+        pkgName = p.getString('name')
+      } catch (_) {}
+
+      const checkoutCol = txApp.findCollectionByNameOrId('checkouts')
+      const checkout = new Record(checkoutCol)
+      checkout.set('checkout_number', nextCheckoutNumber)
+      checkout.set('client_id', client_id)
+      checkout.set('barber_id', barber_id)
+      checkout.set('total_amount', price)
+      checkout.set('date', new Date().toISOString())
+      checkout.set('payment_method', payment_method)
+
+      const itemsSnapshot = {
+        packages: [
+          {
+            name: pkgName,
+            price: price,
+            quantity: 1,
+          },
+        ],
+      }
+      checkout.set('items_snapshot', itemsSnapshot)
+      txApp.save(checkout)
     })
 
     return e.json(200, { success: true })

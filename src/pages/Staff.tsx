@@ -912,11 +912,7 @@ export default function Staff() {
 
                 return (
                   <TableRow key={b.id}>
-                    <TableCell
-                      className={`font-medium ${canEdit ? 'cursor-pointer group' : ''}`}
-                      onClick={() => canEdit && editBarber(b)}
-                      title={canEdit ? 'Clique para editar' : ''}
-                    >
+                    <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
                           {b.avatar ? (
@@ -938,11 +934,7 @@ export default function Staff() {
                           )}
                         </div>
                         <div>
-                          <span
-                            className={`${canEdit ? 'group-hover:underline text-blue-600' : ''}`}
-                          >
-                            {b.name}
-                          </span>
+                          <span>{b.name}</span>
                         </div>
                       </div>
                     </TableCell>
@@ -1633,13 +1625,12 @@ export default function Staff() {
                 setCopied(true)
                 setTimeout(() => setCopied(false), 2000)
               }}
-              variant="outline"
-              className="w-full gap-2"
+              className="w-full gap-2 bg-[#F97316] hover:bg-[#EA580C] text-black border-none"
             >
               {copied ? (
-                <CheckCircle2 className="size-4 text-green-500" />
+                <CheckCircle2 className="size-4 text-black" />
               ) : (
-                <Copy className="size-4" />
+                <Copy className="size-4 text-black" />
               )}
               {copied ? 'Copiado!' : 'Copiar Recibo'}
             </Button>

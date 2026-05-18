@@ -48,6 +48,7 @@ import pb from '@/lib/pocketbase/client'
 import { useToast } from '@/hooks/use-toast'
 import { Separator } from '@/components/ui/separator'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
+import { CheckoutHistory } from '@/components/CheckoutHistory'
 
 export default function Checkout() {
   const [barbers, setBarbers] = useState<any[]>([])
@@ -417,6 +418,32 @@ export default function Checkout() {
         }
       }
 
+      try {
+        await pb.send('/backend/v1/checkouts/log', {
+          method: 'POST',
+          body: JSON.stringify({
+            client_id: clientId,
+            barber_id: barberId,
+            total_amount: grandTotal,
+            payment_method: pmRecord?.name || svcForm.payment_method,
+            items_snapshot: {
+              service: ticketServiceName,
+              scheduledPrice,
+              additionalServices,
+              manualExtras,
+              products: selectedProducts.map((p) => ({
+                name: p.product.name,
+                price: p.product.price,
+                quantity: p.quantity,
+              })),
+              discount: discountAmount,
+            },
+          }),
+        })
+      } catch (logErr) {
+        console.error('Failed to log checkout', logErr)
+      }
+
       setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
       setManualForm({ client_id: '', barber_id: '', service_id: '' })
       setIsManual(false)
@@ -551,9 +578,10 @@ export default function Checkout() {
         </Card>
       ) : (
         <Tabs defaultValue="service" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md mb-6">
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl mb-6">
             <TabsTrigger value="service">Checkout de Serviços</TabsTrigger>
             <TabsTrigger value="package">Venda de Pacotes</TabsTrigger>
+            <TabsTrigger value="history">Histórico de Checkouts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="service" className="space-y-6">
@@ -1108,6 +1136,10 @@ export default function Checkout() {
                 </form>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-6">
+            <CheckoutHistory />
           </TabsContent>
         </Tabs>
       )}

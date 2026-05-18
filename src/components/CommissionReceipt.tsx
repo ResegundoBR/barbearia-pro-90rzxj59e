@@ -130,11 +130,14 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
       </div>
 
       <Button
-        variant="outline"
-        className="w-full font-sans font-medium hover:bg-gray-100 border-gray-300"
+        className="w-full font-sans font-medium bg-[#F97316] hover:bg-[#EA580C] text-black border-none"
         onClick={handleCopy}
       >
-        {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+        {copied ? (
+          <Check className="w-4 h-4 mr-2 text-black" />
+        ) : (
+          <Copy className="w-4 h-4 mr-2 text-black" />
+        )}
         {copied ? 'Copiado para a área de transferência!' : 'Copiar Recibo'}
       </Button>
     </div>

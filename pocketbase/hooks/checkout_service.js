@@ -258,6 +258,54 @@ routerAdd(
           }
         }
       }
+
+      let nextCheckoutNumber = 5500
+      try {
+        const records = txApp.findRecordsByFilter('checkouts', '', '-checkout_number', 1, 0)
+        if (records.length > 0) {
+          nextCheckoutNumber = records[0].getInt('checkout_number') + 1
+        }
+      } catch (_) {}
+
+      let totalAmount = servicePrice
+      const snapshotProducts = []
+      if (selectedProducts && Array.isArray(selectedProducts)) {
+        for (const item of selectedProducts) {
+          const itemPrice = item.product?.price || 0
+          const qty = Number(item.quantity) || 1
+          totalAmount += itemPrice * qty
+          snapshotProducts.push({
+            name: item.product?.name || 'Produto',
+            price: itemPrice,
+            quantity: qty,
+          })
+        }
+      }
+
+      let svcName = 'Serviço'
+      try {
+        if (serviceId) {
+          const s = txApp.findRecordById('services', serviceId)
+          svcName = s.getString('name')
+        }
+      } catch (_) {}
+
+      const checkoutCol = txApp.findCollectionByNameOrId('checkouts')
+      const checkout = new Record(checkoutCol)
+      checkout.set('checkout_number', nextCheckoutNumber)
+      checkout.set('client_id', clientId)
+      checkout.set('barber_id', barberId)
+      checkout.set('total_amount', totalAmount)
+      checkout.set('date', new Date().toISOString())
+      checkout.set('payment_method', svcForm.payment_method)
+
+      const itemsSnapshot = {
+        service: svcName,
+        scheduledPrice: servicePrice,
+        products: snapshotProducts,
+      }
+      checkout.set('items_snapshot', itemsSnapshot)
+      txApp.save(checkout)
     })
 
     return e.json(200, { success: true, id: resultId })
