@@ -162,15 +162,18 @@ routerAdd(
 
         const netComm = Number((grossComm - feeVal).toFixed(2))
 
-        if (netComm !== 0) {
+        if (netComm !== 0 || isSocio) {
           const commCol = txApp.findCollectionByNameOrId('commissions')
           const comm = new Record(commCol)
+          comm.set('appointment_id', appointmentId)
           comm.set('barber_id', barberId)
           comm.set('amount', netComm)
+          comm.set('gross_amount', grossComm)
+          comm.set('fee_amount', feeVal)
           comm.set('type', 'service')
           comm.set('date', new Date().toISOString())
           comm.set('payment_method', commissionPm)
-          comm.set('status', isSocio ? 'paid' : 'available')
+          comm.set('status', isSocio ? 'paid' : 'pending')
           txApp.save(comm)
         }
       }
@@ -222,11 +225,14 @@ routerAdd(
 
           const sellerComm = Number((grossSellerComm - feeVal).toFixed(2))
 
-          if (sellerComm > 0) {
+          if (sellerComm > 0 || isSocioProd) {
             const commCol = txApp.findCollectionByNameOrId('commissions')
             const pComm = new Record(commCol)
+            pComm.set('product_purchase_id', purchase.id)
             pComm.set('barber_id', barberId)
             pComm.set('amount', sellerComm)
+            pComm.set('gross_amount', grossSellerComm)
+            pComm.set('fee_amount', feeVal)
             pComm.set('type', 'product')
             pComm.set('date', new Date().toISOString())
             pComm.set('payment_method', commissionPm)
@@ -234,7 +240,7 @@ routerAdd(
               (inventoryOwnerId && barberId === inventoryOwnerId) ||
               (!inventoryOwnerId && isSocioProd)
                 ? 'paid'
-                : 'available'
+                : 'pending'
             pComm.set('status', st)
             txApp.save(pComm)
           }

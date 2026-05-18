@@ -367,12 +367,19 @@ export default function Agenda() {
                   handleOpenDetail(apt)
                 }}
               >
-                <div className="text-sm font-semibold leading-tight truncate">
+                <div className="text-sm font-bold leading-tight truncate">
                   {apt.expand?.client_id?.name} {apt.expand?.client_id?.surname || ''}
                 </div>
-                <div className="text-xs opacity-90 leading-tight mt-1 truncate">
-                  {apt.time} • {apt.expand?.service_id?.name || 'Serviço'}
-                </div>
+                {height >= 45 && (
+                  <div className="text-xs font-medium opacity-95 leading-tight mt-0.5 truncate">
+                    {apt.expand?.service_id?.name || 'Serviço'}
+                  </div>
+                )}
+                {height >= 60 && (
+                  <div className="text-xs opacity-80 leading-tight mt-0.5 font-medium truncate">
+                    {apt.time} - {apt.end_time || '--:--'}
+                  </div>
+                )}
               </div>
             )
           })}
@@ -445,7 +452,7 @@ export default function Agenda() {
                       <div
                         key={apt.id}
                         className={cn(
-                          'text-[10px] truncate px-1.5 py-1 mb-0.5 rounded shadow-sm font-medium border border-black/5',
+                          'text-[10px] truncate px-1.5 py-0.5 mb-0.5 rounded shadow-sm font-bold border border-black/5 leading-tight flex flex-col',
                           isCompleted ? 'opacity-40' : 'opacity-100',
                           !isCompleted && isCanceled && 'opacity-50 grayscale',
                         )}
@@ -458,7 +465,10 @@ export default function Agenda() {
                           handleOpenDetail(apt)
                         }}
                       >
-                        {apt.time} • {apt.expand?.client_id?.name}
+                        <span className="truncate">{apt.expand?.client_id?.name}</span>
+                        <span className="truncate text-[9px] font-medium opacity-90">
+                          {apt.time}
+                        </span>
                       </div>
                     )
                   })}
@@ -489,14 +499,14 @@ export default function Agenda() {
     return (
       <ScrollArea className="flex-1 rounded-xl border bg-card/50 shadow-inner">
         <div className="flex min-w-[600px] h-full">
-          <div className="w-16 border-r flex flex-col bg-background/50 sticky left-0 z-30">
-            {view === 'week' && <div className="h-12 border-b bg-muted/20" />}
+          <div className="w-16 border-r flex flex-col bg-background/95 backdrop-blur sticky left-0 z-30 shadow-[1px_0_5px_rgba(0,0,0,0.05)]">
+            {view === 'week' && <div className="h-12 border-b bg-muted/20 sticky top-0" />}
             <div className="relative" style={{ height: HOURS.length * 60 }}>
               {HOURS.map((h) => (
                 <div
                   key={h}
-                  className="absolute w-full text-[10px] text-right pr-2 text-muted-foreground"
-                  style={{ top: (h - 8) * 60 - 6 }}
+                  className="absolute w-full text-xs font-medium text-right pr-2 text-muted-foreground bg-background/80"
+                  style={{ top: (h - 8) * 60 - 8 }}
                 >
                   {h.toString().padStart(2, '0')}:00
                 </div>

@@ -21,15 +21,22 @@ export function phoneMask(value: string) {
 }
 
 export function getContrastColor(hexcolor: string) {
-  if (!hexcolor) return 'white'
+  if (!hexcolor) return '#ffffff'
   let c = hexcolor.replace('#', '')
-  if (c.startsWith('hsl') || c.startsWith('rgb')) return 'white'
-  if (c.length === 3)
+
+  if (c.startsWith('hsl') || c.startsWith('rgb') || c.startsWith('var')) {
+    return '#ffffff'
+  }
+
+  if (c.length === 3) {
     c = c
       .split('')
       .map((x) => x + x)
       .join('')
-  if (c.length !== 6) return 'white'
+  }
+
+  if (c.length !== 6) return '#ffffff'
+
   const r = parseInt(c.substr(0, 2), 16)
   const g = parseInt(c.substr(2, 2), 16)
   const b = parseInt(c.substr(4, 2), 16)

@@ -274,8 +274,9 @@ export default function Staff() {
         ...apts.map((a) => {
           const c = matchedComms.find(
             (cm) =>
-              cm.type === 'service' &&
-              Math.abs(new Date(cm.created).getTime() - new Date(a.updated).getTime()) < 120000,
+              cm.appointment_id === a.id ||
+              (cm.type === 'service' &&
+                Math.abs(new Date(cm.created).getTime() - new Date(a.updated).getTime()) < 120000),
           )
           return {
             id: a.id,
@@ -287,6 +288,8 @@ export default function Staff() {
             packageUsed: !!a.client_package_id,
             price: a.price || a.expand?.service_id?.price || 0,
             commission: c?.amount || 0,
+            grossCommission: c?.gross_amount || 0,
+            feeDeduction: c?.fee_amount || 0,
             dueDate: c?.due_date ? new Date(c.due_date) : null,
             commDate: c?.date ? new Date(c.date) : new Date(a.updated),
             commissionObj: c,
@@ -297,8 +300,9 @@ export default function Staff() {
         ...prods.map((p) => {
           const c = matchedComms.find(
             (cm) =>
-              cm.type === 'product' &&
-              Math.abs(new Date(cm.created).getTime() - new Date(p.created).getTime()) < 120000,
+              cm.product_purchase_id === p.id ||
+              (cm.type === 'product' &&
+                Math.abs(new Date(cm.created).getTime() - new Date(p.created).getTime()) < 120000),
           )
           return {
             id: p.id,
@@ -310,6 +314,8 @@ export default function Staff() {
             packageUsed: false,
             price: p.price_at_sale || 0,
             commission: c?.amount || 0,
+            grossCommission: c?.gross_amount || 0,
+            feeDeduction: c?.fee_amount || 0,
             dueDate: c?.due_date ? new Date(c.due_date) : null,
             commDate: c?.date ? new Date(c.date) : new Date(p.created),
             commissionObj: c,
@@ -320,8 +326,9 @@ export default function Staff() {
         ...packs.map((pk) => {
           const c = matchedComms.find(
             (cm) =>
-              (cm.type === 'package_sale' || cm.type === 'package') &&
-              Math.abs(new Date(cm.created).getTime() - new Date(pk.created).getTime()) < 120000,
+              cm.client_package_id === pk.id ||
+              ((cm.type === 'package_sale' || cm.type === 'package') &&
+                Math.abs(new Date(cm.created).getTime() - new Date(pk.created).getTime()) < 120000),
           )
           return {
             id: pk.id,
@@ -333,6 +340,8 @@ export default function Staff() {
             packageUsed: false,
             price: pk.expand?.package_id?.price || 0,
             commission: c?.amount || 0,
+            grossCommission: c?.gross_amount || 0,
+            feeDeduction: c?.fee_amount || 0,
             dueDate: c?.due_date ? new Date(c.due_date) : null,
             commDate: c?.date ? new Date(c.date) : new Date(pk.created),
             commissionObj: c,
@@ -507,7 +516,7 @@ export default function Staff() {
       })
       toast({
         title: 'Reconciliação concluída',
-        description: `Foram geradas ${res.createdCount} novas comissões.`,
+        description: `Foram geradas ${res.createdCount} e atualizadas ${res.updatedCount} comissões.`,
       })
       loadData()
     } catch (e) {
@@ -668,7 +677,7 @@ export default function Staff() {
 
     const isSocio = selectedBarberDetailed?.work_level === 'socio'
 
-    // Use current rules to recalculate items
+    // Use exact values from DB if available, fallback to recalculation only if missing
     const itemsWithCalculations = transactionItems.map((i) => {
       if (i.commission <= 0)
         return {
@@ -679,19 +688,24 @@ export default function Staff() {
           isCommissionable: false,
         }
 
-      let gross = i.commission
-      if (isSocio) {
-        gross = i.price
-      } else if (i.commissionInfo?.type === 'percentage') {
-        gross = Number((i.price * (i.commissionInfo.value / 100)).toFixed(2))
-      } else if (i.commissionInfo?.type === 'fixed') {
-        gross = i.commissionInfo.value
-      } else {
-        gross = i.commission + Number((i.price * (feePercentage / 100)).toFixed(2))
-      }
+      let gross = i.grossCommission || 0
+      let fee = i.feeDeduction || 0
+      let net = i.commission || 0
 
-      const fee = Number((i.price * (feePercentage / 100)).toFixed(2))
-      const net = Number((gross - fee).toFixed(2))
+      // Fallback if the fields are not present (old un-migrated record)
+      if (!gross && !fee) {
+        if (isSocio) {
+          gross = i.price
+        } else if (i.commissionInfo?.type === 'percentage') {
+          gross = Number((i.price * (i.commissionInfo.value / 100)).toFixed(2))
+        } else if (i.commissionInfo?.type === 'fixed') {
+          gross = i.commissionInfo.value
+        } else {
+          gross = i.commission + Number((i.price * (feePercentage / 100)).toFixed(2))
+        }
+        fee = Number((i.price * (feePercentage / 100)).toFixed(2))
+        net = Number((gross - fee).toFixed(2))
+      }
 
       return {
         ...i,

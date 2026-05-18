@@ -120,6 +120,7 @@ routerAdd(
     )
 
     let createdCount = 0
+    let updatedCount = 0
 
     $app.runInTransaction((txApp) => {
       // 1. Appointments
@@ -127,75 +128,77 @@ routerAdd(
         const barberId = apt.getString('barber_id')
         if (!barberId) continue
 
-        const createdTime = new Date(apt.getString('created')).getTime()
+        let price = apt.getFloat('price')
+        const serviceId = apt.getString('service_id')
 
-        let found = false
-        let inferredPm = 'pix'
-
-        for (const c of existingCommsArr) {
-          const cTime = new Date(c.getString('created')).getTime()
-          const diff = Math.abs(cTime - createdTime)
-
-          if (diff < 120000 && c.getString('payment_method')) {
-            inferredPm = c.getString('payment_method')
-          }
-
-          if (c.getString('barber_id') === barberId && c.getString('type') === 'service') {
-            if (diff < 300000) {
-              found = true
-            }
-          }
+        if (price === 0 && !apt.getString('client_package_id')) {
+          try {
+            const srv = txApp.findRecordById('services', serviceId)
+            price = srv.getFloat('price')
+          } catch (err) {}
         }
 
-        if (!found) {
-          let price = apt.getFloat('price')
-          const serviceId = apt.getString('service_id')
+        // No commission for package usage (price 0 with package_id)
+        if (price <= 0 && apt.getString('client_package_id')) {
+          continue
+        }
 
-          let cRate = 0
-          if (price === 0 && serviceId) {
-            try {
-              const srv = txApp.findRecordById('services', serviceId)
-              price = srv.getFloat('price')
-              cRate = srv.getFloat('commission_rate')
-            } catch (err) {}
-          } else if (serviceId) {
-            try {
-              const srv = txApp.findRecordById('services', serviceId)
-              cRate = srv.getFloat('commission_rate')
-            } catch (err) {}
-          }
+        const barber = barbersMap[barberId]
+        let grossComm = getCommission(barberId, 'service', serviceId, price)
+        if (barber && barber.getString('work_level') === 'socio') {
+          grossComm = price
+        }
 
-          let amount = getCommission(barberId, 'service', serviceId, price)
-          const barber = barbersMap[barberId]
+        let existingComm = existingCommsArr.find((c) => c.getString('appointment_id') === apt.id)
+        if (!existingComm) {
+          const createdTime = new Date(apt.getString('created')).getTime()
+          existingComm = existingCommsArr.find(
+            (c) =>
+              c.getString('barber_id') === barberId &&
+              c.getString('type') === 'service' &&
+              !c.getString('appointment_id') &&
+              Math.abs(new Date(c.getString('created')).getTime() - createdTime) < 300000,
+          )
+        }
 
-          if (amount === 0 && barber && barber.getString('work_level') !== 'socio' && cRate > 0) {
-            amount = price * (cRate / 100)
-          }
+        let inferredPm = existingComm ? existingComm.getString('payment_method') : 'pix'
+        let pmType = 'pix'
+        if (inferredPm === 'credito') pmType = 'credit_card'
+        if (inferredPm === 'debito') pmType = 'debit_card'
+        if (inferredPm === 'cash') pmType = 'cash'
 
-          let pmType = 'pix'
-          if (inferredPm === 'credito') pmType = 'credit_card'
-          if (inferredPm === 'debito') pmType = 'debit_card'
-          if (inferredPm === 'cash') pmType = 'cash'
+        const feePct = pmFeeMap[pmType] || 0
+        const feeVal = Number((price * (feePct / 100)).toFixed(2))
+        const amount = Number((grossComm - feeVal).toFixed(2))
 
-          const feePct = pmFeeMap[pmType] || 0
-          const feeVal = Number((price * (feePct / 100)).toFixed(2))
-          amount = Number((amount - feeVal).toFixed(2))
+        if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
+          const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
+          comm.set('appointment_id', apt.id)
+          comm.set('barber_id', barberId)
+          comm.set('amount', amount)
+          comm.set('gross_amount', grossComm)
+          comm.set('fee_amount', feeVal)
+          comm.set('type', 'service')
 
-          if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
-            const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
-            newComm.set('barber_id', barberId)
-            newComm.set('amount', amount)
-            newComm.set('type', 'service')
-            newComm.set('date', apt.getString('date') || apt.getString('created'))
-            newComm.set(
+          if (!existingComm) {
+            comm.set('date', apt.getString('date') || apt.getString('created'))
+            comm.set('payment_method', inferredPm)
+            comm.set(
               'status',
               barber && barber.getString('work_level') === 'socio' ? 'paid' : 'pending',
             )
-            newComm.set('payment_method', inferredPm)
-            txApp.save(newComm)
-            existingCommsArr.push(newComm)
             createdCount++
+          } else {
+            if (
+              barber &&
+              barber.getString('work_level') === 'socio' &&
+              comm.getString('status') !== 'paid'
+            ) {
+              comm.set('status', 'paid')
+            }
+            updatedCount++
           }
+          txApp.save(comm)
         }
       }
 
@@ -204,56 +207,59 @@ routerAdd(
         const barberId = prod.getString('barber_id')
         if (!barberId) continue
 
-        const createdTime = new Date(prod.getString('created')).getTime()
+        const price = prod.getFloat('price_at_sale')
+        const productId = prod.getString('product_id')
+        const barber = barbersMap[barberId]
 
-        let found = false
-        let inferredPm = 'pix'
-
-        for (const c of existingCommsArr) {
-          const cTime = new Date(c.getString('created')).getTime()
-          const diff = Math.abs(cTime - createdTime)
-
-          if (diff < 120000 && c.getString('payment_method')) {
-            inferredPm = c.getString('payment_method')
-          }
-
-          if (c.getString('barber_id') === barberId && c.getString('type') === 'product') {
-            if (diff < 300000) {
-              found = true
-            }
-          }
+        let grossComm = getCommission(barberId, 'product', productId, price)
+        if (barber && barber.getString('work_level') === 'socio') {
+          grossComm = price
         }
 
-        if (!found) {
-          const price = prod.getFloat('price_at_sale')
-          const productId = prod.getString('product_id')
-          let amount = getCommission(barberId, 'product', productId, price)
-          const barber = barbersMap[barberId]
+        let existingComm = existingCommsArr.find(
+          (c) => c.getString('product_purchase_id') === prod.id,
+        )
+        if (!existingComm) {
+          const createdTime = new Date(prod.getString('created')).getTime()
+          existingComm = existingCommsArr.find(
+            (c) =>
+              c.getString('barber_id') === barberId &&
+              c.getString('type') === 'product' &&
+              !c.getString('product_purchase_id') &&
+              Math.abs(new Date(c.getString('created')).getTime() - createdTime) < 300000,
+          )
+        }
 
-          let pmType = 'pix'
-          if (inferredPm === 'credito') pmType = 'credit_card'
-          if (inferredPm === 'debito') pmType = 'debit_card'
-          if (inferredPm === 'cash') pmType = 'cash'
+        let inferredPm = existingComm ? existingComm.getString('payment_method') : 'pix'
+        let pmType = 'pix'
+        if (inferredPm === 'credito') pmType = 'credit_card'
+        if (inferredPm === 'debito') pmType = 'debit_card'
+        if (inferredPm === 'cash') pmType = 'cash'
 
-          const feePct = pmFeeMap[pmType] || 0
-          const feeVal = Number((price * (feePct / 100)).toFixed(2))
-          amount = Number((amount - feeVal).toFixed(2))
+        const feePct = pmFeeMap[pmType] || 0
+        const feeVal = Number((price * (feePct / 100)).toFixed(2))
+        const amount = Number((grossComm - feeVal).toFixed(2))
 
-          if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
-            const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
-            newComm.set('barber_id', barberId)
-            newComm.set('amount', amount)
-            newComm.set('type', 'product')
-            newComm.set('date', prod.getString('date') || prod.getString('created'))
-            newComm.set(
+        if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
+          const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
+          comm.set('product_purchase_id', prod.id)
+          comm.set('barber_id', barberId)
+          comm.set('amount', amount)
+          comm.set('gross_amount', grossComm)
+          comm.set('fee_amount', feeVal)
+          comm.set('type', 'product')
+          if (!existingComm) {
+            comm.set('date', prod.getString('date') || prod.getString('created'))
+            comm.set('payment_method', inferredPm)
+            comm.set(
               'status',
               barber && barber.getString('work_level') === 'socio' ? 'paid' : 'pending',
             )
-            newComm.set('payment_method', inferredPm)
-            txApp.save(newComm)
-            existingCommsArr.push(newComm)
             createdCount++
+          } else {
+            updatedCount++
           }
+          txApp.save(comm)
         }
       }
 
@@ -262,69 +268,68 @@ routerAdd(
         const barberId = pack.getString('barber_id')
         if (!barberId) continue
 
-        const createdTime = new Date(pack.getString('created')).getTime()
+        const packageId = pack.getString('package_id')
+        let price = 0
+        try {
+          const pkg = txApp.findRecordById('packages', packageId)
+          price = pkg.getFloat('price')
+        } catch (e) {}
 
-        let found = false
-        let inferredPm = 'pix'
-
-        for (const c of existingCommsArr) {
-          const cTime = new Date(c.getString('created')).getTime()
-          const diff = Math.abs(cTime - createdTime)
-
-          if (diff < 120000 && c.getString('payment_method')) {
-            inferredPm = c.getString('payment_method')
-          }
-
-          if (
-            c.getString('barber_id') === barberId &&
-            (c.getString('type') === 'package' || c.getString('type') === 'package_sale')
-          ) {
-            if (diff < 300000) {
-              found = true
-            }
-          }
+        const barber = barbersMap[barberId]
+        let grossComm = getCommission(barberId, 'package', packageId, price)
+        if (barber && barber.getString('work_level') === 'socio') {
+          grossComm = price
         }
 
-        if (!found) {
-          const packageId = pack.getString('package_id')
-          let price = 0
-          try {
-            const pkg = txApp.findRecordById('packages', packageId)
-            price = pkg.getFloat('price')
-          } catch (e) {}
+        let existingComm = existingCommsArr.find(
+          (c) => c.getString('client_package_id') === pack.id,
+        )
+        if (!existingComm) {
+          const createdTime = new Date(pack.getString('created')).getTime()
+          existingComm = existingCommsArr.find(
+            (c) =>
+              c.getString('barber_id') === barberId &&
+              (c.getString('type') === 'package_sale' || c.getString('type') === 'package') &&
+              !c.getString('client_package_id') &&
+              Math.abs(new Date(c.getString('created')).getTime() - createdTime) < 300000,
+          )
+        }
 
-          let amount = getCommission(barberId, 'package', packageId, price)
-          const barber = barbersMap[barberId]
+        let inferredPm = existingComm ? existingComm.getString('payment_method') : 'pix'
+        let pmType = 'pix'
+        if (inferredPm === 'credito') pmType = 'credit_card'
+        if (inferredPm === 'debito') pmType = 'debit_card'
+        if (inferredPm === 'cash') pmType = 'cash'
 
-          let pmType = 'pix'
-          if (inferredPm === 'credito') pmType = 'credit_card'
-          if (inferredPm === 'debito') pmType = 'debit_card'
-          if (inferredPm === 'cash') pmType = 'cash'
+        const feePct = pmFeeMap[pmType] || 0
+        const feeVal = Number((price * (feePct / 100)).toFixed(2))
+        const amount = Number((grossComm - feeVal).toFixed(2))
 
-          const feePct = pmFeeMap[pmType] || 0
-          const feeVal = Number((price * (feePct / 100)).toFixed(2))
-          amount = Number((amount - feeVal).toFixed(2))
-
-          if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
-            const newComm = new Record(txApp.findCollectionByNameOrId('commissions'))
-            newComm.set('barber_id', barberId)
-            newComm.set('amount', amount)
-            newComm.set('type', 'package_sale')
-            newComm.set('date', pack.getString('created'))
-            newComm.set(
+        if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
+          const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
+          comm.set('client_package_id', pack.id)
+          comm.set('barber_id', barberId)
+          comm.set('amount', amount)
+          comm.set('gross_amount', grossComm)
+          comm.set('fee_amount', feeVal)
+          comm.set('type', 'package_sale')
+          if (!existingComm) {
+            comm.set('date', pack.getString('created'))
+            comm.set('payment_method', inferredPm)
+            comm.set(
               'status',
               barber && barber.getString('work_level') === 'socio' ? 'paid' : 'pending',
             )
-            newComm.set('payment_method', inferredPm)
-            txApp.save(newComm)
-            existingCommsArr.push(newComm)
             createdCount++
+          } else {
+            updatedCount++
           }
+          txApp.save(comm)
         }
       }
     })
 
-    return e.json(200, { success: true, createdCount })
+    return e.json(200, { success: true, createdCount, updatedCount })
   },
   $apis.requireAuth(),
 )

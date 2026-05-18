@@ -39,17 +39,12 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
     text += `--------------------------------\n`
 
     items.forEach((item) => {
-      const pm = paymentMethods.find(
-        (p) =>
-          p.type === item.paymentMethodType ||
-          p.id === item.paymentMethodType ||
-          (item.paymentMethodType === 'credito' && p.type === 'credit_card') ||
-          (item.paymentMethodType === 'debito' && p.type === 'debit_card') ||
-          (item.paymentMethodType === 'pix' && p.type === 'pix') ||
-          (item.paymentMethodType === 'cash' && p.type === 'cash'),
-      )
-      const feePercentage = pm?.fee_percentage || 0
-      const feeValue = Number((item.serviceValue * (feePercentage / 100)).toFixed(2))
+      const rawItem = item as any
+      const feeValue = rawItem.fee_amount !== undefined ? rawItem.fee_amount : 0
+      const grossCommission =
+        rawItem.gross_amount !== undefined
+          ? rawItem.gross_amount
+          : Number((item.commissionValue + feeValue).toFixed(2))
 
       const info = item.commissionInfo
       let rateLabel = ''
@@ -62,7 +57,6 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
       }
 
       const netCommission = item.commissionValue
-      const grossCommission = Number((netCommission + feeValue).toFixed(2))
 
       text += `Nome do Cliente  : ${item.clientName}\n`
       text += `Serviço          : ${item.serviceName}\n`
@@ -95,17 +89,13 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
 
       <div className="space-y-4 mb-6 border-b border-dashed border-gray-400 pb-6">
         {items.map((item, i) => {
-          const pm = paymentMethods.find(
-            (p) =>
-              p.type === item.paymentMethodType ||
-              p.id === item.paymentMethodType ||
-              (item.paymentMethodType === 'credito' && p.type === 'credit_card') ||
-              (item.paymentMethodType === 'debito' && p.type === 'debit_card') ||
-              (item.paymentMethodType === 'pix' && p.type === 'pix') ||
-              (item.paymentMethodType === 'cash' && p.type === 'cash'),
-          )
-          const feePercentage = pm?.fee_percentage || 0
-          const feeValue = Number((item.serviceValue * (feePercentage / 100)).toFixed(2))
+          const rawItem = item as any
+          const feeValue = rawItem.fee_amount !== undefined ? rawItem.fee_amount : 0
+          const grossCommission =
+            rawItem.gross_amount !== undefined
+              ? rawItem.gross_amount
+              : Number((item.commissionValue + feeValue).toFixed(2))
+
           const info = item.commissionInfo
           let rateLabel = ''
           if (info?.type === 'percentage') {
@@ -117,7 +107,6 @@ export function CommissionReceipt({ date, barberName, items, totalPaid }: Commis
           }
 
           const netCommission = item.commissionValue
-          const grossCommission = Number((netCommission + feeValue).toFixed(2))
 
           return (
             <div

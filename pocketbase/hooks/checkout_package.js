@@ -113,15 +113,18 @@ routerAdd(
 
       const netComm = Number((grossComm - feeVal).toFixed(2))
 
-      if (netComm !== 0) {
+      if (netComm !== 0 || isSocio) {
         const commCol = txApp.findCollectionByNameOrId('commissions')
         const comm = new Record(commCol)
+        comm.set('client_package_id', cp.id)
         comm.set('barber_id', barber_id)
         comm.set('amount', netComm)
+        comm.set('gross_amount', grossComm)
+        comm.set('fee_amount', feeVal)
         comm.set('type', 'package_sale')
         comm.set('date', new Date().toISOString())
         comm.set('payment_method', commissionPm)
-        comm.set('status', isSocio ? 'paid' : 'available')
+        comm.set('status', isSocio ? 'paid' : 'pending')
         txApp.save(comm)
       }
     })
