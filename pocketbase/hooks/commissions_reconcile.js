@@ -24,9 +24,30 @@ routerAdd(
     }
 
     function getCommission(barberId, type, itemId, basePrice) {
+      let isBebida = false
+      try {
+        if (type === 'service') {
+          const svc = $app.findRecordById('services', itemId)
+          const cat = $app.findRecordById('categories', svc.getString('category_id'))
+          if (cat.getString('name').toLowerCase() === 'bebidas') isBebida = true
+        } else if (type === 'product') {
+          const prod = $app.findRecordById('products', itemId)
+          const cat = $app.findRecordById('categories', prod.getString('category_id'))
+          if (cat.getString('name').toLowerCase() === 'bebidas') isBebida = true
+        } else if (type === 'package' || type === 'package_sale') {
+          const pkg = $app.findRecordById('packages', itemId)
+          const svc = $app.findRecordById('services', pkg.getString('service_id'))
+          const cat = $app.findRecordById('categories', svc.getString('category_id'))
+          if (cat.getString('name').toLowerCase() === 'bebidas') isBebida = true
+        }
+      } catch (err) {}
+
+      if (isBebida) return 0
+
       const barber = barbersMap[barberId]
       if (!barber) return 0
-      if (barber.getString('work_level') === 'socio') return basePrice
+      if (barber.getString('work_level') === 'socio' && type !== 'product') return basePrice
+      if (barber.getString('work_level') === 'socio' && type === 'product') return 0
 
       let rule = null
       for (const r of rules) {

@@ -239,6 +239,9 @@ export default function Checkout() {
   const handleCloseService = async () => {
     setIsSubmitting(true)
     try {
+      const pmRecord = paymentMethods.find((p) => p.id === svcForm.payment_method)
+      if (!pmRecord) throw new Error('Método de pagamento inválido')
+
       for (const sp of selectedProducts) {
         const prod = sp.product
         if ((prod.stock_quantity || 0) - sp.quantity < 0) {
@@ -246,236 +249,40 @@ export default function Checkout() {
         }
       }
 
-      let finalAptId = svcForm.appointment_id
-      let clientId = manualForm.client_id
-      let barberId = manualForm.barber_id
-      let baseServiceId = manualForm.service_id
-
-      const proportion = subtotal > 0 ? 1 - discountAmount / subtotal : 1
-
-      if (isManual) {
-        const apt = await pb.collection('appointments').create({
-          client_id: clientId,
-          barber_id: barberId,
-          service_id: baseServiceId,
-          price: servicesTotal * proportion,
-          status: 'Concluído',
-          date: new Date().toISOString(),
-          time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          client_package_id: packageToConsume || null,
-        })
-        finalAptId = apt.id
-      } else {
-        const apt = appointments.find((a) => a.id === finalAptId)
-        if (!apt) throw new Error('Agendamento não encontrado')
-        clientId = apt.client_id
-        barberId = apt.barber_id
-        baseServiceId = apt.service_id
-
-        await pb.collection('appointments').update(finalAptId, {
-          status: 'Concluído',
-          price: servicesTotal * proportion,
-          client_package_id: packageToConsume || apt.client_package_id,
-        })
-      }
-
-      if (packageToConsume) {
-        const pkg = clientPackages.find((p) => p.id === packageToConsume)
-        if (pkg && pkg.remaining_uses > 0) {
-          await pb
-            .collection('client_packages')
-            .update(packageToConsume, { remaining_uses: pkg.remaining_uses - 1 })
-        }
-      }
-
-      const pmRecord = paymentMethods.find((p) => p.id === svcForm.payment_method)
-      let commissionPm = 'pix'
-      if (pmRecord) {
-        if (pmRecord.type === 'credit_card') commissionPm = 'credito'
-        else if (pmRecord.type === 'debit_card') commissionPm = 'debito'
-        else if (pmRecord.type === 'pix') commissionPm = 'pix'
-        else if (pmRecord.type === 'cash') commissionPm = 'cash'
-      }
-
-      const barber = barbers.find((b) => b.id === barberId)
-
-      const createComm = async (
-        amount: number,
-        type: string,
-        specificBarberId: string = barberId,
-      ) => {
-        const targetBarber = barbers.find((b) => b.id === specificBarberId)
-        if (amount > 0 && targetBarber) {
-          await pb.collection('commissions').create({
-            barber_id: specificBarberId,
-            amount,
-            type,
-            date: new Date().toISOString(),
-            status: targetBarber.work_level === 'socio' ? 'paid' : 'pending',
-            payment_method: commissionPm,
-          })
-        }
-      }
-
-      const feePct = pmRecord?.fee_percentage || 0
-
-      const getCommissionInfo = (type: string, itemId: string, bId: string) => {
-        let rule = commissionRules.find(
-          (r) => r.barber_id === bId && r.item_type === type && r.item_id === itemId,
-        )
-        if (!rule)
-          rule = commissionRules.find(
-            (r) => !r.barber_id && r.item_type === type && r.item_id === itemId,
-          )
-        if (rule) return { type: rule.type, value: rule.value }
-
-        let svcRate = 0
-        let catRate = 0
-        if (type === 'service') {
-          const svc = services.find((s) => s.id === itemId)
-          svcRate = svc?.commission_rate || 0
-          catRate = svc?.expand?.category_id?.commission_percentage || 0
-        } else if (type === 'product') {
-          const prod = products.find((p) => p.id === itemId)
-          catRate = prod?.expand?.category_id?.commission_percentage || 0
-        }
-        if (svcRate > 0) return { type: 'percentage', value: svcRate }
-        return { type: 'percentage', value: catRate }
-      }
-
-      const getCommAmount = (type: string, itemId: string, itemPrice: number, bId: string) => {
-        const info = getCommissionInfo(type, itemId, bId)
-        const feeVal = itemPrice * (feePct / 100)
-        const netBase = itemPrice - feeVal
-        const isSocio = barber?.work_level === 'socio'
-
-        if (isSocio) {
-          if (type === 'product') return 0 // Sócio não recebe repasse/comissão de produtos
-          return netBase
-        }
-        if (info.type === 'percentage') {
-          return netBase * (info.value / 100)
-        }
-        return info.value
-      }
-
-      if (scheduledPrice > 0) {
-        await createComm(
-          getCommAmount('service', baseServiceId, scheduledPrice * proportion, barberId),
-          'service',
-        )
-      }
-
-      for (const add of additionalServices) {
-        if (add.price > 0) {
-          await createComm(
-            getCommAmount('service', add.service_id, add.price * proportion, barberId),
-            'service',
-          )
-        }
-      }
-
-      for (const extra of manualExtras) {
-        if (extra.price > 0) {
-          const p = extra.price * proportion
-          const feeVal = p * (feePct / 100)
-          const netBase = p - feeVal
-          const isSocio = barber?.work_level === 'socio'
-          const catCommPct = barber?.commission_value || 0
-
-          let netComm = 0
-          if (isSocio) {
-            netComm = netBase
-          } else {
-            netComm = netBase * (catCommPct / 100)
-          }
-
-          await createComm(netComm, 'service')
-        }
-      }
-
-      for (const sp of selectedProducts) {
-        const itemPrice = sp.product.price * sp.quantity * proportion
-        await pb.collection('product_purchases').create({
-          client_id: clientId,
+      const payload = {
+        isManual,
+        manualForm: isManual ? manualForm : undefined,
+        svcForm: {
+          appointment_id: svcForm.appointment_id,
+          service_price: scheduledPrice.toString(),
+          payment_method: svcForm.payment_method,
+        },
+        selectedProducts: selectedProducts.map((sp) => ({
           product_id: sp.product_id,
-          barber_id: barberId,
-          price_at_sale: itemPrice,
-          date: new Date().toISOString(),
-        })
-
-        const currentProd = await pb.collection('products').getOne(sp.product_id)
-        await pb.collection('products').update(sp.product_id, {
-          stock_quantity: Math.max(0, (currentProd.stock_quantity || 0) - sp.quantity),
-        })
-
-        const inventoryOwnerId = financialConfig.inventory_owner_id
-        if (inventoryOwnerId) {
-          const feeVal = itemPrice * (feePct / 100)
-          const netBase = itemPrice - feeVal
-
-          if (barberId === inventoryOwnerId) {
-            // Owner sale
-            const ownerBarber = barbers.find((b) => b.id === inventoryOwnerId)
-            if (ownerBarber?.work_level !== 'socio') {
-              await createComm(netBase, 'product', inventoryOwnerId)
-            }
-          } else {
-            // Staff sale
-            const defaultProductCommission = financialConfig.default_product_commission ?? 10
-            const catRate =
-              sp.product?.expand?.category_id?.commission_percentage ?? defaultProductCommission
-
-            const isSellerSocio = barber?.work_level === 'socio'
-            const sellerComm = isSellerSocio ? 0 : netBase * (catRate / 100)
-            const ownerComm = netBase - sellerComm
-
-            if (sellerComm > 0) {
-              await createComm(sellerComm, 'product', barberId)
-            }
-            if (ownerComm > 0) {
-              const ownerBarber = barbers.find((b) => b.id === inventoryOwnerId)
-              if (ownerBarber?.work_level !== 'socio') {
-                await createComm(ownerComm, 'product', inventoryOwnerId)
-              }
-            }
-          }
-        } else {
-          // Fallback se gestor de estoque não configurado
-          await createComm(
-            getCommAmount('product', sp.product_id, itemPrice, barberId),
-            'product',
-            barberId,
-          )
-        }
+          quantity: sp.quantity,
+          product: sp.product,
+        })),
+        packageToConsume,
+        extraServices: [
+          ...additionalServices.map((s) => ({
+            service_id: s.service_id,
+            price: s.price,
+            name: s.name,
+          })),
+          ...manualExtras.map((m) => ({
+            description: m.description,
+            name: m.description,
+            price: m.price,
+          })),
+        ],
+        discount: discount,
       }
 
-      try {
-        await pb.send('/backend/v1/checkouts/log', {
-          method: 'POST',
-          body: JSON.stringify({
-            client_id: clientId,
-            barber_id: barberId,
-            total_amount: grandTotal,
-            payment_method: pmRecord?.name || svcForm.payment_method,
-            items_snapshot: {
-              service: ticketServiceName,
-              scheduledPrice,
-              packageUsed: !!packageToConsume,
-              additionalServices,
-              manualExtras,
-              products: selectedProducts.map((p) => ({
-                name: p.product.name,
-                price: p.product.price,
-                quantity: p.quantity,
-              })),
-              discount: discountAmount,
-            },
-          }),
-        })
-      } catch (logErr) {
-        console.error('Failed to log checkout', logErr)
-      }
+      await pb.send('/backend/v1/checkout/service', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+      })
 
       setSvcForm({ appointment_id: '', service_price: '', payment_method: '' })
       setManualForm({ client_id: '', barber_id: '', service_id: '' })
