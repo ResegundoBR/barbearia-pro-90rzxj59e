@@ -268,9 +268,6 @@ export default function Staff() {
         .getFullList({ filter: `barber_id='${b.id}'` })
         .catch(() => [])
 
-      const cmMatch = (date1: string | Date, date2: string | Date) =>
-        Math.abs(new Date(date1).getTime() - new Date(date2).getTime()) < 120000
-
       const matchedComms = commissions.filter(
         (c) => c.barber_id === b.id && c.status !== 'paid' && !c.is_advance,
       )
@@ -285,12 +282,17 @@ export default function Staff() {
               (cm.type === 'service' &&
                 Math.abs(new Date(cm.created).getTime() - new Date(a.updated).getTime()) < 120000),
           )
-          const checkout = checks.find(
-            (chk: any) => cmMatch(chk.date, a.updated) && chk.client_id === a.client_id,
-          )
+          const checkout = c?.checkout_id
+            ? checks.find((chk: any) => chk.id === c.checkout_id)
+            : checks.find(
+                (chk: any) =>
+                  Math.abs(new Date(chk.date).getTime() - new Date(a.updated).getTime()) < 120000 &&
+                  chk.client_id === a.client_id,
+              )
           return {
             id: a.id,
             checkoutNumber: checkout?.checkout_number,
+            checkoutObj: checkout,
             type: 'Serviço',
             client: a.expand?.client_id?.name || 'Avulso',
             item: a.expand?.service_id?.name || 'Serviço',
@@ -313,12 +315,17 @@ export default function Staff() {
               (cm.type === 'product' &&
                 Math.abs(new Date(cm.created).getTime() - new Date(p.created).getTime()) < 120000),
           )
-          const checkout = checks.find(
-            (chk: any) => cmMatch(chk.date, p.created) && chk.client_id === p.client_id,
-          )
+          const checkout = c?.checkout_id
+            ? checks.find((chk: any) => chk.id === c.checkout_id)
+            : checks.find(
+                (chk: any) =>
+                  Math.abs(new Date(chk.date).getTime() - new Date(p.created).getTime()) < 120000 &&
+                  chk.client_id === p.client_id,
+              )
           return {
             id: p.id,
             checkoutNumber: checkout?.checkout_number,
+            checkoutObj: checkout,
             type: 'Produto',
             client: p.expand?.client_id?.name || 'Avulso',
             item: p.expand?.product_id?.name || 'Produto',
@@ -341,12 +348,17 @@ export default function Staff() {
               ((cm.type === 'package_sale' || cm.type === 'package') &&
                 Math.abs(new Date(cm.created).getTime() - new Date(pk.created).getTime()) < 120000),
           )
-          const checkout = checks.find(
-            (chk: any) => cmMatch(chk.date, pk.created) && chk.client_id === pk.client_id,
-          )
+          const checkout = c?.checkout_id
+            ? checks.find((chk: any) => chk.id === c.checkout_id)
+            : checks.find(
+                (chk: any) =>
+                  Math.abs(new Date(chk.date).getTime() - new Date(pk.created).getTime()) <
+                    120000 && chk.client_id === pk.client_id,
+              )
           return {
             id: pk.id,
             checkoutNumber: checkout?.checkout_number,
+            checkoutObj: checkout,
             type: 'Pacote',
             client: pk.expand?.client_id?.name || 'Avulso',
             item: pk.expand?.package_id?.name || 'Pacote',
@@ -364,7 +376,8 @@ export default function Staff() {
         }),
         ...consumptionComms.map((c) => ({
           id: c.id,
-          checkoutNumber: null,
+          checkoutNumber: c.expand?.checkout_id?.checkout_number || null,
+          checkoutObj: c.expand?.checkout_id,
           type: 'Consumo',
           client: '-',
           item: 'Consumo Interno',
@@ -645,15 +658,17 @@ export default function Staff() {
   const ticketData = useMemo(() => {
     if (!ticketItem) return null
 
-    // Group items from the same transaction
-    const transactionItems = reportItems.filter(
-      (i) =>
-        i.client === ticketItem.client &&
-        Math.abs(i.commDate.getTime() - ticketItem.commDate.getTime()) < 120000 &&
-        (!i.commissionObj ||
-          !ticketItem.commissionObj ||
-          i.commissionObj.payment_method === ticketItem.commissionObj.payment_method),
-    )
+    // Group items from the same transaction via checkoutNumber
+    const transactionItems = ticketItem.checkoutNumber
+      ? reportItems.filter((i) => i.checkoutNumber === ticketItem.checkoutNumber)
+      : reportItems.filter(
+          (i) =>
+            i.client === ticketItem.client &&
+            Math.abs(i.commDate.getTime() - ticketItem.commDate.getTime()) < 120000 &&
+            (!i.commissionObj ||
+              !ticketItem.commissionObj ||
+              i.commissionObj.payment_method === ticketItem.commissionObj.payment_method),
+        )
 
     const pmType = ticketItem.commissionObj?.payment_method || 'other'
     const matchedPm = paymentMethods.find(
@@ -738,12 +753,15 @@ export default function Staff() {
       ? 'Uso de Pacote'
       : matchedPm?.name || pmType || 'Não informado'
 
+    const snapshot = ticketItem.checkoutObj?.items_snapshot || null
+
     return {
       professionalName: selectedBarberDetailed?.name,
       clientName: ticketItem.client,
       date: ticketItem.date || ticketItem.commDate,
       paymentMethodName,
       checkoutNumber: ticketItem.checkoutNumber,
+      snapshot,
 
       totalPaid,
       nonCommProducts: nonCommProductsLocal,
@@ -1034,6 +1052,7 @@ export default function Staff() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead># Checkout</TableHead>
                     <TableHead>Data/Hora</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Item</TableHead>
@@ -1045,76 +1064,77 @@ export default function Staff() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportItems
-                    .filter((i) => i.commission !== 0)
-                    .map((item, i) => (
-                      <TableRow key={`${item.id}-${i}`}>
-                        <TableCell>
-                          {format(item.date, 'dd/MM/yyyy')} às {item.time}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              item.type === 'Serviço'
-                                ? 'bg-blue-100 text-blue-800 border-blue-200'
-                                : item.type === 'Produto'
-                                  ? 'bg-purple-100 text-purple-800 border-purple-200'
-                                  : 'bg-gray-100 text-gray-800 border-gray-200'
-                            }
-                          >
-                            {item.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{item.item}</TableCell>
-                        <TableCell>{item.client}</TableCell>
-                        <TableCell>
-                          {selectedBarberDetailed?.work_level === 'socio' ? (
-                            <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
-                              Pago na hora
-                            </Badge>
-                          ) : (
-                            <span className="font-medium text-amber-600">
-                              {item.dueDate
-                                ? format(item.dueDate, 'dd/MM/yyyy')
-                                : format(
-                                    getNextPayDate(
-                                      item.commDate,
-                                      selectedBarberDetailed?.payment_schedule_config,
-                                    ),
-                                    'dd/MM/yyyy',
-                                  )}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
-                        <TableCell
-                          className={`text-right font-semibold ${item.commission < 0 ? 'text-red-600' : 'text-emerald-600'}`}
+                  {reportItems.map((item, i) => (
+                    <TableRow key={`${item.id}-${i}`}>
+                      <TableCell className="font-mono text-muted-foreground">
+                        {item.checkoutNumber ? `#${item.checkoutNumber}` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {format(item.date, 'dd/MM/yyyy')} às {item.time}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            item.type === 'Serviço'
+                              ? 'bg-blue-100 text-blue-800 border-blue-200'
+                              : item.type === 'Produto'
+                                ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                : 'bg-gray-100 text-gray-800 border-gray-200'
+                          }
                         >
-                          R$ {item.commission.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setTicketItem(item)}
-                            title="Memória de Cálculo"
-                          >
-                            <Receipt className="size-4 text-slate-600" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  {reportItems.filter((i) => i.commission !== 0).length === 0 && (
+                          {item.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{item.item}</TableCell>
+                      <TableCell>{item.client}</TableCell>
+                      <TableCell>
+                        {selectedBarberDetailed?.work_level === 'socio' ? (
+                          <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
+                            Pago na hora
+                          </Badge>
+                        ) : (
+                          <span className="font-medium text-amber-600">
+                            {item.dueDate
+                              ? format(item.dueDate, 'dd/MM/yyyy')
+                              : format(
+                                  getNextPayDate(
+                                    item.commDate,
+                                    selectedBarberDetailed?.payment_schedule_config,
+                                  ),
+                                  'dd/MM/yyyy',
+                                )}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
+                      <TableCell
+                        className={`text-right font-semibold ${item.commission < 0 ? 'text-red-600' : 'text-emerald-600'}`}
+                      >
+                        R$ {item.commission.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setTicketItem(item)}
+                          title="Memória de Cálculo"
+                        >
+                          <Receipt className="size-4 text-slate-600" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {reportItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        Nenhuma comissão registrada para este período.
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                        Nenhuma transação ou comissão registrada para este período.
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               </Table>
-              {reportItems.filter((i) => i.commission !== 0).length > 0 && (
+              {reportItems.length > 0 && (
                 <div className="summary flex flex-col gap-2 mt-6">
                   <div className="flex justify-between items-center text-lg">
                     <span>Total de Comissões no Período:</span>
@@ -1687,61 +1707,86 @@ export default function Staff() {
                 <span>R$ {ticketData.totalPaid.toFixed(2)}</span>
               </div>
 
-              {ticketData.nonCommProducts.length > 0 && (
-                <div className="space-y-1">
-                  <p className="font-bold uppercase text-gray-500 text-xs mt-4 mb-2">
-                    Produtos (Sem Comissão)
+              {ticketData.snapshot && ticketData.snapshot.length > 0 ? (
+                <div className="space-y-1 border border-gray-200 rounded p-2 bg-gray-50 mb-4">
+                  <p className="font-bold uppercase text-gray-800 text-xs mb-2 border-b pb-1">
+                    Itens do Pedido (Snapshot)
                   </p>
-                  {ticketData.nonCommProducts.map((p: any, i: number) => (
-                    <div key={i} className="flex justify-between text-gray-500">
-                      <span className="truncate max-w-[200px]">{p.item}</span>
-                      <span>R$ {p.price.toFixed(2)}</span>
+                  {ticketData.snapshot.map((sItem: any, idx: number) => (
+                    <div key={`snap-${idx}`} className="flex justify-between text-gray-800 py-0.5">
+                      <span className="truncate max-w-[200px]">
+                        {sItem.quantity > 1 ? `${sItem.quantity}x ` : ''}
+                        {sItem.name} {sItem.packageUsed ? '(Pacote)' : ''}
+                      </span>
+                      <span>
+                        R${' '}
+                        {sItem.packageUsed
+                          ? '0.00'
+                          : (sItem.price * (sItem.quantity || 1)).toFixed(2)}
+                      </span>
                     </div>
                   ))}
-                  <div className="border-t border-dashed border-gray-300 my-2" />
                 </div>
-              )}
-
-              {ticketData.nonCommOthers.length > 0 && (
-                <div className="space-y-1">
-                  <p className="font-bold uppercase text-gray-500 text-xs mt-4 mb-2">
-                    Outros (Sem Comissão)
-                  </p>
-                  {ticketData.nonCommOthers.map((p: any, i: number) => (
-                    <div key={i} className="flex justify-between text-gray-500">
-                      <span className="truncate max-w-[200px]">{p.item}</span>
-                      <span>R$ {p.price.toFixed(2)}</span>
+              ) : (
+                <>
+                  {ticketData.nonCommProducts.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="font-bold uppercase text-gray-500 text-xs mt-4 mb-2">
+                        Produtos (Sem Comissão)
+                      </p>
+                      {ticketData.nonCommProducts.map((p: any, i: number) => (
+                        <div key={i} className="flex justify-between text-gray-500">
+                          <span className="truncate max-w-[200px]">{p.item}</span>
+                          <span>R$ {p.price.toFixed(2)}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-dashed border-gray-300 my-2" />
                     </div>
-                  ))}
-                  <div className="border-t border-dashed border-gray-300 my-2" />
-                </div>
-              )}
+                  )}
 
-              <div className="space-y-1">
-                <p className="font-bold uppercase text-gray-800 text-xs mt-4 mb-2">
-                  Itens Comissionáveis
-                </p>
-                {ticketData.commissionableItems.map((i: any, idx: number) => (
-                  <div key={idx} className="flex justify-between text-gray-800">
-                    <span className="truncate max-w-[200px]">{i.item}</span>
-                    <span>R$ {i.price.toFixed(2)}</span>
+                  {ticketData.nonCommOthers.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="font-bold uppercase text-gray-500 text-xs mt-4 mb-2">
+                        Outros (Sem Comissão)
+                      </p>
+                      {ticketData.nonCommOthers.map((p: any, i: number) => (
+                        <div key={i} className="flex justify-between text-gray-500">
+                          <span className="truncate max-w-[200px]">{p.item}</span>
+                          <span>R$ {p.price.toFixed(2)}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-dashed border-gray-300 my-2" />
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <p className="font-bold uppercase text-gray-800 text-xs mt-4 mb-2">
+                      Itens Comissionáveis
+                    </p>
+                    {ticketData.commissionableItems.map((i: any, idx: number) => (
+                      <div key={idx} className="flex justify-between text-gray-800">
+                        <span className="truncate max-w-[200px]">{i.item}</span>
+                        <span>R$ {i.price.toFixed(2)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-
-              <div className="flex justify-between font-bold text-sm pt-2">
-                <span>Total Base de Cálculo:</span>
-                <span>R$ {ticketData.commissionBase.toFixed(2)}</span>
-              </div>
+                </>
+              )}
 
               <div className="border-t border-dashed border-gray-400 my-4" />
 
-              <div className="space-y-1">
+              <div className="space-y-1 bg-yellow-50/50 p-2 rounded border border-yellow-100">
                 <p className="font-bold uppercase text-gray-800 text-xs mb-2">Memória de Cálculo</p>
+
+                <div className="flex justify-between text-sm text-gray-600 mb-2 border-b border-gray-200 pb-1">
+                  <span>Base Comissionável:</span>
+                  <span className="font-medium">R$ {ticketData.commissionBase.toFixed(2)}</span>
+                </div>
+
                 {ticketData.memoryLines.map((line: any, idx: number) => (
-                  <div key={idx} className="flex justify-between text-gray-800">
+                  <div key={idx} className="flex justify-between text-gray-800 text-xs">
                     <span>{line.label}</span>
-                    <span>R$ {line.value.toFixed(2)}</span>
+                    <span className="font-medium">R$ {line.value.toFixed(2)}</span>
                   </div>
                 ))}
               </div>

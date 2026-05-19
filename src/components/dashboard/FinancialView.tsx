@@ -175,7 +175,10 @@ export function FinancialView({
   const transactions = useMemo(() => {
     const list: any[] = []
 
-    const findCheckout = (clientId: string, date: Date) => {
+    const findCheckout = (clientId: string, date: Date, checkoutId?: string) => {
+      if (checkoutId) {
+        return checkouts.find((c: any) => c.id === checkoutId)
+      }
       return checkouts.find(
         (c: any) =>
           c.client_id === clientId &&
@@ -190,7 +193,7 @@ export function FinancialView({
           c.type === 'service' &&
           Math.abs(new Date(c.created).getTime() - new Date(a.created).getTime()) < 15000,
       )
-      const ck = findCheckout(a.client_id, new Date(a.created))
+      const ck = findCheckout(a.client_id, new Date(a.created), comm?.checkout_id)
       list.push({
         id: `apt_${a.id}`,
         checkoutNumber: ck ? ck.checkout_number : '-',
@@ -212,7 +215,7 @@ export function FinancialView({
           c.type === 'product' &&
           Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) < 15000,
       )
-      const ck = findCheckout(p.client_id, new Date(p.created))
+      const ck = findCheckout(p.client_id, new Date(p.created), comm?.checkout_id)
       list.push({
         id: `prod_${p.id}`,
         checkoutNumber: ck ? ck.checkout_number : '-',
@@ -234,7 +237,7 @@ export function FinancialView({
           (c.type === 'package' || c.type === 'package_sale') &&
           Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) < 15000,
       )
-      const ck = findCheckout(pkg.client_id, new Date(pkg.created))
+      const ck = findCheckout(pkg.client_id, new Date(pkg.created), comm?.checkout_id)
       list.push({
         id: `pkg_${pkg.id}`,
         checkoutNumber: ck ? ck.checkout_number : '-',
@@ -255,7 +258,7 @@ export function FinancialView({
       .map((c: any) => {
         const rel =
           c.expand?.appointment_id || c.expand?.product_purchase_id || c.expand?.client_package_id
-        const ck = rel ? findCheckout(rel.client_id, new Date(rel.created)) : null
+        const ck = rel ? findCheckout(rel.client_id, new Date(rel.created), c.checkout_id) : null
         return {
           id: `comm_${c.id}`,
           checkoutNumber: ck ? ck.checkout_number : '-',

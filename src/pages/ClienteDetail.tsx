@@ -79,7 +79,18 @@ function PackageCard({ p, status, used, total, progress, packageAppointments }: 
               </span>
               <span className="font-medium">{p.remaining_uses} sessões restantes</span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress
+              value={progress}
+              className={`h-2 ${
+                progress <= 25
+                  ? '[&>div]:bg-green-500'
+                  : progress <= 50
+                    ? '[&>div]:bg-blue-500'
+                    : progress <= 75
+                      ? '[&>div]:bg-orange-500'
+                      : '[&>div]:bg-red-500'
+              }`}
+            />
           </div>
           <Button variant="ghost" size="icon" className="shrink-0 hidden md:flex" asChild>
             <div>

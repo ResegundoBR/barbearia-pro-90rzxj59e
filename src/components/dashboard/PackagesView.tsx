@@ -86,7 +86,7 @@ export function PackagesView({ packages: initialPackages }: PackagesViewProps) {
                   className={cn(
                     'h-2',
                     progress <= 25
-                      ? '[&>div]:bg-emerald-500'
+                      ? '[&>div]:bg-green-500'
                       : progress <= 50
                         ? '[&>div]:bg-blue-500'
                         : progress <= 75

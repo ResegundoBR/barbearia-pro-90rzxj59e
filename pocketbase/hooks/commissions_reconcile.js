@@ -119,6 +119,14 @@ routerAdd(
       0,
     )
 
+    const checkoutsAll = $app.findRecordsByFilter(
+      'checkouts',
+      `created >= '${startDate}' && created <= '${endDate}'`,
+      '',
+      10000,
+      0,
+    )
+
     let createdCount = 0
     let updatedCount = 0
 
@@ -127,6 +135,21 @@ routerAdd(
       for (const apt of apts) {
         const barberId = apt.getString('barber_id')
         if (!barberId) continue
+
+        const clientId = apt.getString('client_id')
+        const refTime = new Date(apt.getString('updated') || apt.getString('created')).getTime()
+        let matchedCheckoutId = null
+        for (const ck of checkoutsAll) {
+          if (
+            ck.getString('client_id') === clientId &&
+            Math.abs(
+              new Date(ck.getString('date') || ck.getString('created')).getTime() - refTime,
+            ) < 120000
+          ) {
+            matchedCheckoutId = ck.id
+            break
+          }
+        }
 
         let price = apt.getFloat('price')
         const serviceId = apt.getString('service_id')
@@ -180,6 +203,10 @@ routerAdd(
           comm.set('fee_amount', feeVal)
           comm.set('type', 'service')
 
+          if (matchedCheckoutId && !comm.getString('checkout_id')) {
+            comm.set('checkout_id', matchedCheckoutId)
+          }
+
           if (!existingComm) {
             comm.set('date', apt.getString('date') || apt.getString('created'))
             comm.set('payment_method', inferredPm)
@@ -206,6 +233,21 @@ routerAdd(
       for (const prod of prods) {
         const barberId = prod.getString('barber_id')
         if (!barberId) continue
+
+        const clientId = prod.getString('client_id')
+        const refTime = new Date(prod.getString('created')).getTime()
+        let matchedCheckoutId = null
+        for (const ck of checkoutsAll) {
+          if (
+            ck.getString('client_id') === clientId &&
+            Math.abs(
+              new Date(ck.getString('date') || ck.getString('created')).getTime() - refTime,
+            ) < 120000
+          ) {
+            matchedCheckoutId = ck.id
+            break
+          }
+        }
 
         const price = prod.getFloat('price_at_sale')
         const productId = prod.getString('product_id')
@@ -248,6 +290,11 @@ routerAdd(
           comm.set('gross_amount', grossComm)
           comm.set('fee_amount', feeVal)
           comm.set('type', 'product')
+
+          if (matchedCheckoutId && !comm.getString('checkout_id')) {
+            comm.set('checkout_id', matchedCheckoutId)
+          }
+
           if (!existingComm) {
             comm.set('date', prod.getString('date') || prod.getString('created'))
             comm.set('payment_method', inferredPm)
@@ -267,6 +314,21 @@ routerAdd(
       for (const pack of packs) {
         const barberId = pack.getString('barber_id')
         if (!barberId) continue
+
+        const clientId = pack.getString('client_id')
+        const refTime = new Date(pack.getString('created')).getTime()
+        let matchedCheckoutId = null
+        for (const ck of checkoutsAll) {
+          if (
+            ck.getString('client_id') === clientId &&
+            Math.abs(
+              new Date(ck.getString('date') || ck.getString('created')).getTime() - refTime,
+            ) < 120000
+          ) {
+            matchedCheckoutId = ck.id
+            break
+          }
+        }
 
         const packageId = pack.getString('package_id')
         let price = 0
@@ -313,6 +375,11 @@ routerAdd(
           comm.set('gross_amount', grossComm)
           comm.set('fee_amount', feeVal)
           comm.set('type', 'package_sale')
+
+          if (matchedCheckoutId && !comm.getString('checkout_id')) {
+            comm.set('checkout_id', matchedCheckoutId)
+          }
+
           if (!existingComm) {
             comm.set('date', pack.getString('created'))
             comm.set('payment_method', inferredPm)

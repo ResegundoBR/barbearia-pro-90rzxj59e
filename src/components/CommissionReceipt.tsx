@@ -150,10 +150,14 @@ export function CommissionReceipt({
       </div>
 
       <div className="mb-6 border-b border-dashed border-gray-400 pb-6">
-        <h4 className="font-bold text-sm mb-3 uppercase tracking-widest text-gray-500">
+        <h4 className="font-bold text-sm mb-3 uppercase tracking-widest text-gray-800 bg-yellow-50 p-1 rounded inline-block">
           Memória de Cálculo
         </h4>
-        <div className="space-y-2">
+        <div className="space-y-2 bg-yellow-50 p-2 rounded text-gray-800">
+          <div className="flex justify-between font-bold border-b border-gray-300 pb-1 mb-1">
+            <span>Base Comissionável</span>
+            <span>R$ {items.reduce((acc, curr) => acc + curr.serviceValue, 0).toFixed(2)}</span>
+          </div>
           {items.map((item, i) => {
             const info = item.commissionInfo
             let rateLabel = ''
@@ -167,7 +171,7 @@ export function CommissionReceipt({
               rateLabel = `Integral`
             }
             return (
-              <div key={`mem_${i}`} className="flex justify-between text-xs text-gray-700">
+              <div key={`mem_${i}`} className="flex justify-between text-xs">
                 <span className="truncate max-w-[180px]">
                   {item.serviceName} (Base: R$ {item.serviceValue.toFixed(2)})
                 </span>
