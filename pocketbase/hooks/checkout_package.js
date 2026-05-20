@@ -120,7 +120,7 @@ routerAdd(
         comm.set('barber_id', barber_id)
         comm.set('amount', netComm)
         comm.set('gross_amount', grossComm)
-        comm.set('fee_amount', feeVal)
+        comm.set('fee_amount', isSocio ? 0 : feeVal)
         comm.set('type', 'package_sale')
         comm.set('date', new Date().toISOString())
         comm.set('payment_method', commissionPm)

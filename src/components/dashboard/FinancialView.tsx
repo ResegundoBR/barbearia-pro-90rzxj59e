@@ -107,7 +107,7 @@ export function FinancialView({
 
   const partnerTransfers = commissions
     .filter((c: any) => c.expand?.barber_id?.work_level === 'socio')
-    .reduce((acc: number, c: any) => acc + (c.amount || 0), 0)
+    .reduce((acc: number, c: any) => acc + (c.gross_amount || c.amount || 0), 0)
 
   // Total Financial Fees (Taxas das transações)
   const totalFinancialFees = useMemo(() => {
@@ -174,6 +174,7 @@ export function FinancialView({
 
   const transactions = useMemo(() => {
     const list: any[] = []
+    const checkoutIds = new Set(checkouts.map((c: any) => c.id))
 
     const findCheckout = (clientId: string, date: Date, checkoutId?: string) => {
       if (checkoutId) {
@@ -186,12 +187,7 @@ export function FinancialView({
       )
     }
 
-    const processedCheckoutIds = new Set<string>()
-
-    const addCheckout = (ck: any) => {
-      if (!ck || processedCheckoutIds.has(ck.id)) return true
-      processedCheckoutIds.add(ck.id)
-
+    checkouts.forEach((ck: any) => {
       let itemNames: string[] = []
       if (ck.items_snapshot) {
         if (ck.items_snapshot.service) itemNames.push(ck.items_snapshot.service)
@@ -212,7 +208,15 @@ export function FinancialView({
         value: ck.total_amount,
         type: 'checkout',
       })
-      return true
+    })
+
+    const hasCheckout = (date: Date, clientId: string, commCheckoutId?: string) => {
+      if (commCheckoutId && checkoutIds.has(commCheckoutId)) return true
+      return checkouts.some(
+        (c: any) =>
+          c.client_id === clientId &&
+          Math.abs(new Date(c.created).getTime() - date.getTime()) < 60000,
+      )
     }
 
     completedPeriod.forEach((a: any) => {
@@ -222,10 +226,7 @@ export function FinancialView({
           c.type === 'service' &&
           Math.abs(new Date(c.created).getTime() - new Date(a.created).getTime()) < 15000,
       )
-      const ck = findCheckout(a.client_id, new Date(a.created), comm?.checkout_id)
-      if (ck) {
-        addCheckout(ck)
-      } else {
+      if (!hasCheckout(new Date(a.created), a.client_id, comm?.checkout_id)) {
         list.push({
           id: `apt_${a.id}`,
           checkoutNumber: '-',
@@ -248,10 +249,7 @@ export function FinancialView({
           c.type === 'product' &&
           Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) < 15000,
       )
-      const ck = findCheckout(p.client_id, new Date(p.created), comm?.checkout_id)
-      if (ck) {
-        addCheckout(ck)
-      } else {
+      if (!hasCheckout(new Date(p.created), p.client_id, comm?.checkout_id)) {
         list.push({
           id: `prod_${p.id}`,
           checkoutNumber: '-',
@@ -274,10 +272,7 @@ export function FinancialView({
           (c.type === 'package' || c.type === 'package_sale') &&
           Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) < 15000,
       )
-      const ck = findCheckout(pkg.client_id, new Date(pkg.created), comm?.checkout_id)
-      if (ck) {
-        addCheckout(ck)
-      } else {
+      if (!hasCheckout(new Date(pkg.created), pkg.client_id, comm?.checkout_id)) {
         list.push({
           id: `pkg_${pkg.id}`,
           checkoutNumber: '-',
@@ -295,20 +290,28 @@ export function FinancialView({
     })
 
     const outflows = commissions
-      .filter((c: any) => c.status === 'paid' && c.amount > 0)
+      .filter((c: any) => c.status === 'paid' && (c.amount > 0 || c.gross_amount > 0))
       .map((c: any) => {
         const rel =
           c.expand?.appointment_id || c.expand?.product_purchase_id || c.expand?.client_package_id
-        const ck = rel ? findCheckout(rel.client_id, new Date(rel.created), c.checkout_id) : null
+
+        let ck = checkouts.find((chk: any) => chk.id === c.checkout_id)
+        if (!ck && rel) {
+          ck = findCheckout(rel.client_id, new Date(rel.created), c.checkout_id)
+        }
+
+        const isSocio = c.expand?.barber_id?.work_level === 'socio'
+        const displayValue = isSocio ? c.gross_amount || c.amount || 0 : c.amount || 0
+
         return {
           id: `comm_${c.id}`,
           checkoutNumber: ck ? ck.checkout_number : '-',
           date: new Date(c.updated || c.created),
           client: '-',
-          item: `Repasse/Pagamento - ${c.expand?.barber_id?.work_level === 'socio' ? 'Sócio' : 'Autônomo'}`,
+          item: `Repasse/Pagamento - ${isSocio ? 'Sócio' : 'Autônomo'}`,
           barber: c.expand?.barber_id?.name || 'Profissional',
           method: getMethodName(c.payment_method || '-'),
-          value: -(c.amount || 0),
+          value: -displayValue,
           type: 'outflow',
         }
       })

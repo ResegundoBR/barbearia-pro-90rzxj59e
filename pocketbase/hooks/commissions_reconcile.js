@@ -197,7 +197,7 @@ routerAdd(
           comm.set('barber_id', barberId)
           comm.set('amount', amount)
           comm.set('gross_amount', price)
-          comm.set('fee_amount', feeVal)
+          comm.set('fee_amount', barber && barber.getString('work_level') === 'socio' ? 0 : feeVal)
           comm.set('type', 'service')
 
           if (!existingComm) {
@@ -266,7 +266,7 @@ routerAdd(
           comm.set('barber_id', barberId)
           comm.set('amount', amount)
           comm.set('gross_amount', price)
-          comm.set('fee_amount', feeVal)
+          comm.set('fee_amount', barber && barber.getString('work_level') === 'socio' ? 0 : feeVal)
           comm.set('type', 'product')
 
           if (!existingComm) {
@@ -332,7 +332,7 @@ routerAdd(
           comm.set('barber_id', barberId)
           comm.set('amount', amount)
           comm.set('gross_amount', price)
-          comm.set('fee_amount', feeVal)
+          comm.set('fee_amount', barber && barber.getString('work_level') === 'socio' ? 0 : feeVal)
           comm.set('type', 'package_sale')
 
           if (!existingComm) {

@@ -246,7 +246,7 @@ routerAdd(
           comm.set('barber_id', barberId)
           comm.set('amount', netComm)
           comm.set('gross_amount', finalServicePrice)
-          comm.set('fee_amount', feeVal)
+          comm.set('fee_amount', isSocio ? 0 : feeVal)
           comm.set('type', 'service')
           comm.set('date', new Date().toISOString())
           comm.set('payment_method', commissionPm)
@@ -308,7 +308,10 @@ routerAdd(
               cComm.set('barber_id', extBarberId)
               cComm.set('amount', extGross)
               cComm.set('gross_amount', extPrice)
-              cComm.set('fee_amount', Number((extPrice * (pmFeePct / 100)).toFixed(2)))
+              cComm.set(
+                'fee_amount',
+                isExtSocio ? 0 : Number((extPrice * (pmFeePct / 100)).toFixed(2)),
+              )
               cComm.set('type', 'service')
               cComm.set('date', new Date().toISOString())
               cComm.set('payment_method', commissionPm)
@@ -380,7 +383,7 @@ routerAdd(
             pComm.set('barber_id', item.barber_id)
             pComm.set('amount', sellerComm)
             pComm.set('gross_amount', totalProdPrice)
-            pComm.set('fee_amount', feeValP)
+            pComm.set('fee_amount', isSocioProd ? 0 : feeValP)
             pComm.set('type', 'product')
             pComm.set('date', new Date().toISOString())
             pComm.set('payment_method', commissionPm)
