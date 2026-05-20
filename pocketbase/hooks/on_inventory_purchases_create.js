@@ -13,6 +13,14 @@ onRecordAfterCreateSuccess((e) => {
         const currentStock = product.getInt('stock_quantity')
         product.set('stock_quantity', currentStock + quantity)
         needsUpdate = true
+
+        const stockMovements = $app.findCollectionByNameOrId('stock_movements')
+        const movement = new Record(stockMovements)
+        movement.set('product_id', productId)
+        movement.set('type', 'purchase')
+        movement.set('quantity', quantity)
+        movement.set('description', 'Compra de estoque (Fornecedor)')
+        $app.saveNoValidate(movement)
       }
 
       if (unitPrice > 0 && Math.abs(product.getFloat('cost_price') - unitPrice) > 0.001) {

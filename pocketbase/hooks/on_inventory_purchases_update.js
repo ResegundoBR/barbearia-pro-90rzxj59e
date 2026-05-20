@@ -16,10 +16,26 @@ onRecordAfterUpdateSuccess((e) => {
           const currentStock = product.getInt('stock_quantity')
           product.set('stock_quantity', currentStock + quantity)
           needsUpdate = true
+
+          const stockMovements = $app.findCollectionByNameOrId('stock_movements')
+          const movement = new Record(stockMovements)
+          movement.set('product_id', productId)
+          movement.set('type', 'purchase')
+          movement.set('quantity', quantity)
+          movement.set('description', 'Recebimento de compra de estoque')
+          $app.saveNoValidate(movement)
         } else if (originalStatus === 'received' && newStatus === 'pending') {
           const currentStock = product.getInt('stock_quantity')
           product.set('stock_quantity', Math.max(0, currentStock - quantity))
           needsUpdate = true
+
+          const stockMovements = $app.findCollectionByNameOrId('stock_movements')
+          const movement = new Record(stockMovements)
+          movement.set('product_id', productId)
+          movement.set('type', 'adjustment')
+          movement.set('quantity', -quantity)
+          movement.set('description', 'Reversão de recebimento de compra')
+          $app.saveNoValidate(movement)
         }
       }
 

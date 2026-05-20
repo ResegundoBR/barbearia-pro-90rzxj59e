@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Check } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -14,7 +14,11 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { PurchaseFormDialog } from './PurchaseFormDialog'
-import { getInventoryPurchases, deleteInventoryPurchase } from '@/services/inventory_purchases'
+import {
+  getInventoryPurchases,
+  deleteInventoryPurchase,
+  updateInventoryPurchase,
+} from '@/services/inventory_purchases'
 import { getProducts } from '@/services/products'
 import { getSuppliers } from '@/services/suppliers'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -54,6 +58,19 @@ export function PurchasesTab() {
   const handleEdit = (purchase: any) => {
     setPurchaseToEdit(purchase)
     setIsFormOpen(true)
+  }
+
+  const handleConfirmReceipt = async (id: string) => {
+    try {
+      await updateInventoryPurchase(id, {
+        status: 'received',
+        received_at: new Date().toISOString(),
+      })
+      toast({ title: 'Recebimento confirmado!' })
+      loadData()
+    } catch (err: any) {
+      toast({ title: 'Erro ao confirmar', description: err.message, variant: 'destructive' })
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -126,11 +143,27 @@ export function PurchasesTab() {
                       {formatCurrency(total)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={purchase.status === 'received' ? 'default' : 'secondary'}>
+                      <Badge
+                        className={
+                          purchase.status === 'received'
+                            ? 'bg-green-100 text-green-800 hover:bg-green-100 border-none'
+                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-none'
+                        }
+                      >
                         {purchase.status === 'received' ? 'Recebido' : 'Pendente'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
+                      {purchase.status === 'pending' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleConfirmReceipt(purchase.id)}
+                          title="Confirmar Recebimento"
+                        >
+                          <Check className="w-4 h-4 text-green-600" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(purchase)}>
                         <Pencil className="w-4 h-4" />
                       </Button>

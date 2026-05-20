@@ -29,10 +29,9 @@ export function PurchaseFormDialog({
   const [supplierId, setSupplierId] = useState('')
   const [quantity, setQuantity] = useState<number | ''>('')
   const [unitPrice, setUnitPrice] = useState<number | ''>('')
+  const [totalCompra, setTotalCompra] = useState<number | ''>('')
   const [purchaseDate, setPurchaseDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [status, setStatus] = useState('pending')
-  const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('fixed')
-  const [discountValue, setDiscountValue] = useState<number | ''>('')
 
   useEffect(() => {
     if (open) {
@@ -41,6 +40,7 @@ export function PurchaseFormDialog({
         setSupplierId(purchaseToEdit.supplier_id)
         setQuantity(purchaseToEdit.quantity)
         setUnitPrice(purchaseToEdit.unit_price)
+        setTotalCompra(purchaseToEdit.price_paid)
         setPurchaseDate(
           purchaseToEdit.purchase_date
             ? purchaseToEdit.purchase_date.split('T')[0]
@@ -52,10 +52,9 @@ export function PurchaseFormDialog({
         setSupplierId('')
         setQuantity('')
         setUnitPrice('')
+        setTotalCompra('')
         setPurchaseDate(format(new Date(), 'yyyy-MM-dd'))
         setStatus('pending')
-        setDiscountType('fixed')
-        setDiscountValue('')
       }
     }
   }, [open, purchaseToEdit])
@@ -66,35 +65,55 @@ export function PurchaseFormDialog({
       const product = products.find((p: any) => p.id === val)
       if (product && product.cost_price != null) {
         setUnitPrice(product.cost_price)
+        if (quantity !== '') {
+          setTotalCompra(Number(quantity) * Number(product.cost_price))
+        }
       }
     }
   }
 
-  const grossTotal = (Number(quantity) || 0) * (Number(unitPrice) || 0)
-  const discountAmt =
-    discountType === 'percentage'
-      ? grossTotal * ((Number(discountValue) || 0) / 100)
-      : Number(discountValue) || 0
-  const vlrDaCompra = Math.max(0, grossTotal - discountAmt)
+  const handleQuantityChange = (val: string) => {
+    const qty = val ? Number(val) : ''
+    setQuantity(qty)
+    if (qty !== '' && unitPrice !== '') {
+      setTotalCompra(Number(qty) * Number(unitPrice))
+    } else {
+      setTotalCompra('')
+    }
+  }
+
+  const handleUnitPriceChange = (val: string) => {
+    const price = val ? Number(val) : ''
+    setUnitPrice(price)
+    if (price !== '' && quantity !== '') {
+      setTotalCompra(Number(quantity) * Number(price))
+    } else {
+      setTotalCompra('')
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
-    const data = {
+    const data: any = {
       product_id: productId,
       supplier_id: supplierId,
       quantity: Number(quantity),
       unit_price: Number(unitPrice),
-      price_paid: vlrDaCompra,
+      price_paid: Number(totalCompra),
       purchase_date: new Date(purchaseDate).toISOString(),
       status,
+    }
+
+    if (status === 'received' && (!purchaseToEdit || purchaseToEdit.status !== 'received')) {
+      data.received_at = new Date().toISOString()
     }
 
     try {
       if (purchaseToEdit) {
         await updateInventoryPurchase(purchaseToEdit.id, data)
-        toast({ title: 'Compra registrada com sucesso!' })
+        toast({ title: 'Compra atualizada com sucesso!' })
       } else {
         await createInventoryPurchase(data)
         toast({ title: 'Compra registrada com sucesso!' })
@@ -116,7 +135,7 @@ export function PurchaseFormDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2">
               <Label>Produto</Label>
               <Select value={productId} onValueChange={handleProductChange} required>
                 <SelectTrigger>
@@ -131,7 +150,7 @@ export function PurchaseFormDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2">
               <Label>Fornecedor</Label>
               <Select value={supplierId} onValueChange={setSupplierId} required>
                 <SelectTrigger>
@@ -153,7 +172,7 @@ export function PurchaseFormDialog({
                 min="1"
                 step="1"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value ? Number(e.target.value) : '')}
+                onChange={(e) => handleQuantityChange(e.target.value)}
                 required
               />
             </div>
@@ -164,7 +183,18 @@ export function PurchaseFormDialog({
                 min="0"
                 step="0.01"
                 value={unitPrice}
-                onChange={(e) => setUnitPrice(e.target.value ? Number(e.target.value) : '')}
+                onChange={(e) => handleUnitPriceChange(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Total Compra (R$)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={totalCompra}
+                onChange={(e) => setTotalCompra(e.target.value ? Number(e.target.value) : '')}
                 required
               />
             </div>
@@ -177,32 +207,7 @@ export function PurchaseFormDialog({
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>Desconto</Label>
-              <div className="flex gap-2">
-                <Select
-                  value={discountType}
-                  onValueChange={(v: 'fixed' | 'percentage') => setDiscountType(v)}
-                >
-                  <SelectTrigger className="w-[80px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fixed">R$</SelectItem>
-                    <SelectItem value="percentage">%</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={discountValue}
-                  onChange={(e) => setDiscountValue(e.target.value ? Number(e.target.value) : '')}
-                  className="flex-1"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2">
               <Label>Status</Label>
               <Select value={status} onValueChange={setStatus} required>
                 <SelectTrigger>
@@ -214,15 +219,6 @@ export function PurchaseFormDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="bg-muted p-3 rounded-md flex justify-between items-center border">
-            <span className="font-semibold text-sm">Vlr Compra:</span>
-            <span className="font-bold text-lg">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                vlrDaCompra,
-              )}
-            </span>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
