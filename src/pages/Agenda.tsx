@@ -338,15 +338,15 @@ export default function Agenda() {
             const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
             const isCanceled = apt.status === 'Cancelado'
             const isCompleted = apt.status === 'Concluído'
+            const isFaltou = apt.status === 'FALTOU'
             const datePart = apt.date ? apt.date.split(' ')[0] : ''
             const [y, m, d] = datePart.split('-').map(Number)
             const aptDateTime = new Date(y, m - 1, d, sH, sM)
             const isFuture = aptDateTime > new Date()
             const isPast = aptDateTime < new Date()
-            const isMissed = isPast && !isCompleted && !isCanceled
+            const isMissed = isFaltou || (isPast && !isCompleted && !isCanceled)
 
-            const bgColor = isMissed ? '#000000' : barberColor
-            const textColor = getContrastColor(bgColor)
+            const bgColor = isMissed ? '#000000' : barberColor            const textColor = getContrastColor(bgColor)
 
             return (
               <div
@@ -435,17 +435,17 @@ export default function Agenda() {
                   {events.slice(0, 4).map((apt) => {
                     const isCompleted = apt.status === 'Concluído'
                     const isCanceled = apt.status === 'Cancelado'
+                    const isFaltou = apt.status === 'FALTOU'
                     const datePart = apt.date ? apt.date.split(' ')[0] : ''
                     const [y, m, d] = datePart.split('-').map(Number)
                     const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
                     const aptDateTime = new Date(y, m - 1, d, sH, sM)
                     const isPast = aptDateTime < new Date()
-                    const isMissed = isPast && !isCompleted && !isCanceled
+                    const isMissed = isFaltou || (isPast && !isCompleted && !isCanceled)
 
                     const bgColor = isMissed
                       ? '#000000'
-                      : apt.expand?.barber_id?.color || 'hsl(var(--primary))'
-                    const textColor = getContrastColor(bgColor)
+                      : apt.expand?.barber_id?.color || 'hsl(var(--primary))'                    const textColor = getContrastColor(bgColor)
 
                     return (
                       <div
@@ -558,6 +558,7 @@ export default function Agenda() {
               allEvents.map((apt) => {
                 const isCompleted = apt.status === 'Concluído'
                 const isCanceled = apt.status === 'Cancelado'
+                const isFaltou = apt.status === 'FALTOU'
                 const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
 
                 return (
@@ -567,8 +568,8 @@ export default function Agenda() {
                       'group relative flex items-center justify-between p-3 sm:p-4 border-b sm:border sm:rounded-xl hover:bg-muted/50 transition-colors cursor-pointer bg-card',
                       isCompleted && 'opacity-60',
                       isCanceled && 'opacity-50 grayscale',
-                    )}
-                    onClick={() => handleOpenDetail(apt)}
+                      isFaltou && 'border-red-900/20 bg-red-50/50 dark:bg-red-900/10'
+                    )}                    onClick={() => handleOpenDetail(apt)}
                   >
                     <div
                       className="absolute left-0 top-0 bottom-0 w-2 sm:rounded-l-xl"
@@ -608,12 +609,13 @@ export default function Agenda() {
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                             : apt.status === 'Cancelado'
                               ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                              : 'bg-amber-100 text-amber-800 border border-amber-200',
+                              : apt.status === 'FALTOU'
+                                ? 'bg-red-600 text-white border border-red-700'
+                                : 'bg-amber-100 text-amber-800 border border-amber-200',
                         )}
                       >
                         {apt.status}
-                      </span>
-                    </div>
+                      </span>                    </div>
                   </div>
                 )
               })
@@ -963,12 +965,13 @@ export default function Agenda() {
                             ? 'bg-green-100 text-green-800'
                             : selectedApt.status === 'Cancelado'
                               ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800',
+                              : selectedApt.status === 'FALTOU'
+                                ? 'bg-red-600 text-white'
+                                : 'bg-yellow-100 text-yellow-800',
                         )}
                       >
                         {selectedApt.status}
-                      </span>
-                    </div>
+                      </span>                    </div>
                   </div>
                 </div>
               ) : (
@@ -1091,8 +1094,8 @@ export default function Agenda() {
                           <SelectItem value="Confirmado">Confirmado</SelectItem>
                           <SelectItem value="Concluído">Concluído</SelectItem>
                           <SelectItem value="Cancelado">Cancelado</SelectItem>
-                        </SelectContent>
-                      </Select>
+                          <SelectItem value="FALTOU">FALTOU</SelectItem>
+                        </SelectContent>                      </Select>
                     </div>
                   </div>
                 </div>

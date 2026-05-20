@@ -21,6 +21,7 @@ export function TimeSlot({
     const isCompleted = appointment.status === 'Concluído'
     const isPending = appointment.status === 'Pendente' || appointment.status === 'Confirmado'
     const isCanceled = appointment.status === 'Cancelado'
+    const isFaltou = appointment.status === 'FALTOU'
 
     const datePart = appointment.date ? appointment.date.split(' ')[0] : ''
     const [y, m, d] = datePart.split('-').map(Number)
@@ -28,7 +29,7 @@ export function TimeSlot({
     const aptDateTime = new Date(y, m - 1, d, sH, sM)
     const isFuture = aptDateTime > new Date()
     const isPast = aptDateTime < new Date()
-    const isMissed = isPast && !isCompleted && !isCanceled
+    const isMissed = isFaltou || (isPast && !isCompleted && !isCanceled)
 
     const barberColor = appointment.expand?.barber_id?.color || 'hsl(var(--primary))'
     const bgColor = isMissed ? '#000000' : isCompleted ? 'transparent' : barberColor
@@ -40,10 +41,11 @@ export function TimeSlot({
           'h-14 rounded-md p-1 flex justify-between items-center border cursor-pointer transition-all shadow-sm hover:scale-[1.02]',
           isCompleted ? 'bg-muted/50 border-border opacity-50' : 'border-black/5',
           !isCompleted && isCanceled && 'opacity-50 grayscale bg-muted/50',
+          isFaltou && 'border-red-900 border-2',
         )}
         style={{
-          backgroundColor: isCompleted || isCanceled ? undefined : bgColor,
-          color: isCompleted || isCanceled ? undefined : textColor,
+          backgroundColor: isCompleted || isCanceled ? undefined : isFaltou ? '#000000' : bgColor,
+          color: isCompleted || isCanceled ? undefined : isFaltou ? '#FFFFFF' : textColor,
         }}
       >
         <div className="flex flex-col overflow-hidden">
@@ -65,12 +67,13 @@ export function TimeSlot({
                 !isCompleted &&
                 !isCanceled &&
                 'bg-amber-500 text-white hover:bg-amber-600 border-none',
-              isMissed && 'bg-white text-black hover:bg-white/90 border-none',
+              isMissed && !isFaltou && 'bg-white text-black hover:bg-white/90 border-none',
               isCompleted && 'bg-emerald-100 text-emerald-800 border-emerald-200',
+              isFaltou && 'bg-red-600 text-white hover:bg-red-700 border-none',
             )}
           >
             {appointment.status}
-          </Badge>
+          </Badge>{' '}
         </div>
       </div>
     )

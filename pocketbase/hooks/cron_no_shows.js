@@ -1,12 +1,12 @@
-cronAdd('no_shows_daily', '0 0 * * *', () => {
+cronAdd('no_shows_daily', '0 * * * *', () => {
   const now = new Date()
-  now.setDate(now.getDate() - 3)
+  now.setHours(now.getHours() - 24)
   const cutoffStr = now.toISOString().replace('T', ' ').substring(0, 19)
 
-  // Find appointments that are older than 3 days and haven't been completed, cancelled, or already marked as absent
+  // Find appointments that are older than 24 hours and haven't been completed, cancelled, or already marked as absent
   const apts = $app.findRecordsByFilter(
     'appointments',
-    `date <= {:cutoff} && status != 'Concluído' && status != 'Cancelado' && status != 'Ausente'`,
+    `date <= {:cutoff} && status != 'Concluído' && status != 'Cancelado' && status != 'Ausente' && status != 'FALTOU'`,
     '',
     1000,
     0,
@@ -39,13 +39,15 @@ cronAdd('no_shows_daily', '0 0 * * *', () => {
       const log = new Record(logsCol)
       log.set('client_id', apt.getString('client_id'))
       log.set('appointment_id', apt.id)
+      log.set('barber_id', apt.getString('barber_id'))
       log.set('event_type', 'no_show')
-      log.set('details', `Ausência não notificada no dia marcado - ${dateBr}`)
+      log.set('sentiment', 'negative')
+      log.set('details', 'Falta registrada automaticamente pelo sistema (24h limite)')
 
       $app.save(log)
 
       // Update the appointment status so we don't query it again
-      apt.set('status', 'Ausente')
+      apt.set('status', 'FALTOU')
       $app.save(apt)
     } catch (err) {
       $app.logger().error('Failed to process no_show log', 'apt_id', apt.id, 'error', err.message)

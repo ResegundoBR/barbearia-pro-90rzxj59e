@@ -112,7 +112,7 @@ export default function Checkout() {
       getBarbers(),
       getClients(),
       getPackages(),
-      getAppointments(`status != 'Concluído' && status != 'Cancelado'`),
+      getAppointments(`status != 'Concluído' && status != 'Cancelado' && status != 'FALTOU'`),
       pb.collection('products').getFullList({ filter: 'is_active=true', expand: 'category_id' }),
       getClientPackages(),
       pb.collection('services').getFullList({ filter: 'is_active=true' }),

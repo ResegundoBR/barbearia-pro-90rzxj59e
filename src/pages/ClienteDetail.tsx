@@ -396,12 +396,12 @@ export default function ClienteDetail() {
                         className={`text-xs font-semibold px-2 py-0.5 rounded ${log.sentiment === 'positive' ? 'bg-green-500/10 text-green-700' : log.sentiment === 'negative' ? 'bg-red-500/10 text-red-700' : 'bg-primary/10 text-primary'}`}
                       >
                         {log.event_type === 'no_show'
-                          ? 'Falta (No-Show)'
+                          ? 'FALTOU'
                           : log.event_type === 'reschedule'
                             ? 'Remarcação'
                             : log.event_type === 'manual_entry'
                               ? 'Registro Manual'
-                              : log.event_type}
+                              : log.event_type}{' '}
                       </span>
                       {log.expand?.barber_id && (
                         <span className="text-xs text-muted-foreground ml-2">
