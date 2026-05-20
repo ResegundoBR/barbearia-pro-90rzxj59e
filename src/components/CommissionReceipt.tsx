@@ -48,17 +48,6 @@ export function CommissionReceipt({
     text += `--------------------------------\n`
 
     items.forEach((item) => {
-      const info = item.commissionInfo
-      let rateLabel = ''
-      if (info?.type === 'percentage') {
-        rateLabel = `(${info.value}%)`
-      } else if (info?.type === 'fixed') {
-        rateLabel = `(Fixo R$ ${info.value.toFixed(2)})`
-      } else if (item.commissionRate) {
-        rateLabel = `(${item.commissionRate}%)`
-      }
-
-      const netCommission = item.commissionValue
       const grossAmount = item.serviceValue
 
       text += `Nome do Cliente  : ${item.clientName}\n`
@@ -67,7 +56,6 @@ export function CommissionReceipt({
       if (item.serviceValue === 0) {
         text += `Info             : Pacote/Retorno (R$ 0,00)\n`
       }
-      text += `Comissão Líquida ${rateLabel} : R$ ${netCommission.toFixed(2)}\n`
       text += `--------------------------------\n`
     })
 
@@ -99,19 +87,6 @@ export function CommissionReceipt({
 
       <div className="space-y-4 mb-6 border-b border-dashed border-gray-400 pb-6">
         {items.map((item, i) => {
-          const rawItem = item as any
-          const info = item.commissionInfo
-          let rateLabel = ''
-          if (info?.type === 'percentage') {
-            rateLabel = `(${info.value}%)`
-          } else if (info?.type === 'fixed') {
-            rateLabel = `(Fixo R$ ${info.value.toFixed(2)})`
-          } else if (item.commissionRate) {
-            rateLabel = `(${item.commissionRate}%)`
-          }
-
-          const netCommission = item.commissionValue
-
           return (
             <div
               key={i}
@@ -125,22 +100,20 @@ export function CommissionReceipt({
                 <span className="text-gray-500 text-xs uppercase">Serviço / Item</span>
                 <span className="font-semibold truncate max-w-[150px]">{item.serviceName}</span>
               </div>
-              <div className="flex justify-between border-b border-gray-200 pb-1">
-                <span className="text-gray-500 text-xs uppercase">Valor Bruto</span>
-                <span>R$ {item.serviceValue.toFixed(2)}</span>
+              <div
+                className={`flex justify-between ${item.isPackage || item.serviceValue === 0 ? 'border-b border-gray-200 pb-1' : 'pt-1'}`}
+              >
+                <span className="text-gray-500 text-xs uppercase font-bold text-primary">
+                  Valor Bruto
+                </span>
+                <span className="font-bold text-primary">R$ {item.serviceValue.toFixed(2)}</span>
               </div>
               {(item.isPackage || item.serviceValue === 0) && (
-                <div className="flex justify-between border-b border-gray-200 pb-1">
+                <div className="flex justify-between pt-1">
                   <span className="text-gray-500 text-xs uppercase">Info</span>
                   <span className="text-emerald-500 font-bold">Pacote / Isento (R$ 0,00)</span>
                 </div>
               )}
-              <div className="flex justify-between pt-1">
-                <span className="text-gray-500 text-xs uppercase font-bold text-primary">
-                  Comissão {rateLabel}
-                </span>
-                <span className="font-bold text-primary">R$ {netCommission.toFixed(2)}</span>
-              </div>
             </div>
           )
         })}
