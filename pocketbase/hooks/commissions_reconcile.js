@@ -187,8 +187,8 @@ routerAdd(
         if (inferredPm === 'debito') pmType = 'debit_card'
         if (inferredPm === 'cash') pmType = 'cash'
 
-        const feePct = pmFeeMap[pmType] || 0
-        const feeVal = Number((price * (feePct / 100)).toFixed(2))
+        const feePct = 0
+        const feeVal = 0
         const amount = grossComm
 
         if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
@@ -196,7 +196,7 @@ routerAdd(
           comm.set('appointment_id', apt.id)
           comm.set('barber_id', barberId)
           comm.set('amount', amount)
-          comm.set('gross_amount', grossComm)
+          comm.set('gross_amount', price)
           comm.set('fee_amount', feeVal)
           comm.set('type', 'service')
 
@@ -256,8 +256,8 @@ routerAdd(
         if (inferredPm === 'debito') pmType = 'debit_card'
         if (inferredPm === 'cash') pmType = 'cash'
 
-        const feePct = pmFeeMap[pmType] || 0
-        const feeVal = Number((price * (feePct / 100)).toFixed(2))
+        const feePct = 0
+        const feeVal = 0
         const amount = grossComm
 
         if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
@@ -265,7 +265,7 @@ routerAdd(
           comm.set('product_purchase_id', prod.id)
           comm.set('barber_id', barberId)
           comm.set('amount', amount)
-          comm.set('gross_amount', grossComm)
+          comm.set('gross_amount', price)
           comm.set('fee_amount', feeVal)
           comm.set('type', 'product')
 
@@ -322,8 +322,8 @@ routerAdd(
         if (inferredPm === 'debito') pmType = 'debit_card'
         if (inferredPm === 'cash') pmType = 'cash'
 
-        const feePct = pmFeeMap[pmType] || 0
-        const feeVal = Number((price * (feePct / 100)).toFixed(2))
+        const feePct = 0
+        const feeVal = 0
         const amount = grossComm
 
         if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
@@ -331,7 +331,7 @@ routerAdd(
           comm.set('client_package_id', pack.id)
           comm.set('barber_id', barberId)
           comm.set('amount', amount)
-          comm.set('gross_amount', grossComm)
+          comm.set('gross_amount', price)
           comm.set('fee_amount', feeVal)
           comm.set('type', 'package_sale')
 

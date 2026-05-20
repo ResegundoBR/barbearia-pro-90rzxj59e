@@ -358,7 +358,7 @@ export default function Staff() {
           date: date,
           time: format(date, 'HH:mm'),
           packageUsed: groupComms.some((c) => c._packageUsed),
-          price: totalGross,
+          price: checkout?.total_amount !== undefined ? checkout.total_amount : totalGross,
           commission: totalComm,
           dueDate: groupComms[0].due_date ? new Date(groupComms[0].due_date) : null,
           commDate: groupComms[0].date ? new Date(groupComms[0].date) : date,
@@ -744,7 +744,7 @@ export default function Staff() {
     const isPackageUse = ticketItem.packageUsed
     const paymentMethodName = isPackageUse
       ? 'Uso de Pacote'
-      : matchedPm?.name || pmType || 'Não informado'
+      : ticketItem.checkoutObj?.payment_method || matchedPm?.name || pmType || 'Não informado'
 
     return {
       professionalName: selectedBarberDetailed?.name,
