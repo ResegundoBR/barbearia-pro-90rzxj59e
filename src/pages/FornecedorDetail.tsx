@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, ShoppingCart, Calendar } from 'lucide-react'
+import { ArrowLeft, ShoppingCart, Calendar, Check } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { format } from 'date-fns'
@@ -36,6 +36,7 @@ export default function FornecedorDetail() {
     unit_price: '',
     price_paid: '',
     purchase_date: new Date().toISOString().split('T')[0],
+    status: 'pending',
   })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [lastPurchase, setLastPurchase] = useState<any>(null)
@@ -134,6 +135,8 @@ export default function FornecedorDetail() {
         unit_price: Number(purchaseForm.unit_price) || 0,
         price_paid: Number(purchaseForm.price_paid) || 0,
         purchase_date: dateIso,
+        status: purchaseForm.status,
+        received_at: purchaseForm.status === 'received' ? new Date().toISOString() : null,
       })
       toast({ title: 'Compra registrada com sucesso' })
       setPurchaseDialogOpen(false)
@@ -143,10 +146,24 @@ export default function FornecedorDetail() {
         unit_price: '',
         product_id: '',
         quantity: '1',
+        status: 'pending',
       })
       loadData()
     } catch (e: any) {
       toast({ title: 'Erro ao registrar', description: e.message, variant: 'destructive' })
+    }
+  }
+
+  const handleConfirmReceipt = async (purchaseId: string) => {
+    try {
+      await pb.collection('inventory_purchases').update(purchaseId, {
+        status: 'received',
+        received_at: new Date().toISOString(),
+      })
+      toast({ title: 'Recebimento confirmado com sucesso' })
+      loadData()
+    } catch (e: any) {
+      toast({ title: 'Erro ao confirmar', description: e.message, variant: 'destructive' })
     }
   }
 
@@ -214,35 +231,66 @@ export default function FornecedorDetail() {
               </p>
             ) : (
               <div className="space-y-3 mt-4 max-h-[500px] overflow-y-auto pr-2">
-                {purchases.map((purch) => (
-                  <div
-                    key={purch.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/10"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 p-2 rounded-full">
-                        <Calendar className="size-4 text-primary" />
+                {purchases.map((purch) => {
+                  const status = purch.status || 'pending'
+                  return (
+                    <div
+                      key={purch.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg hover:bg-muted/10 gap-3"
+                    >
+                      <div className="flex items-start sm:items-center gap-3">
+                        <div className="bg-primary/10 p-2 rounded-full mt-1 sm:mt-0 shrink-0">
+                          <Calendar className="size-4 text-primary" />
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-sm">
+                              {purch.expand?.product_id?.name || 'Produto Excluído'}
+                            </p>
+                            {status === 'pending' ? (
+                              <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                Pendente
+                              </span>
+                            ) : (
+                              <span className="bg-green-500/10 text-green-500 border border-green-500/20 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                Recebido
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Data: {format(new Date(purch.purchase_date), 'dd/MM/yyyy')} | Qtd:{' '}
+                            {purch.quantity}
+                          </p>
+                          {status === 'received' && purch.received_at && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Recebido em: {format(new Date(purch.received_at), 'dd/MM/yyyy HH:mm')}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm">
-                          {purch.expand?.product_id?.name || 'Produto Excluído'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Data: {format(new Date(purch.purchase_date), 'dd/MM/yyyy')} | Qtd:{' '}
-                          {purch.quantity}
-                        </p>
+                      <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 border-t sm:border-t-0 pt-2 sm:pt-0">
+                        <div className="text-left sm:text-right">
+                          <p className="font-bold text-sm">R$ {purch.price_paid?.toFixed(2)}</p>
+                          {purch.unit_price && (
+                            <p className="text-xs text-muted-foreground">
+                              Unit: R$ {purch.unit_price.toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                        {status === 'pending' && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleConfirmReceipt(purch.id)}
+                          >
+                            <Check className="size-4 mr-1" />
+                            Confirmar
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-sm">R$ {purch.price_paid?.toFixed(2)}</p>
-                      {purch.unit_price && (
-                        <p className="text-xs text-muted-foreground">
-                          Unit: R$ {purch.unit_price.toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>
@@ -294,7 +342,7 @@ export default function FornecedorDetail() {
                 <p>Data: {format(new Date(lastPurchase.purchase_date), 'dd/MM/yyyy')}</p>
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Qtd</Label>
                 <Input
@@ -342,6 +390,21 @@ export default function FornecedorDetail() {
                 {fieldErrors.purchase_date && (
                   <p className="text-xs text-red-500">{fieldErrors.purchase_date}</p>
                 )}
+              </div>
+              <div className="space-y-2">
+                <Label>Status *</Label>
+                <Select
+                  value={purchaseForm.status}
+                  onValueChange={(v) => setPurchaseForm({ ...purchaseForm, status: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="received">Recebido</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
