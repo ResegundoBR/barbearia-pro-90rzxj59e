@@ -596,7 +596,7 @@ export function ProdutosTab() {
                   <SelectContent>
                     {categories.length === 0 ? (
                       <div className="p-2 text-sm text-muted-foreground">
-                        Nenhuma categoria encontrada.
+                        Nenhuma categoria de produto encontrada
                       </div>
                     ) : (
                       categories.map((c) => (

@@ -3,7 +3,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { createProduct, updateProduct } from '@/services/products'
+import { getCategories } from '@/services/categories'
 import { useToast } from '@/hooks/use-toast'
 
 export function ProductFormDialog({ open, onOpenChange, productToEdit, onSuccess }: any) {
@@ -13,6 +21,14 @@ export function ProductFormDialog({ open, onOpenChange, productToEdit, onSuccess
   const [price, setPrice] = useState<number | ''>('')
   const [costPrice, setCostPrice] = useState<number | ''>('')
   const [stockQuantity, setStockQuantity] = useState<number | ''>('')
+  const [categoryId, setCategoryId] = useState<string>('')
+  const [categories, setCategories] = useState<any[]>([])
+
+  useEffect(() => {
+    getCategories()
+      .then((data) => setCategories(data.filter((c) => c.type === 'product')))
+      .catch(console.error)
+  }, [])
 
   useEffect(() => {
     if (open) {
@@ -21,11 +37,13 @@ export function ProductFormDialog({ open, onOpenChange, productToEdit, onSuccess
         setPrice(productToEdit.price)
         setCostPrice(productToEdit.cost_price)
         setStockQuantity(productToEdit.stock_quantity)
+        setCategoryId(productToEdit.category_id || '')
       } else {
         setName('')
         setPrice('')
         setCostPrice('')
         setStockQuantity(0)
+        setCategoryId('')
       }
     }
   }, [open, productToEdit])
@@ -38,6 +56,7 @@ export function ProductFormDialog({ open, onOpenChange, productToEdit, onSuccess
       price: Number(price),
       cost_price: Number(costPrice),
       stock_quantity: Number(stockQuantity),
+      category_id: categoryId || null,
       is_active: true,
     }
     try {
@@ -67,6 +86,27 @@ export function ProductFormDialog({ open, onOpenChange, productToEdit, onSuccess
           <div className="space-y-2">
             <Label>Nome</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div className="space-y-2">
+            <Label>Categoria</Label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma categoria..." />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground">
+                    Nenhuma categoria de produto encontrada
+                  </div>
+                ) : (
+                  categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
