@@ -346,7 +346,8 @@ export default function Agenda() {
             const isPast = aptDateTime < new Date()
             const isMissed = isFaltou || (isPast && !isCompleted && !isCanceled)
 
-            const bgColor = isMissed ? '#000000' : barberColor            const textColor = getContrastColor(bgColor)
+            const bgColor = isMissed ? '#000000' : barberColor
+            const textColor = getContrastColor(bgColor)
 
             return (
               <div
@@ -445,7 +446,8 @@ export default function Agenda() {
 
                     const bgColor = isMissed
                       ? '#000000'
-                      : apt.expand?.barber_id?.color || 'hsl(var(--primary))'                    const textColor = getContrastColor(bgColor)
+                      : apt.expand?.barber_id?.color || 'hsl(var(--primary))'
+                    const textColor = getContrastColor(bgColor)
 
                     return (
                       <div
@@ -568,8 +570,9 @@ export default function Agenda() {
                       'group relative flex items-center justify-between p-3 sm:p-4 border-b sm:border sm:rounded-xl hover:bg-muted/50 transition-colors cursor-pointer bg-card',
                       isCompleted && 'opacity-60',
                       isCanceled && 'opacity-50 grayscale',
-                      isFaltou && 'border-red-900/20 bg-red-50/50 dark:bg-red-900/10'
-                    )}                    onClick={() => handleOpenDetail(apt)}
+                      isFaltou && 'border-red-900/20 bg-red-50/50 dark:bg-red-900/10',
+                    )}
+                    onClick={() => handleOpenDetail(apt)}
                   >
                     <div
                       className="absolute left-0 top-0 bottom-0 w-2 sm:rounded-l-xl"
@@ -615,7 +618,8 @@ export default function Agenda() {
                         )}
                       >
                         {apt.status}
-                      </span>                    </div>
+                      </span>
+                    </div>
                   </div>
                 )
               })
@@ -971,7 +975,8 @@ export default function Agenda() {
                         )}
                       >
                         {selectedApt.status}
-                      </span>                    </div>
+                      </span>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -1095,7 +1100,8 @@ export default function Agenda() {
                           <SelectItem value="Concluído">Concluído</SelectItem>
                           <SelectItem value="Cancelado">Cancelado</SelectItem>
                           <SelectItem value="FALTOU">FALTOU</SelectItem>
-                        </SelectContent>                      </Select>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>

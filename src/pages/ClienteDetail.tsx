@@ -401,7 +401,7 @@ export default function ClienteDetail() {
                             ? 'Remarcação'
                             : log.event_type === 'manual_entry'
                               ? 'Registro Manual'
-                              : log.event_type}{' '}
+                              : log.event_type}
                       </span>
                       {log.expand?.barber_id && (
                         <span className="text-xs text-muted-foreground ml-2">

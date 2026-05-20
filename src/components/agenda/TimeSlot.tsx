@@ -73,7 +73,7 @@ export function TimeSlot({
             )}
           >
             {appointment.status}
-          </Badge>{' '}
+          </Badge>
         </div>
       </div>
     )
