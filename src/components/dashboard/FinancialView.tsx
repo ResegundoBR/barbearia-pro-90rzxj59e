@@ -186,6 +186,35 @@ export function FinancialView({
       )
     }
 
+    const processedCheckoutIds = new Set<string>()
+
+    const addCheckout = (ck: any) => {
+      if (!ck || processedCheckoutIds.has(ck.id)) return true
+      processedCheckoutIds.add(ck.id)
+
+      let itemNames: string[] = []
+      if (ck.items_snapshot) {
+        if (ck.items_snapshot.service) itemNames.push(ck.items_snapshot.service)
+        if (ck.items_snapshot.products)
+          itemNames.push(...ck.items_snapshot.products.map((p: any) => p.name))
+        if (ck.items_snapshot.packages)
+          itemNames.push(...ck.items_snapshot.packages.map((p: any) => p.name))
+      }
+
+      list.push({
+        id: `chk_${ck.id}`,
+        checkoutNumber: ck.checkout_number,
+        date: new Date(ck.date || ck.created),
+        client: ck.expand?.client_id?.name || 'Avulso',
+        item: itemNames.length > 0 ? itemNames.join(', ') : 'Múltiplos itens',
+        barber: ck.expand?.barber_id?.name || '-',
+        method: getMethodName(ck.payment_method || '-'),
+        value: ck.total_amount,
+        type: 'checkout',
+      })
+      return true
+    }
+
     completedPeriod.forEach((a: any) => {
       const comm = commissions.find(
         (c: any) =>
@@ -194,19 +223,23 @@ export function FinancialView({
           Math.abs(new Date(c.created).getTime() - new Date(a.created).getTime()) < 15000,
       )
       const ck = findCheckout(a.client_id, new Date(a.created), comm?.checkout_id)
-      list.push({
-        id: `apt_${a.id}`,
-        checkoutNumber: ck ? ck.checkout_number : '-',
-        date: new Date(a.created),
-        client: a.expand?.client_id?.name || 'Avulso',
-        item: a.expand?.service_id?.name || 'Serviço',
-        barber: a.expand?.barber_id?.name || '-',
-        method: getMethodName(
-          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
-        ),
-        value: a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0,
-        type: 'service',
-      })
+      if (ck) {
+        addCheckout(ck)
+      } else {
+        list.push({
+          id: `apt_${a.id}`,
+          checkoutNumber: '-',
+          date: new Date(a.created),
+          client: a.expand?.client_id?.name || 'Avulso',
+          item: a.expand?.service_id?.name || 'Serviço',
+          barber: a.expand?.barber_id?.name || '-',
+          method: getMethodName(
+            comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+          ),
+          value: a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0,
+          type: 'service',
+        })
+      }
     })
 
     productPurchasesPeriod.forEach((p: any) => {
@@ -216,19 +249,23 @@ export function FinancialView({
           Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) < 15000,
       )
       const ck = findCheckout(p.client_id, new Date(p.created), comm?.checkout_id)
-      list.push({
-        id: `prod_${p.id}`,
-        checkoutNumber: ck ? ck.checkout_number : '-',
-        date: new Date(p.created),
-        client: p.expand?.client_id?.name || 'Avulso',
-        item: p.expand?.product_id?.name || 'Produto',
-        barber: p.expand?.barber_id?.name || '-',
-        method: getMethodName(
-          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
-        ),
-        value: p.price_at_sale || p.expand?.product_id?.price || 0,
-        type: 'product',
-      })
+      if (ck) {
+        addCheckout(ck)
+      } else {
+        list.push({
+          id: `prod_${p.id}`,
+          checkoutNumber: '-',
+          date: new Date(p.created),
+          client: p.expand?.client_id?.name || 'Avulso',
+          item: p.expand?.product_id?.name || 'Produto',
+          barber: p.expand?.barber_id?.name || '-',
+          method: getMethodName(
+            comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+          ),
+          value: p.price_at_sale || p.expand?.product_id?.price || 0,
+          type: 'product',
+        })
+      }
     })
 
     packagesPeriod.forEach((pkg: any) => {
@@ -238,19 +275,23 @@ export function FinancialView({
           Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) < 15000,
       )
       const ck = findCheckout(pkg.client_id, new Date(pkg.created), comm?.checkout_id)
-      list.push({
-        id: `pkg_${pkg.id}`,
-        checkoutNumber: ck ? ck.checkout_number : '-',
-        date: new Date(pkg.created),
-        client: pkg.expand?.client_id?.name || 'Avulso',
-        item: pkg.expand?.package_id?.name || 'Pacote',
-        barber: pkg.expand?.barber_id?.name || '-',
-        method: getMethodName(
-          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
-        ),
-        value: pkg.expand?.package_id?.price || 0,
-        type: 'package',
-      })
+      if (ck) {
+        addCheckout(ck)
+      } else {
+        list.push({
+          id: `pkg_${pkg.id}`,
+          checkoutNumber: '-',
+          date: new Date(pkg.created),
+          client: pkg.expand?.client_id?.name || 'Avulso',
+          item: pkg.expand?.package_id?.name || 'Pacote',
+          barber: pkg.expand?.barber_id?.name || '-',
+          method: getMethodName(
+            comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+          ),
+          value: pkg.expand?.package_id?.price || 0,
+          type: 'package',
+        })
+      }
     })
 
     const outflows = commissions

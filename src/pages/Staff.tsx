@@ -272,7 +272,7 @@ export default function Staff() {
       const packs = await getClientPackages(`barber_id='${b.id}'`)
       const checks = await pb
         .collection('checkouts')
-        .getFullList({ filter: `barber_id='${b.id}'` })
+        .getFullList({ filter: `barber_id='${b.id}'`, expand: 'client_id' })
         .catch(() => [])
 
       const matchedComms = commissions.filter(
@@ -336,7 +336,7 @@ export default function Staff() {
         const checkout = checks.find((chk) => chk.id === checkoutId)
         const totalGross = groupComms.reduce((acc, c) => acc + (c.gross_amount || 0), 0)
         const totalComm = groupComms.reduce((acc, c) => acc + (c.amount || 0), 0)
-        const clientName = checkout?.expand?.client_id?.name || 'Cliente'
+        const clientName = checkout?.expand?.client_id?.name || 'Avulso'
         const date = checkout?.date ? new Date(checkout.date) : new Date(groupComms[0].created)
 
         const types = new Set(groupComms.map((c) => c.type))

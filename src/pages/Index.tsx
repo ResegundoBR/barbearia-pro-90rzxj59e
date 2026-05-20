@@ -124,7 +124,7 @@ export default function Index() {
     setProductPurchases(await getProductPurchases(''))
     setPaymentMethods(await getPaymentMethods())
     try {
-      setCheckouts(await pb.collection('checkouts').getFullList())
+      setCheckouts(await pb.collection('checkouts').getFullList({ expand: 'client_id,barber_id' }))
     } catch {
       /* intentionally ignored */
     }
@@ -421,26 +421,69 @@ export default function Index() {
 
   const transactions = useMemo(() => {
     const list: any[] = []
+    const processedCheckoutIds = new Set<string>()
+
+    const findCheckout = (clientId: string, date: Date, checkoutId?: string) => {
+      if (checkoutId) {
+        return checkouts.find((c: any) => c.id === checkoutId)
+      }
+      return checkouts.find(
+        (c: any) =>
+          c.client_id === clientId &&
+          Math.abs(new Date(c.created).getTime() - date.getTime()) < 60000,
+      )
+    }
+
+    const addCheckout = (ck: any) => {
+      if (!ck || processedCheckoutIds.has(ck.id)) return true
+      processedCheckoutIds.add(ck.id)
+
+      let itemNames: string[] = []
+      if (ck.items_snapshot) {
+        if (ck.items_snapshot.service) itemNames.push(ck.items_snapshot.service)
+        if (ck.items_snapshot.products)
+          itemNames.push(...ck.items_snapshot.products.map((p: any) => p.name))
+        if (ck.items_snapshot.packages)
+          itemNames.push(...ck.items_snapshot.packages.map((p: any) => p.name))
+      }
+
+      list.push({
+        id: `chk_${ck.id}`,
+        date: new Date(ck.date || ck.created),
+        client: ck.expand?.client_id?.name || 'Avulso',
+        item: itemNames.length > 0 ? itemNames.join(', ') : 'Múltiplos itens',
+        barber: ck.expand?.barber_id?.name || '-',
+        method: getMethodName(ck.payment_method || '-'),
+        value: ck.total_amount,
+        type: 'checkout',
+      })
+      return true
+    }
 
     completedPeriod.forEach((a: any) => {
       const comm = commissions.find(
         (c: any) =>
           c.barber_id === a.barber_id &&
           c.type === 'service' &&
-          Math.abs(new Date(c.created).getTime() - new Date(a.updated).getTime()) < 15000,
+          Math.abs(new Date(c.created).getTime() - new Date(a.created).getTime()) < 15000,
       )
-      list.push({
-        id: `apt_${a.id}`,
-        date: new Date(a.updated || a.created),
-        client: a.expand?.client_id?.name || 'Avulso',
-        item: a.expand?.service_id?.name || 'Serviço',
-        barber: a.expand?.barber_id?.name || '-',
-        method: getMethodName(
-          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
-        ),
-        value: a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0,
-        type: 'service',
-      })
+      const ck = findCheckout(a.client_id, new Date(a.created), comm?.checkout_id)
+      if (ck) {
+        addCheckout(ck)
+      } else {
+        list.push({
+          id: `apt_${a.id}`,
+          date: new Date(a.updated || a.created),
+          client: a.expand?.client_id?.name || 'Avulso',
+          item: a.expand?.service_id?.name || 'Serviço',
+          barber: a.expand?.barber_id?.name || '-',
+          method: getMethodName(
+            comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+          ),
+          value: a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0,
+          type: 'service',
+        })
+      }
     })
 
     productPurchasesPeriod.forEach((p: any) => {
@@ -449,18 +492,23 @@ export default function Index() {
           c.type === 'product' &&
           Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) < 15000,
       )
-      list.push({
-        id: `prod_${p.id}`,
-        date: new Date(p.created),
-        client: p.expand?.client_id?.name || 'Avulso',
-        item: p.expand?.product_id?.name || 'Produto',
-        barber: p.expand?.barber_id?.name || '-',
-        method: getMethodName(
-          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
-        ),
-        value: p.price_at_sale || p.expand?.product_id?.price || 0,
-        type: 'product',
-      })
+      const ck = findCheckout(p.client_id, new Date(p.created), comm?.checkout_id)
+      if (ck) {
+        addCheckout(ck)
+      } else {
+        list.push({
+          id: `prod_${p.id}`,
+          date: new Date(p.created),
+          client: p.expand?.client_id?.name || 'Avulso',
+          item: p.expand?.product_id?.name || 'Produto',
+          barber: p.expand?.barber_id?.name || '-',
+          method: getMethodName(
+            comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+          ),
+          value: p.price_at_sale || p.expand?.product_id?.price || 0,
+          type: 'product',
+        })
+      }
     })
 
     packagesPeriod.forEach((pkg: any) => {
@@ -469,22 +517,34 @@ export default function Index() {
           (c.type === 'package' || c.type === 'package_sale') &&
           Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) < 15000,
       )
-      list.push({
-        id: `pkg_${pkg.id}`,
-        date: new Date(pkg.created),
-        client: pkg.expand?.client_id?.name || 'Avulso',
-        item: pkg.expand?.package_id?.name || 'Pacote',
-        barber: pkg.expand?.barber_id?.name || '-',
-        method: getMethodName(
-          comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
-        ),
-        value: pkg.expand?.package_id?.price || 0,
-        type: 'package',
-      })
+      const ck = findCheckout(pkg.client_id, new Date(pkg.created), comm?.checkout_id)
+      if (ck) {
+        addCheckout(ck)
+      } else {
+        list.push({
+          id: `pkg_${pkg.id}`,
+          date: new Date(pkg.created),
+          client: pkg.expand?.client_id?.name || 'Avulso',
+          item: pkg.expand?.package_id?.name || 'Pacote',
+          barber: pkg.expand?.barber_id?.name || '-',
+          method: getMethodName(
+            comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
+          ),
+          value: pkg.expand?.package_id?.price || 0,
+          type: 'package',
+        })
+      }
     })
 
     return list.sort((a, b) => b.date.getTime() - a.date.getTime())
-  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, commissions, paymentMethods])
+  }, [
+    completedPeriod,
+    productPurchasesPeriod,
+    packagesPeriod,
+    commissions,
+    paymentMethods,
+    checkouts,
+  ])
 
   return (
     <div className="space-y-6 pb-20 md:pb-6 max-w-5xl mx-auto">
@@ -1238,82 +1298,22 @@ export default function Index() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {completedPeriod.map((a) => {
-                      const comm = commissions.find(
-                        (c) =>
-                          c.barber_id === a.barber_id &&
-                          c.type === 'service' &&
-                          Math.abs(new Date(c.created).getTime() - new Date(a.updated).getTime()) <
-                            15000,
-                      )
-                      return (
-                        <TableRow key={`apt_${a.id}`}>
-                          <TableCell>
-                            {a.updated ? format(new Date(a.updated), 'dd/MM/yyyy HH:mm') : ''}
-                          </TableCell>
-                          <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
-                          <TableCell>{a.expand?.barber_id?.name || '-'}</TableCell>
-                          <TableCell>{getMethodName(comm?.payment_method || '-')}</TableCell>
-                          <TableCell className="text-right">
-                            R${' '}
-                            {(a.client_package_id
-                              ? 0
-                              : a.price || a.expand?.service_id?.price || 0
-                            ).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                    {productPurchasesPeriod.map((p) => {
-                      const comm = commissions.find(
-                        (c) =>
-                          c.type === 'product' &&
-                          Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) <
-                            15000,
-                      )
-                      return (
-                        <TableRow key={`prod_${p.id}`}>
-                          <TableCell>
-                            {p.updated ? format(new Date(p.updated), 'dd/MM/yyyy HH:mm') : ''}
-                          </TableCell>
-                          <TableCell>{p.expand?.client_id?.name || 'Avulso'}</TableCell>
-                          <TableCell>{p.expand?.barber_id?.name || '-'}</TableCell>
-                          <TableCell>{getMethodName(comm?.payment_method || '-')}</TableCell>
-                          <TableCell className="text-right">
-                            R$ {(p.price_at_sale || 0).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                    {packagesPeriod.map((pkg) => {
-                      const comm = commissions.find(
-                        (c) =>
-                          c.type === 'package' &&
-                          Math.abs(
-                            new Date(c.created).getTime() - new Date(pkg.created).getTime(),
-                          ) < 15000,
-                      )
-                      return (
-                        <TableRow key={`pkg_${pkg.id}`}>
-                          <TableCell>{format(new Date(pkg.created), 'dd/MM/yyyy HH:mm')}</TableCell>
-                          <TableCell>{pkg.expand?.client_id?.name || 'Avulso'}</TableCell>
-                          <TableCell>{pkg.expand?.barber_id?.name || '-'}</TableCell>
-                          <TableCell>{getMethodName(comm?.payment_method || '-')}</TableCell>
-                          <TableCell className="text-right">
-                            R$ {(pkg.expand?.package_id?.price || 0).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                    {completedPeriod.length === 0 &&
-                      productPurchasesPeriod.length === 0 &&
-                      packagesPeriod.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                            Nenhuma venda no período.
-                          </TableCell>
-                        </TableRow>
-                      )}
+                    {transactions.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell>{format(t.date, 'dd/MM/yyyy HH:mm')}</TableCell>
+                        <TableCell>{t.client}</TableCell>
+                        <TableCell>{t.barber}</TableCell>
+                        <TableCell>{t.method}</TableCell>
+                        <TableCell className="text-right">R$ {t.value.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {transactions.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                          Nenhuma venda no período.
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               )}
