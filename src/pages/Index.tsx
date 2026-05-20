@@ -810,17 +810,19 @@ export default function Index() {
                         const percent = Math.min(value / (max || 1), 1)
                         const angle = percent * 180
 
-                        const BARBER_COLORS = [
-                          '#f97316',
-                          '#3b82f6',
-                          '#10b981',
-                          '#a855f7',
-                          '#ef4444',
-                          '#eab308',
+                        const BARBER_GRADIENTS = [
+                          { start: '#fdba74', end: '#ea580c' }, // orange
+                          { start: '#93c5fd', end: '#2563eb' }, // blue
+                          { start: '#6ee7b7', end: '#059669' }, // green
+                          { start: '#d8b4fe', end: '#9333ea' }, // purple
+                          { start: '#fca5a5', end: '#dc2626' }, // red
+                          { start: '#fde047', end: '#ca8a04' }, // yellow
                         ]
                         const bIndex = barbers.findIndex((b) => b.id === barber.id)
-                        const activeColor =
-                          barber.color || BARBER_COLORS[bIndex % BARBER_COLORS.length]
+                        const gradient = BARBER_GRADIENTS[bIndex % BARBER_GRADIENTS.length]
+                        const endColor = barber.color || gradient.end
+                        const startColor = barber.color ? barber.color : gradient.start
+                        const startOpacity = barber.color ? 0.4 : 1
 
                         return (
                           <div
@@ -835,6 +837,22 @@ export default function Index() {
                               viewBox="0 0 160 80"
                               className="overflow-visible"
                             >
+                              <defs>
+                                <linearGradient
+                                  id={`grad-${barber.id}`}
+                                  x1="0%"
+                                  y1="0%"
+                                  x2="100%"
+                                  y2="0%"
+                                >
+                                  <stop
+                                    offset="0%"
+                                    stopColor={startColor}
+                                    stopOpacity={startOpacity}
+                                  />
+                                  <stop offset="100%" stopColor={endColor} stopOpacity={1} />
+                                </linearGradient>
+                              </defs>
                               <path
                                 d="M 20 80 A 60 60 0 0 1 140 80"
                                 fill="none"
@@ -846,7 +864,7 @@ export default function Index() {
                               <path
                                 d="M 20 80 A 60 60 0 0 1 140 80"
                                 fill="none"
-                                stroke={activeColor}
+                                stroke={`url(#grad-${barber.id})`}
                                 className="transition-all duration-1000 ease-out"
                                 strokeWidth="20"
                                 strokeLinecap="round"
@@ -918,6 +936,24 @@ export default function Index() {
                           }}
                           className="cursor-pointer"
                         >
+                          <defs>
+                            <linearGradient id="fillServices" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="var(--color-services)" stopOpacity={1} />
+                              <stop
+                                offset="100%"
+                                stopColor="var(--color-services)"
+                                stopOpacity={0.6}
+                              />
+                            </linearGradient>
+                            <linearGradient id="fillProducts" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="var(--color-products)" stopOpacity={1} />
+                              <stop
+                                offset="100%"
+                                stopColor="var(--color-products)"
+                                stopOpacity={0.6}
+                              />
+                            </linearGradient>
+                          </defs>
                           <CartesianGrid vertical={false} strokeDasharray="3 3" />
                           <XAxis dataKey="date" tickLine={false} axisLine={false} />
                           <YAxis
@@ -931,13 +967,13 @@ export default function Index() {
                           <Bar
                             dataKey="services"
                             stackId="a"
-                            fill="var(--color-services)"
+                            fill="url(#fillServices)"
                             radius={[0, 0, 4, 4]}
                           />
                           <Bar
                             dataKey="products"
                             stackId="a"
-                            fill="var(--color-products)"
+                            fill="url(#fillProducts)"
                             radius={[4, 4, 0, 0]}
                           />
                         </BarChart>
