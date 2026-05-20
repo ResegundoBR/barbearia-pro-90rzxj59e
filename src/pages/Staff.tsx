@@ -187,6 +187,13 @@ export default function Staff() {
   useRealtime('barbers', loadData)
   useRealtime('commissions', loadData)
   useRealtime('appointments', loadData)
+  useRealtime('checkouts', loadData)
+
+  useEffect(() => {
+    if (selectedBarberDetailed) {
+      openDetailedReport(selectedBarberDetailed)
+    }
+  }, [commissions])
 
   const getRange = () => {
     const today = new Date()
@@ -272,128 +279,137 @@ export default function Staff() {
         (c) => c.barber_id === b.id && c.status !== 'paid' && !c.is_advance,
       )
 
-      const consumptionComms = matchedComms.filter((c) => c.type === 'consumption')
+      matchedComms.forEach((c) => {
+        let itemName = typeMap[c.type] || c.type
+        let itemPrice = c.gross_amount || 0
+        let packageUsed = false
+        let cInfo = null
 
-      const items = [
-        ...apts.map((a) => {
-          const c = matchedComms.find(
-            (cm) =>
-              cm.appointment_id === a.id ||
-              (cm.type === 'service' &&
-                Math.abs(new Date(cm.created).getTime() - new Date(a.updated).getTime()) < 120000),
-          )
-          const checkout = c?.checkout_id
-            ? checks.find((chk: any) => chk.id === c.checkout_id)
-            : checks.find(
-                (chk: any) =>
-                  Math.abs(new Date(chk.date).getTime() - new Date(a.updated).getTime()) < 120000 &&
-                  chk.client_id === a.client_id,
-              )
-          return {
-            id: a.id,
-            checkoutNumber: checkout?.checkout_number,
-            checkoutObj: checkout,
-            type: 'Serviço',
-            client: a.expand?.client_id?.name || 'Avulso',
-            item: a.expand?.service_id?.name || 'Serviço',
-            date: a.date ? new Date(a.date) : new Date(a.updated),
-            time: a.time || format(new Date(a.updated), 'HH:mm'),
-            packageUsed: !!a.client_package_id,
-            price: a.price || a.expand?.service_id?.price || 0,
-            commission: c?.amount || 0,
-            dueDate: c?.due_date ? new Date(c.due_date) : null,
-            commDate: c?.date ? new Date(c.date) : new Date(a.updated),
-            commissionObj: c,
-            basePrice: a.expand?.service_id?.price || a.price || 0,
-            commissionInfo: getCommissionInfo('service', a.service_id, b.id),
+        if (c.appointment_id) {
+          const a = apts.find((apt) => apt.id === c.appointment_id)
+          if (a) {
+            itemName = a.expand?.service_id?.name || 'Serviço'
+            if (!itemPrice) itemPrice = a.price || a.expand?.service_id?.price || 0
+            packageUsed = !!a.client_package_id
+            cInfo = getCommissionInfo('service', a.service_id, b.id)
           }
-        }),
-        ...prods.map((p) => {
-          const c = matchedComms.find(
-            (cm) =>
-              cm.product_purchase_id === p.id ||
-              (cm.type === 'product' &&
-                Math.abs(new Date(cm.created).getTime() - new Date(p.created).getTime()) < 120000),
-          )
-          const checkout = c?.checkout_id
-            ? checks.find((chk: any) => chk.id === c.checkout_id)
-            : checks.find(
-                (chk: any) =>
-                  Math.abs(new Date(chk.date).getTime() - new Date(p.created).getTime()) < 120000 &&
-                  chk.client_id === p.client_id,
-              )
-          return {
-            id: p.id,
-            checkoutNumber: checkout?.checkout_number,
-            checkoutObj: checkout,
-            type: 'Produto',
-            client: p.expand?.client_id?.name || 'Avulso',
-            item: p.expand?.product_id?.name || 'Produto',
-            date: p.date ? new Date(p.date) : new Date(p.created),
-            time: format(new Date(p.created), 'HH:mm'),
-            packageUsed: false,
-            price: p.price_at_sale || 0,
-            commission: c?.amount || 0,
-            dueDate: c?.due_date ? new Date(c.due_date) : null,
-            commDate: c?.date ? new Date(c.date) : new Date(p.created),
-            commissionObj: c,
-            basePrice: p.expand?.product_id?.price || p.price_at_sale || 0,
-            commissionInfo: getCommissionInfo('product', p.product_id, b.id),
+        } else if (c.product_purchase_id) {
+          const p = prods.find((prod) => prod.id === c.product_purchase_id)
+          if (p) {
+            itemName = p.expand?.product_id?.name || 'Produto'
+            if (!itemPrice) itemPrice = p.price_at_sale || 0
+            cInfo = getCommissionInfo('product', p.product_id, b.id)
           }
-        }),
-        ...packs.map((pk) => {
-          const c = matchedComms.find(
-            (cm) =>
-              cm.client_package_id === pk.id ||
-              ((cm.type === 'package_sale' || cm.type === 'package') &&
-                Math.abs(new Date(cm.created).getTime() - new Date(pk.created).getTime()) < 120000),
-          )
-          const checkout = c?.checkout_id
-            ? checks.find((chk: any) => chk.id === c.checkout_id)
-            : checks.find(
-                (chk: any) =>
-                  Math.abs(new Date(chk.date).getTime() - new Date(pk.created).getTime()) <
-                    120000 && chk.client_id === pk.client_id,
-              )
-          return {
-            id: pk.id,
-            checkoutNumber: checkout?.checkout_number,
-            checkoutObj: checkout,
-            type: 'Pacote',
-            client: pk.expand?.client_id?.name || 'Avulso',
-            item: pk.expand?.package_id?.name || 'Pacote',
-            date: new Date(pk.created),
-            time: format(new Date(pk.created), 'HH:mm'),
-            packageUsed: false,
-            price: pk.expand?.package_id?.price || 0,
-            commission: c?.amount || 0,
-            dueDate: c?.due_date ? new Date(c.due_date) : null,
-            commDate: c?.date ? new Date(c.date) : new Date(pk.created),
-            commissionObj: c,
-            basePrice: pk.expand?.package_id?.price || 0,
-            commissionInfo: getCommissionInfo('package', pk.package_id, b.id),
+        } else if (c.client_package_id) {
+          const pk = packs.find((pack) => pack.id === c.client_package_id)
+          if (pk) {
+            itemName = pk.expand?.package_id?.name || 'Pacote'
+            if (!itemPrice) itemPrice = pk.expand?.package_id?.price || 0
+            cInfo = getCommissionInfo('package', pk.package_id, b.id)
           }
-        }),
-        ...consumptionComms.map((c) => ({
+        } else if (c.type === 'consumption') {
+          itemName = 'Consumo Interno'
+          cInfo = { type: 'fixed', value: Math.abs(c.amount) }
+        }
+
+        c._itemName = itemName
+        c._itemPrice = itemPrice
+        c._packageUsed = packageUsed
+        c._commissionInfo = cInfo
+      })
+
+      const grouped = new Map<string, any[]>()
+      const singles: any[] = []
+
+      matchedComms.forEach((c) => {
+        if (c.checkout_id) {
+          if (!grouped.has(c.checkout_id)) grouped.set(c.checkout_id, [])
+          grouped.get(c.checkout_id)!.push(c)
+        } else {
+          singles.push(c)
+        }
+      })
+
+      const items: any[] = []
+
+      grouped.forEach((groupComms, checkoutId) => {
+        const checkout = checks.find((chk) => chk.id === checkoutId)
+        const totalGross = groupComms.reduce((acc, c) => acc + (c.gross_amount || 0), 0)
+        const totalComm = groupComms.reduce((acc, c) => acc + (c.amount || 0), 0)
+        const clientName = checkout?.expand?.client_id?.name || 'Cliente'
+        const date = checkout?.date ? new Date(checkout.date) : new Date(groupComms[0].created)
+
+        const types = new Set(groupComms.map((c) => c.type))
+        const itemDesc =
+          groupComms.length > 1
+            ? `${groupComms.length} Itens (${Array.from(types)
+                .map((t) => typeMap[t] || t)
+                .join(', ')})`
+            : groupComms[0]._itemName
+
+        items.push({
+          id: checkoutId,
+          isConsolidated: true,
+          checkoutNumber: checkout?.checkout_number,
+          checkoutObj: checkout,
+          type: 'Pedido',
+          client: clientName,
+          item: itemDesc,
+          date: date,
+          time: format(date, 'HH:mm'),
+          packageUsed: groupComms.some((c) => c._packageUsed),
+          price: totalGross,
+          commission: totalComm,
+          dueDate: groupComms[0].due_date ? new Date(groupComms[0].due_date) : null,
+          commDate: groupComms[0].date ? new Date(groupComms[0].date) : date,
+          commissionObj: groupComms[0],
+          basePrice: totalGross,
+          comms: groupComms,
+        })
+      })
+
+      singles.forEach((c) => {
+        let date = c.date ? new Date(c.date) : new Date(c.created)
+        let typeStr = typeMap[c.type] || c.type
+        if (c.type === 'consumption') typeStr = 'Consumo'
+        else if (c.appointment_id) typeStr = 'Serviço'
+        else if (c.product_purchase_id) typeStr = 'Produto'
+        else if (c.client_package_id) typeStr = 'Pacote'
+
+        let clientName = '-'
+        if (c.appointment_id) {
+          const a = apts.find((apt) => apt.id === c.appointment_id)
+          if (a) clientName = a.expand?.client_id?.name || 'Avulso'
+        } else if (c.product_purchase_id) {
+          const p = prods.find((prod) => prod.id === c.product_purchase_id)
+          if (p) clientName = p.expand?.client_id?.name || 'Avulso'
+        } else if (c.client_package_id) {
+          const pk = packs.find((pack) => pack.id === c.client_package_id)
+          if (pk) clientName = pk.expand?.client_id?.name || 'Avulso'
+        }
+
+        items.push({
           id: c.id,
-          checkoutNumber: c.expand?.checkout_id?.checkout_number || null,
-          checkoutObj: c.expand?.checkout_id,
-          type: 'Consumo',
-          client: '-',
-          item: 'Consumo Interno',
-          date: c.date ? new Date(c.date) : new Date(c.created),
-          time: format(new Date(c.created), 'HH:mm'),
-          packageUsed: false,
-          price: 0,
-          commission: c.amount,
+          isConsolidated: false,
+          checkoutNumber: null,
+          checkoutObj: null,
+          type: typeStr,
+          client: clientName,
+          item: c._itemName,
+          date,
+          time: format(date, 'HH:mm'),
+          packageUsed: c._packageUsed,
+          price: c._itemPrice,
+          commission: c.amount || 0,
           dueDate: c.due_date ? new Date(c.due_date) : null,
           commDate: c.date ? new Date(c.date) : new Date(c.created),
           commissionObj: c,
-          basePrice: 0,
-          commissionInfo: { type: 'fixed', value: c.amount },
-        })),
-      ].sort((a, b) => b.commDate.getTime() - a.commDate.getTime())
+          basePrice: c._itemPrice,
+          comms: [c],
+        })
+      })
 
+      items.sort((a, b) => b.commDate.getTime() - a.commDate.getTime())
       setReportItems(items)
     } catch (e) {
       toast({ title: 'Erro ao carregar detalhes', variant: 'destructive' })
@@ -658,76 +674,53 @@ export default function Staff() {
   const ticketData = useMemo(() => {
     if (!ticketItem) return null
 
-    // Group items from the same transaction via checkoutNumber
-    const transactionItems = ticketItem.checkoutNumber
-      ? reportItems.filter((i) => i.checkoutNumber === ticketItem.checkoutNumber)
-      : reportItems.filter(
-          (i) =>
-            i.client === ticketItem.client &&
-            Math.abs(i.commDate.getTime() - ticketItem.commDate.getTime()) < 120000 &&
-            (!i.commissionObj ||
-              !ticketItem.commissionObj ||
-              i.commissionObj.payment_method === ticketItem.commissionObj.payment_method),
-        )
-
+    const comms = ticketItem.comms || []
     const pmType = ticketItem.commissionObj?.payment_method || 'other'
     const matchedPm = paymentMethods.find(
       (p: any) =>
         p.type === mapCommPayMethod(pmType) || p.name.toLowerCase() === pmType.toLowerCase(),
     )
     const feePercentage = matchedPm?.fee_percentage || 0
-
-    const commissionableItems = transactionItems.filter((i) => i.commission > 0)
-    const nonCommissionableItems = transactionItems.filter(
-      (i) => !i.commission || i.commission <= 0,
-    )
-
-    const nonCommProducts = nonCommissionableItems.filter((i) => i.type === 'Produto')
-    const nonCommOthers = nonCommissionableItems.filter((i) => i.type !== 'Produto')
-
-    const totalPaid = transactionItems.reduce((acc, i) => acc + i.price, 0)
-    const commissionBase = commissionableItems.reduce((acc, i) => acc + i.price, 0)
-
     const isSocio = selectedBarberDetailed?.work_level === 'socio'
 
-    // Use exact values from DB
-    const itemsWithCalculations = transactionItems.map((i) => {
-      if (i.commission <= 0)
+    const commissionableItemsCalc = comms
+      .map((c: any) => {
+        const isCommissionable = c.amount !== 0 || (isSocio && c._itemPrice > 0)
         return {
-          ...i,
-          netCommission: 0,
-          isCommissionable: false,
+          item: c._itemName,
+          type: typeMap[c.type] || c.type,
+          price: c._itemPrice,
+          netCommission: c.amount || 0,
+          isCommissionable,
+          commissionInfo: c._commissionInfo,
+          rawType: c.type,
         }
+      })
+      .filter((i: any) => i.isCommissionable)
 
-      let net = i.commission || 0
-
-      // Fallback if the fields are not present (old un-migrated record)
-      if (!net && isSocio) {
-        net = i.price
-      } else if (!net) {
-        if (i.commissionInfo?.type === 'percentage') {
-          net = Number((i.price * (i.commissionInfo.value / 100)).toFixed(2))
-        } else if (i.commissionInfo?.type === 'fixed') {
-          net = i.commissionInfo.value
+    const nonCommissionableItemsCalc = comms
+      .map((c: any) => {
+        const isCommissionable = c.amount !== 0 || (isSocio && c._itemPrice > 0)
+        return {
+          item: c._itemName,
+          type: typeMap[c.type] || c.type,
+          price: c._itemPrice,
+          netCommission: c.amount || 0,
+          isCommissionable,
+          rawType: c.type,
         }
-      }
+      })
+      .filter((i: any) => !i.isCommissionable)
 
-      return {
-        ...i,
-        netCommission: net,
-        isCommissionable: true,
-      }
-    })
+    const nonCommProductsLocal = nonCommissionableItemsCalc.filter(
+      (i: any) => i.rawType === 'product',
+    )
+    const nonCommOthersLocal = nonCommissionableItemsCalc.filter(
+      (i: any) => i.rawType !== 'product',
+    )
 
-    const nonCommissionableItemsWithCalc = itemsWithCalculations.filter((i) => !i.isCommissionable)
-    const nonCommProductsLocal = nonCommissionableItemsWithCalc.filter((i) => i.type === 'Produto')
-    const nonCommOthersLocal = nonCommissionableItemsWithCalc.filter((i) => i.type !== 'Produto')
-
-    const commissionableItemsCalc = itemsWithCalculations.filter((i) => i.isCommissionable)
-
-    const commissionBaseCalc = commissionableItemsCalc.reduce((acc, i) => acc + i.price, 0)
-    const recalculatedNetTotal = commissionableItemsCalc.reduce(
-      (acc, i) => acc + i.netCommission,
+    const commissionBaseCalc = commissionableItemsCalc.reduce(
+      (acc: number, i: any) => acc + i.price,
       0,
     )
 
@@ -753,17 +746,15 @@ export default function Staff() {
       ? 'Uso de Pacote'
       : matchedPm?.name || pmType || 'Não informado'
 
-    const snapshot = ticketItem.checkoutObj?.items_snapshot || null
-
     return {
       professionalName: selectedBarberDetailed?.name,
       clientName: ticketItem.client,
       date: ticketItem.date || ticketItem.commDate,
       paymentMethodName,
       checkoutNumber: ticketItem.checkoutNumber,
-      snapshot,
+      snapshot: ticketItem.checkoutObj?.items_snapshot || null,
 
-      totalPaid,
+      totalPaid: ticketItem.price,
       nonCommProducts: nonCommProductsLocal,
       nonCommOthers: nonCommOthersLocal,
       commissionableItems: commissionableItemsCalc,
@@ -771,9 +762,9 @@ export default function Staff() {
 
       memoryLines,
       feePercentage,
-      netCommission: recalculatedNetTotal,
+      netCommission: ticketItem.commission,
     }
-  }, [ticketItem, selectedBarberDetailed, paymentMethods, reportItems])
+  }, [ticketItem, selectedBarberDetailed, paymentMethods])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1076,11 +1067,13 @@ export default function Staff() {
                         <Badge
                           variant="outline"
                           className={
-                            item.type === 'Serviço'
-                              ? 'bg-blue-100 text-blue-800 border-blue-200'
-                              : item.type === 'Produto'
-                                ? 'bg-purple-100 text-purple-800 border-purple-200'
-                                : 'bg-gray-100 text-gray-800 border-gray-200'
+                            item.type === 'Pedido'
+                              ? 'bg-orange-100 text-orange-800 border-orange-200'
+                              : item.type === 'Serviço'
+                                ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                : item.type === 'Produto'
+                                  ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                  : 'bg-gray-100 text-gray-800 border-gray-200'
                           }
                         >
                           {item.type}

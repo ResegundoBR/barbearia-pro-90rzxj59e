@@ -140,14 +140,6 @@ routerAdd(
       0,
     )
 
-    const checkoutsAll = $app.findRecordsByFilter(
-      'checkouts',
-      `created >= '${startDate}' && created <= '${endDate}'`,
-      '',
-      10000,
-      0,
-    )
-
     let createdCount = 0
     let updatedCount = 0
 
@@ -156,21 +148,6 @@ routerAdd(
       for (const apt of apts) {
         const barberId = apt.getString('barber_id')
         if (!barberId) continue
-
-        const clientId = apt.getString('client_id')
-        const refTime = new Date(apt.getString('updated') || apt.getString('created')).getTime()
-        let matchedCheckoutId = null
-        for (const ck of checkoutsAll) {
-          if (
-            ck.getString('client_id') === clientId &&
-            Math.abs(
-              new Date(ck.getString('date') || ck.getString('created')).getTime() - refTime,
-            ) < 120000
-          ) {
-            matchedCheckoutId = ck.id
-            break
-          }
-        }
 
         let price = apt.getFloat('price')
         const serviceId = apt.getString('service_id')
@@ -182,7 +159,6 @@ routerAdd(
           } catch (err) {}
         }
 
-        // No commission for package usage (price 0 with package_id)
         if (price <= 0 && apt.getString('client_package_id')) {
           continue
         }
@@ -213,7 +189,7 @@ routerAdd(
 
         const feePct = pmFeeMap[pmType] || 0
         const feeVal = Number((price * (feePct / 100)).toFixed(2))
-        const amount = grossComm // No longer deducting feeVal
+        const amount = grossComm
 
         if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
           const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
@@ -223,10 +199,6 @@ routerAdd(
           comm.set('gross_amount', grossComm)
           comm.set('fee_amount', feeVal)
           comm.set('type', 'service')
-
-          if (matchedCheckoutId && !comm.getString('checkout_id')) {
-            comm.set('checkout_id', matchedCheckoutId)
-          }
 
           if (!existingComm) {
             comm.set('date', apt.getString('date') || apt.getString('created'))
@@ -255,28 +227,13 @@ routerAdd(
         const barberId = prod.getString('barber_id')
         if (!barberId) continue
 
-        const clientId = prod.getString('client_id')
-        const refTime = new Date(prod.getString('created')).getTime()
-        let matchedCheckoutId = null
-        for (const ck of checkoutsAll) {
-          if (
-            ck.getString('client_id') === clientId &&
-            Math.abs(
-              new Date(ck.getString('date') || ck.getString('created')).getTime() - refTime,
-            ) < 120000
-          ) {
-            matchedCheckoutId = ck.id
-            break
-          }
-        }
-
         const price = prod.getFloat('price_at_sale')
         const productId = prod.getString('product_id')
         const barber = barbersMap[barberId]
 
         let grossComm = getCommission(barberId, 'product', productId, price)
         if (barber && barber.getString('work_level') === 'socio') {
-          grossComm = 0 // Sócio não recebe repasse por produto, fica pro caixa
+          grossComm = 0
         }
 
         let existingComm = existingCommsArr.find(
@@ -301,7 +258,7 @@ routerAdd(
 
         const feePct = pmFeeMap[pmType] || 0
         const feeVal = Number((price * (feePct / 100)).toFixed(2))
-        const amount = grossComm // No longer deducting feeVal
+        const amount = grossComm
 
         if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
           const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
@@ -311,10 +268,6 @@ routerAdd(
           comm.set('gross_amount', grossComm)
           comm.set('fee_amount', feeVal)
           comm.set('type', 'product')
-
-          if (matchedCheckoutId && !comm.getString('checkout_id')) {
-            comm.set('checkout_id', matchedCheckoutId)
-          }
 
           if (!existingComm) {
             comm.set('date', prod.getString('date') || prod.getString('created'))
@@ -335,21 +288,6 @@ routerAdd(
       for (const pack of packs) {
         const barberId = pack.getString('barber_id')
         if (!barberId) continue
-
-        const clientId = pack.getString('client_id')
-        const refTime = new Date(pack.getString('created')).getTime()
-        let matchedCheckoutId = null
-        for (const ck of checkoutsAll) {
-          if (
-            ck.getString('client_id') === clientId &&
-            Math.abs(
-              new Date(ck.getString('date') || ck.getString('created')).getTime() - refTime,
-            ) < 120000
-          ) {
-            matchedCheckoutId = ck.id
-            break
-          }
-        }
 
         const packageId = pack.getString('package_id')
         let price = 0
@@ -386,7 +324,7 @@ routerAdd(
 
         const feePct = pmFeeMap[pmType] || 0
         const feeVal = Number((price * (feePct / 100)).toFixed(2))
-        const amount = grossComm // No longer deducting feeVal
+        const amount = grossComm
 
         if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
           const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
@@ -396,10 +334,6 @@ routerAdd(
           comm.set('gross_amount', grossComm)
           comm.set('fee_amount', feeVal)
           comm.set('type', 'package_sale')
-
-          if (matchedCheckoutId && !comm.getString('checkout_id')) {
-            comm.set('checkout_id', matchedCheckoutId)
-          }
 
           if (!existingComm) {
             comm.set('date', pack.getString('created'))
