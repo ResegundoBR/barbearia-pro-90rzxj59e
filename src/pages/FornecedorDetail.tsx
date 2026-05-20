@@ -37,6 +37,7 @@ export default function FornecedorDetail() {
     price_paid: '',
     purchase_date: new Date().toISOString().split('T')[0],
   })
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [lastPurchase, setLastPurchase] = useState<any>(null)
   const { toast } = useToast()
 
@@ -55,16 +56,26 @@ export default function FornecedorDetail() {
   }, [purchaseForm.product_id])
 
   const handleQuantityChange = (val: string) => {
-    setPurchaseForm({
-      ...purchaseForm,
-      quantity: val,
+    setPurchaseForm((prev) => {
+      const unitPrice = Number(prev.unit_price) || 0
+      const qty = Number(val) || 0
+      return {
+        ...prev,
+        quantity: val,
+        price_paid: qty > 0 && unitPrice > 0 ? (qty * unitPrice).toFixed(2) : prev.price_paid,
+      }
     })
   }
 
   const handleUnitPriceChange = (val: string) => {
-    setPurchaseForm({
-      ...purchaseForm,
-      unit_price: val,
+    setPurchaseForm((prev) => {
+      const qty = Number(prev.quantity) || 0
+      const unitPrice = Number(val) || 0
+      return {
+        ...prev,
+        unit_price: val,
+        price_paid: qty > 0 && unitPrice > 0 ? (qty * unitPrice).toFixed(2) : prev.price_paid,
+      }
     })
   }
 
@@ -94,20 +105,37 @@ export default function FornecedorDetail() {
   useRealtime('inventory_purchases', loadData)
 
   const handleSavePurchase = async () => {
-    if (!purchaseForm.product_id || !purchaseForm.price_paid || !purchaseForm.purchase_date) {
-      toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' })
+    const errors: Record<string, string> = {}
+    if (!purchaseForm.product_id) errors.product_id = 'Selecione um produto'
+    if (!purchaseForm.price_paid) errors.price_paid = 'Informe o total da compra'
+    if (!purchaseForm.purchase_date) errors.purchase_date = 'Informe a data'
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      toast({ title: 'Verifique os campos obrigatórios', variant: 'destructive' })
       return
     }
+
+    setFieldErrors({})
+
     try {
+      let dateIso = new Date().toISOString()
+      if (purchaseForm.purchase_date) {
+        const d = new Date(purchaseForm.purchase_date)
+        if (!isNaN(d.getTime())) {
+          dateIso = new Date(purchaseForm.purchase_date + 'T12:00:00.000Z').toISOString()
+        }
+      }
+
       await pb.collection('inventory_purchases').create({
         supplier_id: id,
         product_id: purchaseForm.product_id,
         quantity: Number(purchaseForm.quantity) || 1,
         unit_price: Number(purchaseForm.unit_price) || 0,
         price_paid: Number(purchaseForm.price_paid) || 0,
-        purchase_date: new Date(purchaseForm.purchase_date).toISOString(),
+        purchase_date: dateIso,
       })
-      toast({ title: 'Compra registrada' })
+      toast({ title: 'Compra registrada com sucesso' })
       setPurchaseDialogOpen(false)
       setPurchaseForm({
         ...purchaseForm,
@@ -116,6 +144,7 @@ export default function FornecedorDetail() {
         product_id: '',
         quantity: '1',
       })
+      loadData()
     } catch (e: any) {
       toast({ title: 'Erro ao registrar', description: e.message, variant: 'destructive' })
     }
@@ -230,9 +259,12 @@ export default function FornecedorDetail() {
               <Label>Produto *</Label>
               <Select
                 value={purchaseForm.product_id}
-                onValueChange={(v) => setPurchaseForm({ ...purchaseForm, product_id: v })}
+                onValueChange={(v) => {
+                  setPurchaseForm({ ...purchaseForm, product_id: v })
+                  setFieldErrors((prev) => ({ ...prev, product_id: '' }))
+                }}
               >
-                <SelectTrigger>
+                <SelectTrigger className={fieldErrors.product_id ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Selecione o produto..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,6 +275,9 @@ export default function FornecedorDetail() {
                   ))}
                 </SelectContent>
               </Select>
+              {fieldErrors.product_id && (
+                <p className="text-xs text-red-500">{fieldErrors.product_id}</p>
+              )}
             </div>
             {lastPurchase && (
               <div className="bg-muted/50 p-3 rounded-md text-sm">
@@ -278,28 +313,46 @@ export default function FornecedorDetail() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Preço Total *</Label>
+                <Label>Total Compra *</Label>
                 <Input
                   type="number"
                   step="0.01"
+                  className={fieldErrors.price_paid ? 'border-red-500' : ''}
                   value={purchaseForm.price_paid}
-                  onChange={(e) => setPurchaseForm({ ...purchaseForm, price_paid: e.target.value })}
+                  onChange={(e) => {
+                    setPurchaseForm({ ...purchaseForm, price_paid: e.target.value })
+                    setFieldErrors((prev) => ({ ...prev, price_paid: '' }))
+                  }}
                 />
+                {fieldErrors.price_paid && (
+                  <p className="text-xs text-red-500">{fieldErrors.price_paid}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Data *</Label>
                 <Input
                   type="date"
+                  className={fieldErrors.purchase_date ? 'border-red-500' : ''}
                   value={purchaseForm.purchase_date}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setPurchaseForm({ ...purchaseForm, purchase_date: e.target.value })
-                  }
+                    setFieldErrors((prev) => ({ ...prev, purchase_date: '' }))
+                  }}
                 />
+                {fieldErrors.purchase_date && (
+                  <p className="text-xs text-red-500">{fieldErrors.purchase_date}</p>
+                )}
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPurchaseDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPurchaseDialogOpen(false)
+                setFieldErrors({})
+              }}
+            >
               Cancelar
             </Button>
             <Button onClick={handleSavePurchase}>Salvar Compra</Button>
