@@ -290,13 +290,13 @@ export function FinancialView({
                 .sort((a, b) => b.value - a.value)
                 .map((item) => (
                   <div key={item.name} className="flex justify-between items-center border-b pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">{item.name}</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    <span className="text-muted-foreground">{item.name}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium">R$ {item.value.toFixed(2)}</span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground min-w-[50px] text-center">
                         {item.pct}%
                       </span>
                     </div>
-                    <span className="font-medium">R$ {item.value.toFixed(2)}</span>
                   </div>
                 ))}
               <div className="flex justify-between items-center pt-2 mt-2">

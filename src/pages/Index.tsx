@@ -871,36 +871,51 @@ export default function Index() {
                     Itens Mais Vendidos (Top 5)
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <Table>
+                <CardContent className="px-2 sm:px-4">
+                  <Table className="table-fixed w-full">
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[45%]">Item</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead className="text-center">Qtd</TableHead>
-                        <TableHead className="text-right">Receita</TableHead>
+                      <TableRow className="text-xs">
+                        <TableHead className="w-full h-8 px-2">Item</TableHead>
+                        <TableHead className="w-0 whitespace-nowrap h-8 px-2">Tipo</TableHead>
+                        <TableHead className="w-0 whitespace-nowrap text-center h-8 px-2">
+                          Qtd
+                        </TableHead>
+                        <TableHead className="w-0 whitespace-nowrap text-right h-8 px-2">
+                          Receita
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {topSellers.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="font-medium" title={item.name}>
+                        <TableRow key={idx} className="text-xs">
+                          <TableCell
+                            className="font-medium px-2 py-2 truncate max-w-[100px] sm:max-w-[140px]"
+                            title={item.name}
+                          >
                             {item.name}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+                          <TableCell className="px-2 py-2 w-0 whitespace-nowrap">
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1 py-0 font-medium whitespace-nowrap"
+                            >
                               {item.type}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-center">{item.count}</TableCell>
-                          <TableCell className="text-right text-emerald-500 font-medium whitespace-nowrap">
+                          <TableCell className="text-center px-2 py-2 w-0 whitespace-nowrap">
+                            {item.count}
+                          </TableCell>
+                          <TableCell className="text-right text-emerald-500 font-medium px-2 py-2 w-0 whitespace-nowrap">
                             R$ {item.revenue.toFixed(2)}
                           </TableCell>
                         </TableRow>
                       ))}
                       {topSellers.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                          <TableCell
+                            colSpan={4}
+                            className="text-center py-6 text-muted-foreground text-sm"
+                          >
                             Nenhuma venda no período.
                           </TableCell>
                         </TableRow>
@@ -926,10 +941,10 @@ export default function Index() {
                           <PieChart>
                             <Pie
                               data={serviceMixData}
-                              cx="50%"
-                              cy="40%"
-                              innerRadius={60}
-                              outerRadius={80}
+                              cx="65%"
+                              cy="50%"
+                              innerRadius={45}
+                              outerRadius={65}
                               paddingAngle={5}
                               dataKey="value"
                             >
@@ -939,10 +954,10 @@ export default function Index() {
                             </Pie>
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Legend
-                              layout="horizontal"
-                              verticalAlign="bottom"
-                              align="center"
-                              wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                              layout="vertical"
+                              verticalAlign="middle"
+                              align="left"
+                              wrapperStyle={{ fontSize: '11px', paddingRight: '10px' }}
                             />
                           </PieChart>
                         </ResponsiveContainer>
@@ -972,10 +987,10 @@ export default function Index() {
                           <PieChart>
                             <Pie
                               data={productMixData}
-                              cx="50%"
-                              cy="40%"
-                              innerRadius={60}
-                              outerRadius={80}
+                              cx="65%"
+                              cy="50%"
+                              innerRadius={45}
+                              outerRadius={65}
                               paddingAngle={5}
                               dataKey="value"
                             >
@@ -988,10 +1003,10 @@ export default function Index() {
                             </Pie>
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Legend
-                              layout="horizontal"
-                              verticalAlign="bottom"
-                              align="center"
-                              wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                              layout="vertical"
+                              verticalAlign="middle"
+                              align="left"
+                              wrapperStyle={{ fontSize: '11px', paddingRight: '10px' }}
                             />
                           </PieChart>
                         </ResponsiveContainer>
