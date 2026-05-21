@@ -54,6 +54,7 @@ export function ProdutosTab() {
   const [showInactive, setShowInactive] = useState(false)
 
   const [suppliers, setSuppliers] = useState<any[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [inventoryPurchases, setInventoryPurchases] = useState<any[]>([])
 
@@ -273,6 +274,7 @@ export function ProdutosTab() {
   const displayedProducts = products
     .filter((p) => showInactive || p.is_active !== false)
     .filter((p) => categoryFilter === 'all' || p.category_id === categoryFilter)
+    .filter((p) => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const totalInvestment = products
     .filter((p) => p.is_active !== false)
@@ -336,9 +338,15 @@ export function ProdutosTab() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h2 className="text-lg font-semibold">Listagem de Produtos</h2>
-        <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+        <h2 className="text-lg font-semibold whitespace-nowrap">Listagem de Produtos</h2>
+        <div className="flex flex-wrap items-center gap-4 flex-1 lg:justify-end">
+          <Input
+            placeholder="Buscar produto..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-[200px]"
+          />
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Todas as categorias" />
@@ -415,17 +423,51 @@ export function ProdutosTab() {
                 const marginPercent =
                   costPrice > 0 ? (marginCurrency / costPrice) * 100 : price > 0 ? 100 : 0
                 const lastPurchase = inventoryPurchases.find((p) => p.product_id === prod.id)
+                const isZeroStock = stockQty <= 0
+                const isLowStock =
+                  !isZeroStock &&
+                  stockQty <= Math.max(Number(prod.min_stock) || 0, Number(prod.reorder_point) || 0)
 
                 return (
                   <TableRow
                     key={prod.id}
-                    className={prod.is_active === false ? 'opacity-60 bg-muted/30' : ''}
+                    className={`
+                      ${prod.is_active === false ? 'opacity-60 bg-muted/30' : ''}
+                      ${isZeroStock ? 'bg-red-50/50 hover:bg-red-50/80 dark:bg-red-950/20 dark:hover:bg-red-950/30' : ''}
+                      ${isLowStock ? 'bg-amber-50/50 hover:bg-amber-50/80 dark:bg-amber-950/20 dark:hover:bg-amber-950/30' : ''}
+                    `}
                   >
                     <TableCell className="font-medium whitespace-nowrap">{prod.name}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       {prod.expand?.category_id?.name || '-'}
                     </TableCell>
-                    <TableCell>{stockQty}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={
+                            isZeroStock
+                              ? 'text-red-600 font-bold'
+                              : isLowStock
+                                ? 'text-amber-600 font-bold'
+                                : ''
+                          }
+                        >
+                          {stockQty}
+                        </span>
+                        {isZeroStock ? (
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">
+                            Zerado
+                          </Badge>
+                        ) : isLowStock ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1 py-0 h-4 text-amber-600 border-amber-600 bg-amber-50"
+                          >
+                            Baixo
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {costPrice.toLocaleString('pt-BR', {
                         style: 'currency',
@@ -481,13 +523,21 @@ export function ProdutosTab() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {prod.is_active ? (
-                        <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 shadow-none border-green-200">
-                          Ativo
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Inativo</Badge>
-                      )}
+                      <Switch
+                        checked={prod.is_active !== false}
+                        onCheckedChange={async (v) => {
+                          try {
+                            await updateProduct(prod.id, { is_active: v })
+                            toast({ title: `Produto ${v ? 'ativado' : 'desativado'}` })
+                          } catch (err: any) {
+                            toast({
+                              title: 'Erro',
+                              description: err.message,
+                              variant: 'destructive',
+                            })
+                          }
+                        }}
+                      />
                     </TableCell>
                     <TableCell className="text-right space-x-2 whitespace-nowrap">
                       <Button variant="ghost" size="icon" onClick={() => openDialog(prod)}>

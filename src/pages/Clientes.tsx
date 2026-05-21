@@ -124,9 +124,21 @@ export default function Clientes() {
     await updateClient(id, { is_active: !current })
   }
 
+  const [searchQuery, setSearchQuery] = useState('')
+  const [barberFilter, setBarberFilter] = useState('all')
+
+  const filteredClients = clients.filter((c) => {
+    const matchesSearch =
+      !searchQuery ||
+      `${c.name} ${c.surname || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.phone && c.phone.includes(searchQuery))
+    const matchesBarber = barberFilter === 'all' || c.preferred_barber_id === barberFilter
+    return matchesSearch && matchesBarber
+  })
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20 md:pb-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Clientes (CRM)</h2>
           <p className="text-muted-foreground">Gerencie seus clientes e acompanhe histórico.</p>
@@ -146,6 +158,28 @@ export default function Clientes() {
           )}
         </TabsList>
         <TabsContent value="lista" className="space-y-4 mt-0">
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+            <Input
+              placeholder="Buscar por nome ou telefone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full sm:max-w-sm"
+            />
+            <Select value={barberFilter} onValueChange={setBarberFilter}>
+              <SelectTrigger className="w-full sm:max-w-[250px]">
+                <SelectValue placeholder="Todos os profissionais" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os profissionais</SelectItem>
+                {barbers.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
@@ -278,7 +312,7 @@ export default function Clientes() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clients.map((c) => (
+                  {filteredClients.map((c) => (
                     <TableRow key={c.id} className={c.is_active === false ? 'opacity-50' : ''}>
                       <TableCell>
                         <div className="font-medium text-base">
@@ -343,10 +377,10 @@ export default function Clientes() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {clients.length === 0 && (
+                  {filteredClients.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                        Nenhum cliente cadastrado.
+                        Nenhum cliente encontrado.
                       </TableCell>
                     </TableRow>
                   )}

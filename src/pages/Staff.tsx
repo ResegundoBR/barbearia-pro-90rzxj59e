@@ -998,20 +998,30 @@ export default function Staff() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={b.work_level === 'socio' ? 'default' : 'outline'}>
+                      <Badge
+                        variant="outline"
+                        className={
+                          b.work_level === 'socio'
+                            ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
+                            : 'bg-slate-100 text-slate-800 border-slate-300'
+                        }
+                      >
                         {b.work_level === 'socio' ? 'Sócio' : 'Autônomo'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-amber-600 font-bold">
+                    <TableCell className="font-bold text-base text-amber-600">
                       R$ {aReceber.toFixed(2)}
                     </TableCell>
                     <TableCell>
                       {b.work_level === 'socio' ? (
-                        <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
+                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold tracking-wide border-0 shadow-sm">
                           Pago na hora
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground">{displayPayDate}</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-700">{displayPayDate}</span>
+                          <span className="text-xs text-muted-foreground">Próx. Acerto</span>
+                        </div>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -1188,12 +1198,12 @@ export default function Staff() {
                       <TableCell className="px-4">
                         <Badge
                           className={cn(
-                            'font-bold uppercase border-0 text-[11px] tracking-wider',
+                            'font-bold uppercase border-0 text-[11px] tracking-wider shadow-sm',
                             item.status === 'paid'
-                              ? 'bg-emerald-600 hover:bg-emerald-600 text-white'
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                               : item.status === 'partial'
-                                ? 'bg-amber-500 hover:bg-amber-500 text-white'
-                                : 'bg-orange-600 hover:bg-orange-600 text-white',
+                                ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                : 'bg-rose-600 hover:bg-rose-700 text-white',
                           )}
                         >
                           {item.status === 'paid'

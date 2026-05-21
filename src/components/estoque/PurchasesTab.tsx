@@ -32,6 +32,7 @@ export function PurchasesTab() {
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [purchaseToEdit, setPurchaseToEdit] = useState<any>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const loadData = async () => {
     try {
@@ -89,22 +90,39 @@ export function PurchasesTab() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)
   }
 
+  const displayedPurchases = purchases.filter((p) => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    const prodName = p.expand?.product_id?.name?.toLowerCase() || ''
+    const supName = p.expand?.supplier_id?.name?.toLowerCase() || ''
+    return prodName.includes(q) || supName.includes(q)
+  })
+
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Histórico de Compras</h3>
-        <Button
-          onClick={() => {
-            setPurchaseToEdit(null)
-            setIsFormOpen(true)
-          }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Compra
-        </Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h3 className="text-lg font-semibold whitespace-nowrap">Histórico de Compras</h3>
+        <div className="flex flex-1 items-center gap-4 sm:justify-end w-full">
+          <Input
+            placeholder="Buscar por produto ou fornecedor..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-sm w-full"
+          />
+          <Button
+            onClick={() => {
+              setPurchaseToEdit(null)
+              setIsFormOpen(true)
+            }}
+            className="shrink-0"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nova Compra
+          </Button>
+        </div>
       </div>
 
-      <div className="border rounded-md">
+      <div className="border rounded-md overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -119,14 +137,14 @@ export function PurchasesTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {purchases.length === 0 ? (
+            {displayedPurchases.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  Nenhuma compra registrada.
+                  Nenhuma compra encontrada.
                 </TableCell>
               </TableRow>
             ) : (
-              purchases.map((purchase) => {
+              displayedPurchases.map((purchase) => {
                 const total = purchase.price_paid || 0
                 return (
                   <TableRow key={purchase.id}>

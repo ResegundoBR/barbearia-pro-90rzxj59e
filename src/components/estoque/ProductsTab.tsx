@@ -37,6 +37,9 @@ import pb from '@/lib/pocketbase/client'
 export function ProductsTab() {
   const { toast } = useToast()
   const [products, setProducts] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [productToEdit, setProductToEdit] = useState<any>(null)
 
@@ -49,6 +52,8 @@ export function ProductsTab() {
     try {
       const data = await getProducts()
       setProducts(data)
+      const catData = await pb.collection('categories').getFullList({ filter: 'type="product"' })
+      setCategories(catData)
       const barbersData = await pb.collection('barbers').getFullList()
       setBarbers(barbersData)
     } catch (err) {
@@ -123,22 +128,52 @@ export function ProductsTab() {
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 
+  const displayedProducts = products
+    .filter(
+      (p) =>
+        categoryFilter === 'all' ||
+        p.category_id === categoryFilter ||
+        p.expand?.category_id?.id === categoryFilter,
+    )
+    .filter((p) => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Lista de Produtos</h3>
-        <Button
-          onClick={() => {
-            setProductToEdit(null)
-            setIsFormOpen(true)
-          }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Produto
-        </Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h3 className="text-lg font-semibold whitespace-nowrap">Lista de Produtos</h3>
+        <div className="flex flex-wrap items-center gap-4 flex-1 sm:justify-end">
+          <Input
+            placeholder="Buscar produto..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-[200px]"
+          />
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Categorias" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={() => {
+              setProductToEdit(null)
+              setIsFormOpen(true)
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Produto
+          </Button>
+        </div>
       </div>
 
-      <div className="border rounded-md">
+      <div className="border rounded-md overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -151,14 +186,14 @@ export function ProductsTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.length === 0 ? (
+            {displayedProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8">
-                  Nenhum produto
+                  Nenhum produto encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              products.map((p) => {
+              displayedProducts.map((p) => {
                 const isZeroStock = p.stock_quantity <= 0
                 const isLowStock =
                   !isZeroStock &&

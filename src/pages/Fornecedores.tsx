@@ -173,7 +173,7 @@ export default function Fornecedores() {
                       ) && (
                         <Badge
                           variant="secondary"
-                          className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 ml-2"
+                          className="bg-amber-500 text-white hover:bg-amber-600 border-0 ml-2 shadow-sm font-semibold tracking-wide"
                         >
                           <Clock className="w-3 h-3 mr-1" />
                           Compra Pendente
