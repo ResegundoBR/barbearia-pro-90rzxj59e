@@ -80,7 +80,7 @@ export default function Clientes() {
   }, [])
   useRealtime('clients', loadData)
 
-  const loggedInBarber = barbers.find((b) => b.name === user?.name)
+  const loggedInBarber = barbers.find((b) => b.user_id === user?.id || b.name === user?.name)
 
   const openEdit = (c: any) => {
     setFormData({

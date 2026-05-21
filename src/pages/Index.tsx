@@ -199,7 +199,7 @@ export default function Index() {
     return d >= periodStart && d <= periodEnd
   }
 
-  const loggedInBarber = barbers.find((b) => b.name === user?.name)
+  const loggedInBarber = barbers.find((b) => b.user_id === user?.id || b.name === user?.name)
   const effectiveBarberFilter = canFilterBarbers ? barberFilter : loggedInBarber?.id || 'all'
 
   const filteredAppointments = useMemo(

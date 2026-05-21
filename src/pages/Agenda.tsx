@@ -154,7 +154,10 @@ export default function Agenda() {
 
   const canSeeAll = user?.access_level === 'Admin' || user?.access_level === 'Socio'
   const visibleBarbers = useMemo(
-    () => (canSeeAll ? data.barbers : data.barbers.filter((b) => b.name === user?.name)),
+    () =>
+      canSeeAll
+        ? data.barbers
+        : data.barbers.filter((b) => b.user_id === user?.id || b.name === user?.name),
     [canSeeAll, data.barbers, user],
   )
 
