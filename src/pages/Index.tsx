@@ -884,10 +884,7 @@ export default function Index() {
                     <TableBody>
                       {topSellers.map((item, idx) => (
                         <TableRow key={idx}>
-                          <TableCell
-                            className="font-medium truncate max-w-[120px]"
-                            title={item.name}
-                          >
+                          <TableCell className="font-medium" title={item.name}>
                             {item.name}
                           </TableCell>
                           <TableCell>
@@ -929,8 +926,8 @@ export default function Index() {
                           <PieChart>
                             <Pie
                               data={serviceMixData}
-                              cx="40%"
-                              cy="50%"
+                              cx="50%"
+                              cy="40%"
                               innerRadius={60}
                               outerRadius={80}
                               paddingAngle={5}
@@ -942,10 +939,10 @@ export default function Index() {
                             </Pie>
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Legend
-                              layout="vertical"
-                              verticalAlign="middle"
-                              align="right"
-                              wrapperStyle={{ fontSize: '11px', paddingLeft: '10px' }}
+                              layout="horizontal"
+                              verticalAlign="bottom"
+                              align="center"
+                              wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
                             />
                           </PieChart>
                         </ResponsiveContainer>
@@ -975,8 +972,8 @@ export default function Index() {
                           <PieChart>
                             <Pie
                               data={productMixData}
-                              cx="40%"
-                              cy="50%"
+                              cx="50%"
+                              cy="40%"
                               innerRadius={60}
                               outerRadius={80}
                               paddingAngle={5}
@@ -991,10 +988,10 @@ export default function Index() {
                             </Pie>
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Legend
-                              layout="vertical"
-                              verticalAlign="middle"
-                              align="right"
-                              wrapperStyle={{ fontSize: '11px', paddingLeft: '10px' }}
+                              layout="horizontal"
+                              verticalAlign="bottom"
+                              align="center"
+                              wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
                             />
                           </PieChart>
                         </ResponsiveContainer>

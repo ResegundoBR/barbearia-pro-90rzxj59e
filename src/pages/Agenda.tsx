@@ -303,7 +303,66 @@ export default function Agenda() {
   }
 
   const renderDayColumn = (day: Date) => {
-    const events = getEventsForDay(day)
+    const rawEvents = getEventsForDay(day)
+
+    const eventsWithMins = rawEvents
+      .map((apt) => {
+        const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
+        const [eH, eM] = (apt.end_time || apt.time || '00:00').split(':').map(Number)
+        const startMins = sH * 60 + sM
+        const durationMinutes = (eH - sH) * 60 + (eM - sM)
+        const endMins = startMins + Math.max(15, durationMinutes > 0 ? durationMinutes : 30)
+        return { ...apt, startMins, endMins }
+      })
+      .sort((a, b) => a.startMins - b.startMins)
+
+    const groups: (typeof eventsWithMins)[] = []
+    let currentGroup: typeof eventsWithMins = []
+    let groupEnd = 0
+
+    eventsWithMins.forEach((evt) => {
+      if (currentGroup.length === 0) {
+        currentGroup.push(evt)
+        groupEnd = evt.endMins
+      } else if (evt.startMins < groupEnd) {
+        currentGroup.push(evt)
+        groupEnd = Math.max(groupEnd, evt.endMins)
+      } else {
+        groups.push(currentGroup)
+        currentGroup = [evt]
+        groupEnd = evt.endMins
+      }
+    })
+    if (currentGroup.length > 0) groups.push(currentGroup)
+
+    const positionedEvents: any[] = []
+    groups.forEach((group) => {
+      const cols: (typeof eventsWithMins)[] = []
+      group.forEach((evt) => {
+        let placed = false
+        for (let col of cols) {
+          const lastEvent = col[col.length - 1]
+          if (lastEvent.endMins <= evt.startMins) {
+            col.push(evt)
+            placed = true
+            break
+          }
+        }
+        if (!placed) cols.push([evt])
+      })
+
+      const numCols = cols.length
+      cols.forEach((col, colIndex) => {
+        col.forEach((evt) => {
+          positionedEvents.push({
+            ...evt,
+            overlapIndex: colIndex,
+            overlapCount: numCols,
+          })
+        })
+      })
+    })
+
     return (
       <div key={day.toISOString()} className="flex-1 border-r min-w-[120px] relative">
         {view === 'week' && (
@@ -329,22 +388,17 @@ export default function Agenda() {
               onClick={() => handleOpen(`${h.toString().padStart(2, '0')}:00`, day)}
             />
           ))}
-          {events.map((apt) => {
-            const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
-            const [eH, eM] = (apt.end_time || apt.time || '00:00').split(':').map(Number)
-            const top = (sH - 8 + sM / 60) * 60
-            const durationMinutes = (eH - sH) * 60 + (eM - sM)
-            const height = Math.max(30, durationMinutes > 0 ? durationMinutes : 30)
+          {positionedEvents.map((apt) => {
+            const top = apt.startMins - 8 * 60
+            const height = apt.endMins - apt.startMins
+            const widthPct = 100 / apt.overlapCount
+            const leftPct = apt.overlapIndex * widthPct
+
             const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
             const isCanceled = apt.status === 'Cancelado'
             const isCompleted = apt.status === 'Concluído'
             const isFaltou = apt.status === 'FALTOU'
-            const datePart = apt.date ? apt.date.split(' ')[0] : ''
-            const [y, m, d] = datePart.split('-').map(Number)
-            const aptDateTime = new Date(y, m - 1, d, sH, sM)
-            const isFuture = aptDateTime > new Date()
-            const isPast = aptDateTime < new Date()
-            const isMissed = isFaltou || (isPast && !isCompleted && !isCanceled)
+            const isMissed = isFaltou
 
             const bgColor = isMissed ? '#000000' : barberColor
             const textColor = getContrastColor(bgColor)
@@ -353,13 +407,15 @@ export default function Agenda() {
               <div
                 key={apt.id}
                 className={cn(
-                  'absolute inset-x-1 rounded-sm p-1 overflow-hidden shadow-sm transition-all hover:scale-[1.02] cursor-pointer border border-black/5 flex flex-col gap-0.5',
-                  isCompleted ? 'opacity-40' : 'opacity-100',
+                  'absolute rounded-sm p-1 overflow-hidden shadow-sm transition-all hover:scale-[1.02] cursor-pointer border border-black/5 flex flex-col gap-0.5',
+                  isCompleted ? 'opacity-50' : 'opacity-100',
                   !isCompleted && isCanceled && 'opacity-50 grayscale',
                 )}
                 style={{
                   top,
                   height,
+                  left: `calc(${leftPct}% + 2px)`,
+                  width: `calc(${widthPct}% - 4px)`,
                   backgroundColor: bgColor,
                   color: textColor,
                 }}
@@ -437,12 +493,7 @@ export default function Agenda() {
                     const isCompleted = apt.status === 'Concluído'
                     const isCanceled = apt.status === 'Cancelado'
                     const isFaltou = apt.status === 'FALTOU'
-                    const datePart = apt.date ? apt.date.split(' ')[0] : ''
-                    const [y, m, d] = datePart.split('-').map(Number)
-                    const [sH, sM] = (apt.time || '00:00').split(':').map(Number)
-                    const aptDateTime = new Date(y, m - 1, d, sH, sM)
-                    const isPast = aptDateTime < new Date()
-                    const isMissed = isFaltou || (isPast && !isCompleted && !isCanceled)
+                    const isMissed = isFaltou
 
                     const bgColor = isMissed
                       ? '#000000'
@@ -454,7 +505,7 @@ export default function Agenda() {
                         key={apt.id}
                         className={cn(
                           'text-[8px] truncate px-1 py-0.5 mb-0.5 rounded-sm shadow-sm font-bold border border-black/5 leading-none flex flex-col gap-0.5',
-                          isCompleted ? 'opacity-40' : 'opacity-100',
+                          isCompleted ? 'opacity-50' : 'opacity-100',
                           !isCompleted && isCanceled && 'opacity-50 grayscale',
                         )}
                         style={{

@@ -22,14 +22,7 @@ export function TimeSlot({
     const isPending = appointment.status === 'Pendente' || appointment.status === 'Confirmado'
     const isCanceled = appointment.status === 'Cancelado'
     const isFaltou = appointment.status === 'FALTOU'
-
-    const datePart = appointment.date ? appointment.date.split(' ')[0] : ''
-    const [y, m, d] = datePart.split('-').map(Number)
-    const [sH, sM] = (appointment.time || '00:00').split(':').map(Number)
-    const aptDateTime = new Date(y, m - 1, d, sH, sM)
-    const isFuture = aptDateTime > new Date()
-    const isPast = aptDateTime < new Date()
-    const isMissed = isFaltou || (isPast && !isCompleted && !isCanceled)
+    const isMissed = isFaltou
 
     const barberColor = appointment.expand?.barber_id?.color || 'hsl(var(--primary))'
     const bgColor = isMissed ? '#000000' : isCompleted ? 'transparent' : barberColor

@@ -282,26 +282,26 @@ export function FinancialView({
           </CardHeader>
           <CardContent>
             <div className="space-y-4 mt-4">
-              <div className="flex justify-between items-center border-b pb-2">
-                <span className="text-muted-foreground">Serviços</span>
-                <span className="font-medium">R$ {serviceRevenue.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center border-b pb-2">
-                <span className="text-muted-foreground">Produtos</span>
-                <span className="font-medium">R$ {productRevenue.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center border-b pb-2">
-                <span className="text-muted-foreground">Pacotes</span>
-                <span className="font-medium">R$ {packagesRevenue.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center pt-2">
+              {[
+                { name: 'Serviços', value: serviceRevenue, pct: servicePct },
+                { name: 'Produtos', value: productRevenue, pct: productPct },
+                { name: 'Pacotes', value: packagesRevenue, pct: packagePct },
+              ]
+                .sort((a, b) => b.value - a.value)
+                .map((item) => (
+                  <div key={item.name} className="flex justify-between items-center border-b pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">{item.name}</span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                        {item.pct}%
+                      </span>
+                    </div>
+                    <span className="font-medium">R$ {item.value.toFixed(2)}</span>
+                  </div>
+                ))}
+              <div className="flex justify-between items-center pt-2 mt-2">
                 <span className="font-bold">Total</span>
                 <span className="font-bold text-emerald-500">R$ {totalRevenue.toFixed(2)}</span>
-              </div>
-              <div className="pt-4 flex justify-between text-xs text-muted-foreground border-t mt-4">
-                <span>Serviços: {servicePct}%</span>
-                <span>Produtos: {productPct}%</span>
-                <span>Pacotes: {packagePct}%</span>
               </div>
             </div>
           </CardContent>
@@ -352,10 +352,11 @@ export function FinancialView({
               {historyData.length > 0 ? (
                 <ChartContainer
                   config={{
-                    services: { label: 'Serviços & Pacotes', color: 'hsl(var(--primary))' },
+                    services: { label: 'Serviços', color: 'hsl(var(--primary))' },
                     products: { label: 'Produtos', color: '#10b981' },
                   }}
                 >
+                  {' '}
                   <BarChart
                     data={historyData}
                     margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
