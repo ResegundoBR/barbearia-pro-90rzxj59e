@@ -94,6 +94,7 @@ export default function Staff() {
   const [bDialog, setBDialog] = useState(false)
   const [selectedBarberDetailed, setSelectedBarberDetailed] = useState<any>(null)
   const [reportItems, setReportItems] = useState<any[]>([])
+  const [reportStatusFilter, setReportStatusFilter] = useState('tudo')
 
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
   const [ticketItem, setTicketItem] = useState<any>(null)
@@ -193,7 +194,7 @@ export default function Staff() {
     if (selectedBarberDetailed) {
       openDetailedReport(selectedBarberDetailed)
     }
-  }, [commissions])
+  }, [commissions, dateFilter, dateRange])
 
   const getRange = () => {
     const today = new Date()
@@ -275,9 +276,12 @@ export default function Staff() {
         .getFullList({ filter: `barber_id='${b.id}'`, expand: 'client_id' })
         .catch(() => [])
 
-      const matchedComms = commissions.filter(
-        (c) => c.barber_id === b.id && c.status !== 'paid' && !c.is_advance,
-      )
+      const currentRange = getRange()
+      const matchedComms = commissions.filter((c) => {
+        if (c.barber_id !== b.id || c.is_advance) return false
+        const d = c.date ? new Date(c.date) : new Date(c.created)
+        return d >= currentRange.from && d <= currentRange.to
+      })
 
       matchedComms.forEach((c) => {
         let itemName = typeMap[c.type] || c.type
@@ -347,6 +351,10 @@ export default function Staff() {
                 .join(', ')})`
             : groupComms[0]._itemName
 
+        const allPaid = groupComms.every((c) => c.status === 'paid')
+        const somePaid = groupComms.some((c) => c.status === 'paid')
+        const status = allPaid ? 'paid' : somePaid ? 'partial' : 'pending'
+
         items.push({
           id: checkoutId,
           isConsolidated: true,
@@ -365,6 +373,7 @@ export default function Staff() {
           commissionObj: groupComms[0],
           basePrice: totalGross,
           comms: groupComms,
+          status,
         })
       })
 
@@ -406,6 +415,7 @@ export default function Staff() {
           commissionObj: c,
           basePrice: c._itemPrice,
           comms: [c],
+          status: c.status || 'pending',
         })
       })
 
@@ -415,6 +425,35 @@ export default function Staff() {
       toast({ title: 'Erro ao carregar detalhes', variant: 'destructive' })
     }
   }
+
+  const displayedReportItems = useMemo(() => {
+    return reportItems.filter((item) => {
+      if (reportStatusFilter === 'pago') return item.status === 'paid'
+      if (reportStatusFilter === 'a_pagar') return item.status !== 'paid'
+      return true
+    })
+  }, [reportItems, reportStatusFilter])
+
+  const reportSummary = useMemo(() => {
+    let totalVendas = 0
+    let totalPago = 0
+    let totalAPagar = 0
+
+    reportItems.forEach((item) => {
+      totalVendas += item.price
+      if (item.status === 'paid') {
+        totalPago += item.commission
+      } else if (item.status === 'partial') {
+        item.comms.forEach((c: any) => {
+          if (c.status === 'paid') totalPago += c.amount || 0
+          else totalAPagar += c.amount || 0
+        })
+      } else {
+        totalAPagar += item.commission
+      }
+    })
+    return { totalVendas, totalPago, totalAPagar }
+  }, [reportItems])
 
   const printReport = () => {
     const content = document.getElementById('printable-report')?.innerHTML
@@ -1016,9 +1055,19 @@ export default function Staff() {
         onOpenChange={(v) => !v && setSelectedBarberDetailed(null)}
       >
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle>Relatório Detalhado - {selectedBarberDetailed?.name}</DialogTitle>
-            <div className="flex gap-2 mr-4">
+          <DialogHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <DialogTitle>Relatório Financeiro - {selectedBarberDetailed?.name}</DialogTitle>
+            <div className="flex flex-wrap gap-2 sm:mr-4">
+              <Select value={reportStatusFilter} onValueChange={setReportStatusFilter}>
+                <SelectTrigger className="w-[140px] h-9">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tudo">Tudo</SelectItem>
+                  <SelectItem value="pago">Pago</SelectItem>
+                  <SelectItem value="a_pagar">A Pagar</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
                 size="sm"
@@ -1034,10 +1083,44 @@ export default function Staff() {
                 Recalcular
               </Button>
               <Button variant="outline" size="sm" onClick={printReport}>
-                <Printer className="size-4 mr-2" /> Gerar PDF
+                <Printer className="size-4 mr-2" /> Imprimir
               </Button>
             </div>
           </DialogHeader>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
+            <Card className="bg-muted/30 border-none shadow-sm">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Total Vendas
+                </span>
+                <span className="text-2xl font-bold mt-1">
+                  R$ {reportSummary.totalVendas.toFixed(2)}
+                </span>
+              </CardContent>
+            </Card>
+            <Card className="bg-emerald-50 border-emerald-100 shadow-sm">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <span className="text-sm font-medium text-emerald-700 uppercase tracking-wider">
+                  Total Pago
+                </span>
+                <span className="text-2xl font-bold text-emerald-600 mt-1">
+                  R$ {reportSummary.totalPago.toFixed(2)}
+                </span>
+              </CardContent>
+            </Card>
+            <Card className="bg-amber-50 border-amber-100 shadow-sm">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <span className="text-sm font-medium text-amber-700 uppercase tracking-wider">
+                  Total a Pagar
+                </span>
+                <span className="text-2xl font-bold text-amber-600 mt-1">
+                  R$ {reportSummary.totalAPagar.toFixed(2)}
+                </span>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="overflow-auto flex-1 mt-4 p-1">
             <div id="printable-report">
               <Table>
@@ -1046,16 +1129,17 @@ export default function Staff() {
                     <TableHead># Checkout</TableHead>
                     <TableHead>Data/Hora</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Item</TableHead>
+                    <TableHead>Descrição</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>A Pagar</TableHead>
-                    <TableHead className="text-right">Valor Venda</TableHead>
-                    <TableHead className="text-right">Comissão a Receber</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Valor Bruto</TableHead>
+                    <TableHead className="text-right">Comissão</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportItems.map((item, i) => (
+                  {displayedReportItems.map((item, i) => (
                     <TableRow key={`${item.id}-${i}`}>
                       <TableCell className="font-mono text-muted-foreground">
                         {item.checkoutNumber ? `#${item.checkoutNumber}` : '-'}
@@ -1082,23 +1166,35 @@ export default function Staff() {
                       <TableCell>{item.item}</TableCell>
                       <TableCell>{item.client}</TableCell>
                       <TableCell>
-                        {selectedBarberDetailed?.work_level === 'socio' ? (
-                          <Badge className="bg-emerald-500 hover:bg-emerald-600 border-0">
-                            Pago na hora
-                          </Badge>
-                        ) : (
-                          <span className="font-medium text-amber-600">
-                            {item.dueDate
-                              ? format(item.dueDate, 'dd/MM/yyyy')
-                              : format(
-                                  getNextPayDate(
-                                    item.commDate,
-                                    selectedBarberDetailed?.payment_schedule_config,
-                                  ),
-                                  'dd/MM/yyyy',
-                                )}
-                          </span>
-                        )}
+                        <span className="font-medium text-muted-foreground">
+                          {item.dueDate
+                            ? format(item.dueDate, 'dd/MM/yyyy')
+                            : format(
+                                getNextPayDate(
+                                  item.commDate,
+                                  selectedBarberDetailed?.payment_schedule_config,
+                                ),
+                                'dd/MM/yyyy',
+                              )}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            item.status === 'paid'
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                              : item.status === 'partial'
+                                ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                : 'bg-slate-100 text-slate-800 border-slate-200'
+                          }
+                        >
+                          {item.status === 'paid'
+                            ? 'Pago'
+                            : item.status === 'partial'
+                              ? 'Parcial'
+                              : 'Pendente'}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
                       <TableCell
@@ -1118,25 +1214,15 @@ export default function Staff() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {reportItems.length === 0 && (
+                  {displayedReportItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                        Nenhuma transação ou comissão registrada para este período.
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                        Nenhuma transação encontrada com os filtros selecionados.
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               </Table>
-              {reportItems.length > 0 && (
-                <div className="summary flex flex-col gap-2 mt-6">
-                  <div className="flex justify-between items-center text-lg">
-                    <span>Total de Comissões no Período:</span>
-                    <span className="text-primary font-bold">
-                      R$ {reportItems.reduce((acc, curr) => acc + curr.commission, 0).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           <DialogFooter className="mt-4 border-t pt-4">
