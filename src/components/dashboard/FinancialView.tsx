@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import {
@@ -14,6 +14,17 @@ import {
   Bar,
 } from 'recharts'
 import { ArrowDownCircle, ArrowUpCircle, DollarSign, Wallet } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
 export function FinancialView({
   completedPeriod,
   productPurchasesPeriod,
@@ -113,7 +124,6 @@ export function FinancialView({
     .filter((c: any) => c.expand?.barber_id?.work_level === 'socio')
     .reduce((acc: number, c: any) => acc + (c.gross_amount || c.amount || 0), 0)
 
-  // Total Financial Fees (Taxas das transações)
   const totalFinancialFees = useMemo(() => {
     let fees = 0
     const addFee = (item: any, type: string, val: number) => {
@@ -175,6 +185,49 @@ export function FinancialView({
     })
     return cfg
   }, [paymentMethodsDist])
+
+  const [topItemsMetric, setTopItemsMetric] = useState<'qtd' | 'revenue'>('revenue')
+
+  const top10Items = useMemo(() => {
+    const itemsMap: Record<string, any> = {}
+
+    completedPeriod.forEach((app: any) => {
+      if (app.client_package_id) return
+      const sName = app.expand?.service_id?.name || 'Serviço'
+      const sPrice = app.price || app.expand?.service_id?.price || 0
+      const id = `srv_${app.service_id || sName}`
+      if (!itemsMap[id]) itemsMap[id] = { id, name: sName, type: 'Serviço', qtd: 0, revenue: 0 }
+      itemsMap[id].qtd += 1
+      itemsMap[id].revenue += sPrice
+    })
+
+    productPurchasesPeriod.forEach((p: any) => {
+      const pName = p.expand?.product_id?.name || 'Produto'
+      const pPrice = p.price_at_sale || p.expand?.product_id?.price || 0
+      const id = `prod_${p.product_id || pName}`
+      if (!itemsMap[id]) itemsMap[id] = { id, name: pName, type: 'Produto', qtd: 0, revenue: 0 }
+      itemsMap[id].qtd += p.quantity || 1
+      itemsMap[id].revenue += pPrice
+    })
+
+    packagesPeriod.forEach((pkg: any) => {
+      const pkName = pkg.expand?.package_id?.name || 'Pacote'
+      const pkPrice = pkg.expand?.package_id?.price || 0
+      const id = `pkg_${pkg.package_id || pkName}`
+      if (!itemsMap[id]) itemsMap[id] = { id, name: pkName, type: 'Pacote', qtd: 0, revenue: 0 }
+      itemsMap[id].qtd += 1
+      itemsMap[id].revenue += pkPrice
+    })
+
+    return Object.values(itemsMap)
+      .sort((a, b) => {
+        if (topItemsMetric === 'qtd') {
+          return b.qtd - a.qtd || b.revenue - a.revenue
+        }
+        return b.revenue - a.revenue || b.qtd - a.qtd
+      })
+      .slice(0, 10)
+  }, [completedPeriod, productPurchasesPeriod, packagesPeriod, topItemsMetric])
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -328,6 +381,74 @@ export function FinancialView({
         </Card>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="bg-glass border-none w-full col-span-1 lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-bold">Itens Mais Vendidos (Top 10)</CardTitle>
+            <ToggleGroup
+              type="single"
+              value={topItemsMetric}
+              onValueChange={(v) => v && setTopItemsMetric(v as 'qtd' | 'revenue')}
+              className="bg-muted/50 p-1 rounded-md border"
+            >
+              <ToggleGroupItem
+                value="qtd"
+                className="px-4 h-8 text-xs font-medium data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"
+              >
+                Qtd
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="revenue"
+                className="px-4 h-8 text-xs font-medium data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"
+              >
+                Vlr
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b border-border/50">
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-center">Tipo</TableHead>
+                  <TableHead className="text-center">Qtd</TableHead>
+                  <TableHead className="text-right">Receita</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {top10Items.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                      Nenhum item vendido.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  top10Items.map((item) => (
+                    <TableRow key={item.id} className="border-b border-border/50 hover:bg-muted/30">
+                      <TableCell className="font-semibold">{item.name}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="outline"
+                          className="font-normal border-muted-foreground/30 rounded-full"
+                        >
+                          {item.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center text-muted-foreground">
+                        {item.qtd}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-emerald-500">
+                        R$ {item.revenue.toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 gap-4">
         <Card className="bg-glass border-none w-full">
           <CardHeader className="pb-2">
@@ -376,7 +497,6 @@ export function FinancialView({
                     products: { label: 'Produtos', color: '#10b981' },
                   }}
                 >
-                  {' '}
                   <BarChart
                     data={historyData}
                     margin={{ left: 12, right: 12, top: 12, bottom: 12 }}

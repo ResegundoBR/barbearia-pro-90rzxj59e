@@ -1,0 +1,19 @@
+/* Financial Report UI Cleanup - Equipes e Comissões */
+.page-staff table tr,
+.page-staff table td,
+.page-staff table th {
+  border-bottom: 0 !important;
+}
+
+/* Improved Data Contrast for Vencimento / Próximo Acerto */
+/* Boost contrast for typical muted text in staff tables */
+.page-staff table .text-muted-foreground {
+  color: #cbd5e1 !important; /* Tailwind slate-300 */
+  font-weight: 500;
+}
+
+/* Ensure the Vencimento column directly uses high-contrast text */
+.page-staff table td:nth-child(6) {
+  color: #f8fafc !important; /* Tailwind slate-50 */
+  font-weight: 500;
+}

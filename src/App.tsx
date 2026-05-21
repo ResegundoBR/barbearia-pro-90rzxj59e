@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
+import './overrides.css'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -45,6 +47,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function RouteGuard({ module, children }: { module: string; children: React.ReactNode }) {
   const { hasAccess, isAdmin, loadingPerms } = usePermissions()
+
+  useEffect(() => {
+    document.body.classList.add(`page-${module}`)
+    return () => {
+      document.body.classList.remove(`page-${module}`)
+    }
+  }, [module])
 
   if (loadingPerms) {
     return (
