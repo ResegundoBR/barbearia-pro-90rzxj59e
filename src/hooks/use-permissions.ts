@@ -74,6 +74,8 @@ export function usePermissions() {
     if (isAdmin) return true
     if (allowedModules.includes('*')) return true
 
+    if ((module === 'settings' || module === 'users') && user?.access_level === 'Socio') return true
+
     if (module.startsWith('staff_') && allowedModules.includes('staff')) return true
     if (module.startsWith('dash_') && allowedModules.includes('dashboard')) return true
 
