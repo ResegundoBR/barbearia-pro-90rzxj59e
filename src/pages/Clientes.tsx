@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
+import { getContrastColor } from '@/lib/utils'
 
 const applyPhoneMask = (v: string) => {
   if (!v) return ''
@@ -285,15 +286,26 @@ export default function Clientes() {
                         </div>
                         <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
                           {c.expand?.created_by_id && (
-                            <div>
-                              Cadastrado por:{' '}
-                              <span className="font-medium">{c.expand.created_by_id.name}</span>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-xs text-muted-foreground">Cadastrado por:</span>
+                              <span className="font-medium text-xs text-muted-foreground">
+                                {c.expand.created_by_id.name}
+                              </span>
                             </div>
                           )}
                           {c.expand?.preferred_barber_id && (
-                            <div>
-                              Atendido por:{' '}
-                              <span className="font-medium">
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-xs text-muted-foreground">Atendido por:</span>
+                              <span
+                                className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor:
+                                    c.expand.preferred_barber_id.color || 'hsl(var(--primary))',
+                                  color: getContrastColor(
+                                    c.expand.preferred_barber_id.color || 'hsl(var(--primary))',
+                                  ),
+                                }}
+                              >
                                 {c.expand.preferred_barber_id.name}
                               </span>
                             </div>

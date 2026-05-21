@@ -40,6 +40,8 @@ export function getContrastColor(hexcolor: string) {
   const r = parseInt(c.substr(0, 2), 16)
   const g = parseInt(c.substr(2, 2), 16)
   const b = parseInt(c.substr(4, 2), 16)
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return '#ffffff'
+
   const yiq = (r * 299 + g * 587 + b * 114) / 1000
   return yiq >= 128 ? '#000000' : '#ffffff'
 }

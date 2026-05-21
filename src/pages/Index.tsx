@@ -875,23 +875,28 @@ export default function Index() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Item</TableHead>
+                        <TableHead className="w-[45%]">Item</TableHead>
                         <TableHead>Tipo</TableHead>
-                        <TableHead className="text-right">Qtd</TableHead>
+                        <TableHead className="text-center">Qtd</TableHead>
                         <TableHead className="text-right">Receita</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {topSellers.map((item, idx) => (
                         <TableRow key={idx}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell
+                            className="font-medium truncate max-w-[120px]"
+                            title={item.name}
+                          >
+                            {item.name}
+                          </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="text-[10px] whitespace-nowrap">
                               {item.type}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right">{item.count}</TableCell>
-                          <TableCell className="text-right text-emerald-500 font-medium">
+                          <TableCell className="text-center">{item.count}</TableCell>
+                          <TableCell className="text-right text-emerald-500 font-medium whitespace-nowrap">
                             R$ {item.revenue.toFixed(2)}
                           </TableCell>
                         </TableRow>
@@ -924,7 +929,7 @@ export default function Index() {
                           <PieChart>
                             <Pie
                               data={serviceMixData}
-                              cx="50%"
+                              cx="40%"
                               cy="50%"
                               innerRadius={60}
                               outerRadius={80}
@@ -936,7 +941,12 @@ export default function Index() {
                               ))}
                             </Pie>
                             <ChartTooltip content={<ChartTooltipContent />} />
-                            <Legend />
+                            <Legend
+                              layout="vertical"
+                              verticalAlign="middle"
+                              align="right"
+                              wrapperStyle={{ fontSize: '11px', paddingLeft: '10px' }}
+                            />
                           </PieChart>
                         </ResponsiveContainer>
                       </ChartContainer>
@@ -965,7 +975,7 @@ export default function Index() {
                           <PieChart>
                             <Pie
                               data={productMixData}
-                              cx="50%"
+                              cx="40%"
                               cy="50%"
                               innerRadius={60}
                               outerRadius={80}
@@ -980,7 +990,12 @@ export default function Index() {
                               ))}
                             </Pie>
                             <ChartTooltip content={<ChartTooltipContent />} />
-                            <Legend />
+                            <Legend
+                              layout="vertical"
+                              verticalAlign="middle"
+                              align="right"
+                              wrapperStyle={{ fontSize: '11px', paddingLeft: '10px' }}
+                            />
                           </PieChart>
                         </ResponsiveContainer>
                       </ChartContainer>
