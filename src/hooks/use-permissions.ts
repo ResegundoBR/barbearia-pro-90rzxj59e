@@ -8,10 +8,8 @@ const defaultPerms = {
     'agenda',
     'clientes',
     'checkout',
-    'staff_view',
+    'staff',
     'dash_tab_overview',
-    'dash_tab_financial',
-    'dash_tab_packages',
     'dash_block_revenue',
     'dash_block_clients',
     'dash_block_new_clients',
@@ -26,8 +24,6 @@ const defaultPerms = {
   Autonomo: [
     'agenda',
     'dash_tab_overview',
-    'dash_tab_financial',
-    'dash_tab_packages',
     'dash_block_revenue',
     'dash_block_history',
     'dash_block_peak',
@@ -35,15 +31,33 @@ const defaultPerms = {
   ],
 }
 
+let cachedPerms: any = null
+let permsPromise: Promise<any> | null = null
+
 export function usePermissions() {
   const { user } = useAuth()
-  const [rolePerms, setRolePerms] = useState<any>(defaultPerms)
+  const [rolePerms, setRolePerms] = useState<any>(cachedPerms || defaultPerms)
+  const [loadingPerms, setLoadingPerms] = useState(!cachedPerms)
 
   useEffect(() => {
-    pb.collection('settings')
-      .getFirstListItem('key="role_permissions"')
-      .then((r) => setRolePerms(r.value))
-      .catch(() => setRolePerms(defaultPerms))
+    if (cachedPerms) return
+    if (!permsPromise) {
+      permsPromise = pb
+        .collection('settings')
+        .getFirstListItem('key="role_permissions"')
+        .then((r) => {
+          cachedPerms = r.value || defaultPerms
+          return cachedPerms
+        })
+        .catch(() => {
+          cachedPerms = defaultPerms
+          return cachedPerms
+        })
+    }
+    permsPromise.then((perms) => {
+      setRolePerms(perms)
+      setLoadingPerms(false)
+    })
   }, [])
 
   const allowedModules =
@@ -53,7 +67,6 @@ export function usePermissions() {
 
   const isAdmin =
     user?.access_level === 'Admin' ||
-    user?.access_level === 'Socio' ||
     user?.email === 'reginaldo.segundo@planagroup.com.br' ||
     user?.email === 'alissonmayer7@gmail.com'
 
@@ -61,13 +74,11 @@ export function usePermissions() {
     if (isAdmin) return true
     if (allowedModules.includes('*')) return true
 
-    // Fallback: If checking 'staff_view', and they have 'staff', allow.
-    // If checking 'staff_edit', and they have 'staff', allow.
     if (module.startsWith('staff_') && allowedModules.includes('staff')) return true
     if (module.startsWith('dash_') && allowedModules.includes('dashboard')) return true
 
     return allowedModules.includes(module)
   }
 
-  return { hasAccess, rolePerms, isAdmin }
+  return { hasAccess, rolePerms, isAdmin, loadingPerms }
 }

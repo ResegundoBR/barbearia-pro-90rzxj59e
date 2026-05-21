@@ -59,6 +59,8 @@ import { usePermissions } from '@/hooks/use-permissions'
 import pb from '@/lib/pocketbase/client'
 import { useState, useEffect } from 'react'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useToast } from '@/hooks/use-toast'
+import { Label } from '@/components/ui/label'
 
 export default function Layout() {
   const location = useLocation()
@@ -71,8 +73,61 @@ export default function Layout() {
   const [logoUrl, setLogoUrl] = useState('')
 
   const { hasAccess, isAdmin } = usePermissions()
-  const isStaff = user?.access_level === 'Staff'
-  const canAccessSettings = isAdmin || isStaff
+  const canAccessSettings = isAdmin || hasAccess('settings')
+
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    surname: '',
+    whatsapp: '',
+    oldPassword: '',
+    password: '',
+    passwordConfirm: '',
+  })
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: user.name || '',
+        surname: user.surname || '',
+        whatsapp: user.whatsapp || '',
+        oldPassword: '',
+        password: '',
+        passwordConfirm: '',
+      })
+    }
+  }, [user])
+
+  const handleSaveProfile = async () => {
+    if (profileForm.password && profileForm.password !== profileForm.passwordConfirm) {
+      toast({ title: 'As senhas não coincidem', variant: 'destructive' })
+      return
+    }
+    if ((profileForm.password || profileForm.oldPassword) && !profileForm.oldPassword) {
+      toast({ title: 'Senha atual é obrigatória para alterar a senha', variant: 'destructive' })
+      return
+    }
+
+    try {
+      const data: any = {
+        name: profileForm.name,
+        surname: profileForm.surname,
+        whatsapp: profileForm.whatsapp,
+      }
+      if (profileForm.password) {
+        data.oldPassword = profileForm.oldPassword
+        data.password = profileForm.password
+        data.passwordConfirm = profileForm.passwordConfirm
+      }
+
+      await pb.collection('users').update(user.id, data)
+      toast({ title: 'Perfil atualizado com sucesso!' })
+      setIsProfileOpen(false)
+    } catch (err: any) {
+      toast({ title: 'Erro ao atualizar perfil', description: err.message, variant: 'destructive' })
+    }
+  }
 
   const allNavItems = [
     { id: 'dashboard', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
@@ -411,6 +466,10 @@ export default function Layout() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsProfileOpen(true)} className="cursor-pointer">
+                  <UserCircle className="mr-2 size-4" />
+                  Meu Perfil
+                </DropdownMenuItem>
                 {canAccessSettings && (
                   <DropdownMenuItem asChild>
                     <Link to="/settings" className="cursor-pointer w-full flex items-center">
@@ -419,7 +478,10 @@ export default function Layout() {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
                   <LogOut className="mr-2 size-4" />
                   Sair
                 </DropdownMenuItem>
@@ -427,6 +489,81 @@ export default function Layout() {
             </DropdownMenu>
           </div>
         </header>
+
+        <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Meu Perfil</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nome</Label>
+                  <Input
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Sobrenome</Label>
+                  <Input
+                    value={profileForm.surname}
+                    onChange={(e) => setProfileForm({ ...profileForm, surname: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>WhatsApp</Label>
+                <Input
+                  value={profileForm.whatsapp}
+                  onChange={(e) => setProfileForm({ ...profileForm, whatsapp: e.target.value })}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
+              <div className="pt-4 border-t space-y-4">
+                <h4 className="font-medium text-sm text-muted-foreground">Alterar Senha</h4>
+                <div className="space-y-2">
+                  <Label>Senha Atual</Label>
+                  <Input
+                    type="password"
+                    value={profileForm.oldPassword}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, oldPassword: e.target.value })
+                    }
+                    placeholder="Obrigatório para alterar senha"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={profileForm.password}
+                      onChange={(e) => setProfileForm({ ...profileForm, password: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Confirmar Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={profileForm.passwordConfirm}
+                      onChange={(e) =>
+                        setProfileForm({ ...profileForm, passwordConfirm: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsProfileOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveProfile}>Salvar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={isPackagesModalOpen} onOpenChange={setIsPackagesModalOpen}>
           <DialogContent className="max-w-md w-[95vw]">

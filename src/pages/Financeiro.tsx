@@ -31,6 +31,7 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
+import { usePermissions } from '@/hooks/use-permissions'
 
 export default function Financeiro() {
   const { user } = useAuth()
@@ -50,10 +51,8 @@ export default function Financeiro() {
     }
   }
 
-  const canAccess =
-    user?.access_level === 'Admin' ||
-    user?.access_level === 'Socio' ||
-    user?.email === 'reginaldo.segundo@planagroup.com.br'
+  const { hasAccess, isAdmin } = usePermissions()
+  const canAccess = isAdmin || hasAccess('financeiro')
 
   useEffect(() => {
     if (canAccess) loadMethods()

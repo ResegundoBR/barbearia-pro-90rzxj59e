@@ -79,14 +79,11 @@ import pb from '@/lib/pocketbase/client'
 
 export default function Index() {
   const { user } = useAuth()
-  const { hasAccess } = usePermissions()
-  const isAdmin =
-    user?.access_level === 'Admin' ||
-    user?.access_level === 'Socio' ||
-    user?.email === 'reginaldo.segundo@planagroup.com.br' ||
-    user?.email === 'alissonmayer7@gmail.com'
+  const { hasAccess, isAdmin } = usePermissions()
 
-  const canViewAllClients = isAdmin
+  const isSocio = user?.access_level === 'Socio'
+  const canViewAllClients = isAdmin || isSocio
+  const canFilterBarbers = isAdmin || isSocio
 
   const [isLoading, setIsLoading] = useState(true)
   const [appointments, setAppointments] = useState<any[]>([])
@@ -203,7 +200,7 @@ export default function Index() {
   }
 
   const loggedInBarber = barbers.find((b) => b.name === user?.name)
-  const effectiveBarberFilter = isAdmin ? barberFilter : loggedInBarber?.id || 'all'
+  const effectiveBarberFilter = canFilterBarbers ? barberFilter : loggedInBarber?.id || 'all'
 
   const filteredAppointments = useMemo(
     () =>
@@ -827,7 +824,7 @@ export default function Index() {
           <p className="text-sm text-muted-foreground">Monitoramento e desempenho.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          {isAdmin && (
+          {canFilterBarbers && (
             <Select value={barberFilter} onValueChange={setBarberFilter}>
               <SelectTrigger className="w-[200px] bg-card">
                 <SelectValue placeholder="Todos os Profissionais" />

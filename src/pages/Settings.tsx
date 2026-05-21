@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -87,6 +87,41 @@ export default function Settings() {
         )
       }
 
+      const permSett = sett.find((s) => s.key === 'role_permissions')
+      if (permSett) {
+        setPermConfigId(permSett.id)
+        setPermForm(permSett.value || { Admin: ['*'], Socio: [], Autonomo: [] })
+      } else {
+        setPermForm({
+          Admin: ['*'],
+          Socio: [
+            'agenda',
+            'clientes',
+            'checkout',
+            'staff',
+            'dash_tab_overview',
+            'dash_block_revenue',
+            'dash_block_clients',
+            'dash_block_new_clients',
+            'dash_block_ticket_serv',
+            'dash_block_ticket_prod',
+            'dash_block_peak',
+            'dash_block_history',
+            'dash_block_top_sellers',
+            'dash_block_forecast',
+            'dash_block_alerts',
+          ],
+          Autonomo: [
+            'agenda',
+            'dash_tab_overview',
+            'dash_block_revenue',
+            'dash_block_history',
+            'dash_block_peak',
+            'dash_block_forecast',
+          ],
+        })
+      }
+
       const bList = await pb.collection('barbers').getFullList({ sort: 'name' })
       setBarbers(bList)
     } catch (e) {
@@ -103,6 +138,9 @@ export default function Settings() {
       loadNotificationRules()
     }
   }, [user, isAdmin])
+
+  const [permConfigId, setPermConfigId] = useState<string>('')
+  const [permForm, setPermForm] = useState<any>({ Admin: ['*'], Socio: [], Autonomo: [] })
 
   const [notifRules, setNotifRules] = useState<any[]>([])
 
@@ -184,6 +222,96 @@ export default function Settings() {
       })
     }
   }
+
+  const handleSavePermissions = async () => {
+    const payload = {
+      key: 'role_permissions',
+      value: permForm,
+    }
+    try {
+      if (permConfigId) {
+        await pb.collection('settings').update(permConfigId, payload)
+      } else {
+        const r = await pb.collection('settings').create(payload)
+        setPermConfigId(r.id)
+      }
+      toast({ title: 'Permissões atualizadas com sucesso! Recarregue a página para aplicar.' })
+    } catch (err) {
+      toast({ title: 'Erro ao salvar permissões', variant: 'destructive' })
+    }
+  }
+
+  const togglePermission = (role: string, permId: string) => {
+    setPermForm((prev: any) => {
+      const rolePerms = prev[role] || []
+      const newPerms = rolePerms.includes(permId)
+        ? rolePerms.filter((p: string) => p !== permId)
+        : [...rolePerms, permId]
+      return { ...prev, [role]: newPerms }
+    })
+  }
+
+  const ALL_PERMISSIONS = [
+    { id: 'agenda', label: 'Agenda', category: 'Módulos do Menu' },
+    { id: 'clientes', label: 'Clientes', category: 'Módulos do Menu' },
+    { id: 'checkout', label: 'Checkout (POS)', category: 'Módulos do Menu' },
+    { id: 'financeiro', label: 'Financeiro', category: 'Módulos do Menu' },
+    { id: 'estoque', label: 'Serviços & Pacotes', category: 'Módulos do Menu' },
+    { id: 'produtos', label: 'Produtos', category: 'Módulos do Menu' },
+    { id: 'fornecedores', label: 'Compras / Fornecedores', category: 'Módulos do Menu' },
+    { id: 'staff', label: 'Equipe & Comissões', category: 'Módulos do Menu' },
+    { id: 'settings', label: 'Configurações', category: 'Módulos do Menu' },
+    { id: 'users', label: 'Usuários e Acessos', category: 'Módulos do Menu' },
+
+    { id: 'dash_tab_overview', label: 'Aba: Visão Geral', category: 'Dashboard' },
+    { id: 'dash_tab_financial', label: 'Aba: Financeiro', category: 'Dashboard' },
+    { id: 'dash_tab_packages', label: 'Aba: Pacotes Ativos', category: 'Dashboard' },
+
+    { id: 'dash_block_revenue', label: 'Bloco: Faturamento', category: 'Dashboard (Visão Geral)' },
+    {
+      id: 'dash_block_clients',
+      label: 'Bloco: Clientes Atendidos',
+      category: 'Dashboard (Visão Geral)',
+    },
+    {
+      id: 'dash_block_new_clients',
+      label: 'Bloco: Novos Clientes',
+      category: 'Dashboard (Visão Geral)',
+    },
+    {
+      id: 'dash_block_ticket_serv',
+      label: 'Bloco: Ticket Médio Serv.',
+      category: 'Dashboard (Visão Geral)',
+    },
+    {
+      id: 'dash_block_ticket_prod',
+      label: 'Bloco: Ticket Médio Prod.',
+      category: 'Dashboard (Visão Geral)',
+    },
+    {
+      id: 'dash_block_peak',
+      label: 'Bloco: Horários de Pico',
+      category: 'Dashboard (Visão Geral)',
+    },
+    {
+      id: 'dash_block_top_sellers',
+      label: 'Bloco: Top Vendas / Mix',
+      category: 'Dashboard (Visão Geral)',
+    },
+    {
+      id: 'dash_block_forecast',
+      label: 'Bloco: Previsão de Recebimento',
+      category: 'Dashboard (Visão Geral)',
+    },
+    { id: 'dash_block_alerts', label: 'Bloco: Alertas', category: 'Dashboard (Visão Geral)' },
+    {
+      id: 'dash_block_history',
+      label: 'Bloco: Histórico/Gráficos',
+      category: 'Dashboard (Visão Geral)',
+    },
+  ]
+
+  const categoriesSet = Array.from(new Set(ALL_PERMISSIONS.map((p) => p.category)))
 
   const handleSaveFinConfig = async () => {
     if (!finForm.inventory_owner_id) {
@@ -313,10 +441,62 @@ export default function Settings() {
       <Tabs defaultValue="geral" className="w-full">
         <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="geral">Geral (Marca)</TabsTrigger>
+          <TabsTrigger value="permissions">Permissões de Acesso</TabsTrigger>
           <TabsTrigger value="categories">Configurações de Categorias</TabsTrigger>
           <TabsTrigger value="financial">Regras Financeiras</TabsTrigger>
           <TabsTrigger value="notifications">Gerenciamento de Notificações</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="permissions" className="space-y-4">
+          <Card className="border-border shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Controle de Acesso (RBAC)</CardTitle>
+                <CardDescription>Defina o que cada perfil pode acessar no sistema.</CardDescription>
+              </div>
+              <Button onClick={handleSavePermissions}>Salvar Permissões</Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Permissão</TableHead>
+                    <TableHead className="text-center w-[120px]">Sócio</TableHead>
+                    <TableHead className="text-center w-[120px]">Autônomo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categoriesSet.map((cat) => (
+                    <React.Fragment key={cat}>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableCell colSpan={3} className="font-bold text-primary py-2">
+                          {cat}
+                        </TableCell>
+                      </TableRow>
+                      {ALL_PERMISSIONS.filter((p) => p.category === cat).map((perm) => (
+                        <TableRow key={perm.id}>
+                          <TableCell className="font-medium text-sm pl-6">{perm.label}</TableCell>
+                          <TableCell className="text-center">
+                            <Switch
+                              checked={(permForm.Socio || []).includes(perm.id)}
+                              onCheckedChange={() => togglePermission('Socio', perm.id)}
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Switch
+                              checked={(permForm.Autonomo || []).includes(perm.id)}
+                              onCheckedChange={() => togglePermission('Autonomo', perm.id)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="geral" className="space-y-4">
           <Card className="max-w-2xl border-border shadow-sm">
