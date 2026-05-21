@@ -467,9 +467,9 @@ export default function Staff() {
             <title>Relatório Detalhado de Comissões</title>
             <style>
               body { font-family: sans-serif; padding: 20px; color: #333; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-              th, td { border-bottom: 1px solid #ddd; padding: 12px 8px; text-align: left; }
-              th { background-color: #f4f4f4; border-bottom: 2px solid #ddd; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; border: none; }
+              th, td { padding: 12px 8px; text-align: left; border: none; }
+              th { background-color: #f4f4f4; border: none; }
               .text-right { text-align: right; }
               .font-bold { font-weight: bold; }
               .header { margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
@@ -1134,43 +1134,57 @@ export default function Staff() {
             </Card>
           </div>
 
-          <div className="flex-1 mt-4 min-h-0 border rounded-md shadow-sm bg-background">
+          <div className="flex-1 mt-4 min-h-0 bg-background">
             <div id="printable-report" className="h-full">
-              <Table wrapperClassName="styled-scrollbar" className="min-w-[1100px]">
-                <TableHeader>
-                  <TableRow className="border-b-0 border-transparent hover:bg-transparent">
-                    <TableHead className="whitespace-nowrap sticky left-0 z-20 bg-background shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] px-4 py-3">
+              <Table
+                wrapperClassName="styled-scrollbar border-none"
+                className="min-w-[1100px] border-none"
+              >
+                <TableHeader className="border-none">
+                  <TableRow className="border-none hover:bg-transparent">
+                    <TableHead className="whitespace-nowrap sticky left-0 z-20 bg-background px-4 py-3 border-none">
                       # Checkout
                     </TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-3">Data/Hora</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-3">Tipo</TableHead>
-                    <TableHead className="whitespace-nowrap min-w-[200px] px-4 py-3">
+                    <TableHead className="whitespace-nowrap px-4 py-3 border-none">
+                      Data/Hora
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-3 border-none">Tipo</TableHead>
+                    <TableHead className="whitespace-nowrap min-w-[200px] px-4 py-3 border-none">
                       Descrição
                     </TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-3">Cliente</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-3">Vencimento</TableHead>
-                    <TableHead className="whitespace-nowrap px-4 py-3">Status</TableHead>
-                    <TableHead className="text-right whitespace-nowrap px-4 py-3">
+                    <TableHead className="whitespace-nowrap px-4 py-3 border-none">
+                      Cliente
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-3 border-none">
+                      Vencimento
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-3 border-none">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap px-4 py-3 border-none">
                       Valor Bruto
                     </TableHead>
-                    <TableHead className="text-right whitespace-nowrap px-4 py-3">
+                    <TableHead className="text-right whitespace-nowrap px-4 py-3 border-none">
                       Comissão
                     </TableHead>
-                    <TableHead className="text-right whitespace-nowrap sticky right-0 z-20 bg-background shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] px-4 py-3">
+                    <TableHead className="text-right whitespace-nowrap sticky right-0 z-20 bg-background px-4 py-3 border-none">
                       Ações
                     </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="border-none">
                   {displayedReportItems.map((item, i) => (
-                    <TableRow key={`${item.id}-${i}`} className="group/row border-b-0">
-                      <TableCell className="font-mono text-muted-foreground sticky left-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] transition-colors px-4 py-3">
+                    <TableRow
+                      key={`${item.id}-${i}`}
+                      className="group/row border-none hover:bg-muted/50 transition-colors"
+                    >
+                      <TableCell className="font-mono text-muted-foreground sticky left-0 z-10 bg-background group-hover/row:bg-muted/50 transition-colors px-4 py-3 border-none">
                         {item.checkoutNumber ? `#${item.checkoutNumber}` : '-'}
                       </TableCell>
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 border-none">
                         {format(item.date, 'dd/MM/yyyy')} às {item.time}
                       </TableCell>
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 border-none">
                         <Badge
                           variant="outline"
                           className={
@@ -1186,9 +1200,9 @@ export default function Staff() {
                           {item.type}
                         </Badge>
                       </TableCell>
-                      <TableCell className="px-4 py-3">{item.item}</TableCell>
-                      <TableCell className="px-4 py-3">{item.client}</TableCell>
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 border-none">{item.item}</TableCell>
+                      <TableCell className="px-4 py-3 border-none">{item.client}</TableCell>
+                      <TableCell className="px-4 py-3 border-none">
                         <span className="font-medium text-muted-foreground">
                           {item.dueDate
                             ? format(item.dueDate, 'dd/MM/yyyy')
@@ -1201,7 +1215,7 @@ export default function Staff() {
                               )}
                         </span>
                       </TableCell>
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-4 py-3 border-none">
                         <Badge
                           className={cn(
                             'font-bold uppercase border-0 text-[11px] tracking-wider shadow-sm',
@@ -1219,15 +1233,15 @@ export default function Staff() {
                               : 'Pendente'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right px-4 py-3">
+                      <TableCell className="text-right px-4 py-3 border-none">
                         R$ {item.price.toFixed(2)}
                       </TableCell>
                       <TableCell
-                        className={`text-right font-semibold px-4 py-3 ${item.commission < 0 ? 'text-red-600' : 'text-emerald-600'}`}
+                        className={`text-right font-semibold px-4 py-3 border-none ${item.commission < 0 ? 'text-red-600' : 'text-emerald-600'}`}
                       >
                         R$ {item.commission.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right sticky right-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] transition-colors px-4 py-3">
+                      <TableCell className="text-right sticky right-0 z-10 bg-background group-hover/row:bg-muted/50 transition-colors px-4 py-3 border-none">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -1240,8 +1254,11 @@ export default function Staff() {
                     </TableRow>
                   ))}
                   {displayedReportItems.length === 0 && (
-                    <TableRow className="border-b-0">
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableRow className="border-none">
+                      <TableCell
+                        colSpan={10}
+                        className="text-center py-8 text-muted-foreground border-none"
+                      >
                         Nenhuma transação encontrada com os filtros selecionados.
                       </TableCell>
                     </TableRow>
