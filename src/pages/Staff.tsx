@@ -928,16 +928,16 @@ export default function Staff() {
       </div>
 
       <Card>
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="p-0 overflow-x-auto overflow-y-hidden">
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Profissional</TableHead>
-                <TableHead>Contato (WhatsApp)</TableHead>
-                <TableHead>Nível</TableHead>
-                <TableHead>Comissão a Receber</TableHead>
-                <TableHead>A Pagar</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="whitespace-nowrap">Profissional</TableHead>
+                <TableHead className="whitespace-nowrap">Contato (WhatsApp)</TableHead>
+                <TableHead className="whitespace-nowrap">Nível</TableHead>
+                <TableHead className="whitespace-nowrap">Comissão a Receber</TableHead>
+                <TableHead className="whitespace-nowrap">A Pagar</TableHead>
+                <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1121,21 +1121,21 @@ export default function Staff() {
             </Card>
           </div>
 
-          <div className="overflow-auto flex-1 mt-4 p-1">
-            <div id="printable-report">
+          <div className="overflow-x-auto overflow-y-auto flex-1 mt-4 p-1">
+            <div id="printable-report" className="min-w-[1000px]">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead># Checkout</TableHead>
-                    <TableHead>Data/Hora</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Valor Bruto</TableHead>
-                    <TableHead className="text-right">Comissão</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead className="whitespace-nowrap"># Checkout</TableHead>
+                    <TableHead className="whitespace-nowrap">Data/Hora</TableHead>
+                    <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                    <TableHead className="whitespace-nowrap min-w-[200px]">Descrição</TableHead>
+                    <TableHead className="whitespace-nowrap">Cliente</TableHead>
+                    <TableHead className="whitespace-nowrap">Vencimento</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Valor Bruto</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Comissão</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1415,8 +1415,8 @@ export default function Staff() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="overflow-auto flex-1 mt-4 border rounded-md max-h-[40vh]">
-            <Table>
+          <div className="overflow-x-auto overflow-y-auto flex-1 mt-4 border rounded-md max-h-[40vh]">
+            <Table className="min-w-[500px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">
@@ -1428,9 +1428,9 @@ export default function Staff() {
                       onCheckedChange={(c) => handleToggleAll(!!c)}
                     />
                   </TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="whitespace-nowrap">Data</TableHead>
+                  <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
