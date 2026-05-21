@@ -33,9 +33,11 @@ import pb from '@/lib/pocketbase/client'
 import { Badge } from '@/components/ui/badge'
 import { CategoriasTab } from '@/pages/produtos-categorias/CategoriasTab'
 import { Switch } from '@/components/ui/switch'
+import { usePermissions } from '@/hooks/use-permissions'
 
 export default function Settings() {
   const { user } = useAuth()
+  const { isAdmin } = usePermissions()
   const { toast } = useToast()
 
   const [logoConfigId, setLogoConfigId] = useState<string>('')
@@ -128,9 +130,6 @@ export default function Settings() {
       console.error(e)
     }
   }
-
-  const isAdmin =
-    user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
 
   useEffect(() => {
     if (isAdmin) {
