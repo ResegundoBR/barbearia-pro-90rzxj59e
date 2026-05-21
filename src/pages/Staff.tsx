@@ -1019,7 +1019,7 @@ export default function Staff() {
                         </Badge>
                       ) : (
                         <div className="flex flex-col">
-                          <span className="font-semibold text-slate-700">{displayPayDate}</span>
+                          <span className="font-semibold text-foreground">{displayPayDate}</span>
                           <span className="text-xs text-muted-foreground">Próx. Acerto</span>
                         </div>
                       )}
