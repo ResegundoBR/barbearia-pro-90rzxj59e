@@ -39,6 +39,7 @@ import {
   getClientPackages,
 } from '@/services/api'
 import { format } from 'date-fns'
+import { getContrastColor } from '@/lib/utils'
 
 function PackageCard({ p, status, used, total, progress, packageAppointments }: any) {
   const [expanded, setExpanded] = useState(false)
