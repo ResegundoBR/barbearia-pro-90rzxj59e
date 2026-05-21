@@ -223,7 +223,7 @@ export default function Layout() {
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="h-[100dvh]">
+      <SidebarInset className="h-[100dvh] flex flex-col overflow-hidden">
         <header className="flex h-16 shrink-0 items-center gap-2 sm:gap-4 border-b border-border bg-card/50 backdrop-blur px-4 sm:px-6 shadow-sm z-10">
           <SidebarTrigger className="-ml-2 hidden md:flex min-h-[44px] min-w-[44px]" />
 
@@ -461,7 +461,7 @@ export default function Layout() {
           </DialogContent>
         </Dialog>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 animate-fade-in w-full max-w-[100vw]">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 pb-safe animate-fade-in w-full max-w-full">
           <Outlet />
         </main>
       </SidebarInset>

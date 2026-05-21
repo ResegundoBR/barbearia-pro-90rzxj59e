@@ -16,8 +16,8 @@ import {
   getBarbers,
   getProducts,
   getBusinessHours,
+  getCategories,
   getCommissions,
-  createCommission,
   getProductPurchases,
   getPaymentMethods,
 } from '@/services/api'
@@ -32,8 +32,6 @@ import {
   addDays,
   differenceInDays,
   isTomorrow,
-  isThisWeek,
-  isThisMonth,
   startOfDay,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -48,13 +46,23 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { AreaChart, Area, BarChart, Bar, Legend, XAxis, YAxis, CartesianGrid } from 'recharts'
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  Legend,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+} from 'recharts'
 import { useAuth } from '@/hooks/use-auth'
 import { FinancialView } from '@/components/dashboard/FinancialView'
 import { PackagesView } from '@/components/dashboard/PackagesView'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -66,6 +74,7 @@ import {
 } from '@/components/ui/table'
 import { useRealtime } from '@/hooks/use-realtime'
 import { usePermissions } from '@/hooks/use-permissions'
+import pb from '@/lib/pocketbase/client'
 
 export default function Index() {
   const { user } = useAuth()
@@ -82,6 +91,8 @@ export default function Index() {
   const [commissions, setCommissions] = useState<any[]>([])
   const [productPurchases, setProductPurchases] = useState<any[]>([])
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
+  const [businessHours, setBusinessHours] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
 
   const [period, setPeriod] = useState('month')
   const [barberFilter, setBarberFilter] = useState('all')
@@ -104,12 +115,7 @@ export default function Index() {
 
   const [historyModalDate, setHistoryModalDate] = useState<string | null>(null)
   const [selectedTeamMember, setSelectedTeamMember] = useState<any>(null)
-  const [historyType, setHistoryType] = useState<'services' | 'products'>('services')
-  const [gaugeMetric, setGaugeMetric] = useState<'revenue' | 'attendance'>('revenue')
-
-  const [advanceModalOpen, setAdvanceModalOpen] = useState(false)
-  const [advanceBarber, setAdvanceBarber] = useState('')
-  const [advanceAmount, setAdvanceAmount] = useState('')
+  const [gaugeMetric, setGaugeMetric] = useState<'revenue' | 'attendance' | 'occupancy'>('revenue')
 
   const [checkouts, setCheckouts] = useState<any[]>([])
 
@@ -123,6 +129,12 @@ export default function Index() {
     setCommissions(await getCommissions(''))
     setProductPurchases(await getProductPurchases(''))
     setPaymentMethods(await getPaymentMethods())
+    setBusinessHours(await getBusinessHours())
+    try {
+      setCategories(await getCategories())
+    } catch {
+      /* intentionally ignored */
+    }
     try {
       setCheckouts(await pb.collection('checkouts').getFullList({ expand: 'client_id,barber_id' }))
     } catch {
@@ -141,6 +153,7 @@ export default function Index() {
   useRealtime('commissions', () => loadData())
   useRealtime('clients', () => loadData())
   useRealtime('payment_methods', () => loadData())
+  useRealtime('checkouts', () => loadData())
 
   const periodStart = useMemo(() => {
     const now = new Date()
@@ -214,6 +227,14 @@ export default function Index() {
         (p) => effectiveBarberFilter === 'all' || p.barber_id === effectiveBarberFilter,
       ),
     [productPurchases, effectiveBarberFilter],
+  )
+
+  const filteredCheckouts = useMemo(
+    () =>
+      checkouts.filter(
+        (c) => effectiveBarberFilter === 'all' || c.barber_id === effectiveBarberFilter,
+      ),
+    [checkouts, effectiveBarberFilter],
   )
 
   const validAppointments = filteredAppointments.filter((a) => a.status !== 'Cancelado')
@@ -546,8 +567,123 @@ export default function Index() {
     checkouts,
   ])
 
+  const totalWorkingMinutesInPeriod = useMemo(() => {
+    if (!periodStart || !periodEnd || businessHours.length === 0) return 0
+    let minutes = 0
+    let d = new Date(periodStart)
+    const end = new Date(periodEnd)
+    const today = startOfDay(new Date())
+    const actualEnd = end > today ? today : end
+
+    while (d <= actualEnd) {
+      const dayOfWeek = d.getDay().toString()
+      const bh = businessHours.find((b) => b.day_of_week === dayOfWeek && b.is_active)
+      if (bh) {
+        const [oH, oM] = bh.open_time.split(':').map(Number)
+        const [cH, cM] = bh.close_time.split(':').map(Number)
+        minutes += cH * 60 + cM - (oH * 60 + oM)
+      }
+      d = addDays(d, 1)
+    }
+    const activeBarbersCount = effectiveBarberFilter === 'all' ? barbers.length : 1
+    return minutes * activeBarbersCount
+  }, [periodStart, periodEnd, businessHours, barbers.length, effectiveBarberFilter])
+
+  const usedMinutesInPeriod = useMemo(() => {
+    return completedPeriod.reduce((acc, a) => {
+      return acc + (a.expand?.service_id?.duration_minutes || 0)
+    }, 0)
+  }, [completedPeriod])
+
+  const occupancyRate =
+    totalWorkingMinutesInPeriod > 0 ? (usedMinutesInPeriod / totalWorkingMinutesInPeriod) * 100 : 0
+
+  const monthlyBillingData = useMemo(() => {
+    const monthsData: Record<string, number> = {}
+    const today = new Date()
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1)
+      const key = format(d, 'MMM/yy', { locale: ptBR })
+      monthsData[key] = 0
+    }
+
+    filteredCheckouts.forEach((c) => {
+      const d = new Date(c.date || c.created)
+      const diffMonths =
+        (today.getFullYear() - d.getFullYear()) * 12 + (today.getMonth() - d.getMonth())
+      if (diffMonths >= 0 && diffMonths < 12) {
+        const key = format(d, 'MMM/yy', { locale: ptBR })
+        if (monthsData[key] !== undefined) {
+          monthsData[key] += c.total_amount || 0
+        }
+      }
+    })
+
+    return Object.keys(monthsData).map((month) => ({ month, value: monthsData[month] }))
+  }, [filteredCheckouts])
+
+  const serviceMixData = useMemo(() => {
+    const mix: Record<string, number> = {}
+    completedPeriod.forEach((a) => {
+      const cat = a.expand?.service_id?.expand?.category_id?.name || 'Sem Categoria'
+      const price = a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0
+      mix[cat] = (mix[cat] || 0) + price
+    })
+    return Object.entries(mix)
+      .map(([name, value]) => ({ name, value }))
+      .filter((m) => m.value > 0)
+      .sort((a, b) => b.value - a.value)
+  }, [completedPeriod])
+
+  const COLORS = [
+    '#10b981',
+    '#3b82f6',
+    '#f59e0b',
+    '#8b5cf6',
+    '#ef4444',
+    '#6b7280',
+    '#ec4899',
+    '#14b8a6',
+  ]
+  const mixConfig = useMemo(() => {
+    const cfg: Record<string, any> = {}
+    serviceMixData.forEach((item, i) => {
+      cfg[item.name] = { label: item.name, color: COLORS[i % COLORS.length] }
+    })
+    return cfg
+  }, [serviceMixData])
+
+  const getBarberOccupancy = (barberId: string) => {
+    if (!periodStart || !periodEnd || businessHours.length === 0) return 0
+    let minutes = 0
+    let d = new Date(periodStart)
+    const end = new Date(periodEnd)
+    const today = startOfDay(new Date())
+    const actualEnd = end > today ? today : end
+
+    while (d <= actualEnd) {
+      const dayOfWeek = d.getDay().toString()
+      const bh = businessHours.find((b) => b.day_of_week === dayOfWeek && b.is_active)
+      if (bh) {
+        const [oH, oM] = bh.open_time.split(':').map(Number)
+        const [cH, cM] = bh.close_time.split(':').map(Number)
+        minutes += cH * 60 + cM - (oH * 60 + oM)
+      }
+      d = addDays(d, 1)
+    }
+    if (minutes === 0) return 0
+
+    const barberUsed = completedPeriod
+      .filter((a) => a.barber_id === barberId)
+      .reduce((acc, a) => {
+        return acc + (a.expand?.service_id?.duration_minutes || 0)
+      }, 0)
+
+    return (barberUsed / minutes) * 100
+  }
+
   return (
-    <div className="space-y-6 pb-20 md:pb-6 max-w-5xl mx-auto">
+    <div className="space-y-6 pb-20 md:pb-6 max-w-6xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between gap-4 md:items-end">
         <div className="flex flex-col gap-1">
           <h2 className="text-3xl font-bold tracking-tight text-gradient">Dashboard</h2>
@@ -615,7 +751,7 @@ export default function Index() {
 
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
             {hasAccess('dash_block_revenue') && (
               <Card
                 className="bg-glass border-none cursor-pointer hover:bg-white/5 transition-colors"
@@ -690,9 +826,144 @@ export default function Index() {
                 </CardContent>
               </Card>
             )}
+            {hasAccess('dash_block_revenue') && (
+              <Card className="bg-glass border-none">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
+                  <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
+                    Taxa Ocupação
+                  </CardTitle>
+                  <Clock className="size-4 text-indigo-500 shrink-0" />
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="text-2xl font-bold">{occupancyRate.toFixed(1)}%</div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          {hasAccess('dash_block_history') && (
+            <Card className="bg-glass border-none w-full mt-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Evolução do Faturamento (Últimos 12 Meses)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px] w-full mt-4">
+                  <ChartContainer
+                    config={{ value: { label: 'Faturamento', color: 'hsl(var(--primary))' } }}
+                    className="h-full w-full"
+                  >
+                    <BarChart
+                      data={monthlyBillingData}
+                      margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                    >
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(val) => `R$ ${val}`}
+                        width={60}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            {hasAccess('dash_block_top_sellers') && (
+              <Card className="bg-glass border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Itens Mais Vendidos (Top 5)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead className="text-right">Qtd</TableHead>
+                        <TableHead className="text-right">Receita</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {topSellers.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px]">
+                              {item.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{item.count}</TableCell>
+                          <TableCell className="text-right text-emerald-500 font-medium">
+                            R$ {item.revenue.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {topSellers.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                            Nenhuma venda no período.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasAccess('dash_block_top_sellers') && (
+              <Card className="bg-glass border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Mix de Serviços (Receita por Categoria)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px] w-full mt-4">
+                    {serviceMixData.length > 0 ? (
+                      <ChartContainer config={mixConfig} className="h-full w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={serviceMixData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="value"
+                            >
+                              {serviceMixData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </ChartContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                        Nenhum dado para o período.
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 mt-4">
             {hasAccess('dash_block_peak') && (
               <Card className="bg-glass border-none">
                 <CardHeader className="pb-2">
@@ -770,6 +1041,17 @@ export default function Index() {
                     >
                       Atendimento
                     </button>
+                    <button
+                      onClick={() => setGaugeMetric('occupancy')}
+                      className={cn(
+                        'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+                        gaugeMetric === 'occupancy'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:bg-background/50',
+                      )}
+                    >
+                      Ocupação
+                    </button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -802,11 +1084,20 @@ export default function Index() {
                             0,
                           )
 
-                        const value = gaugeMetric === 'revenue' ? revenue : attendance
+                        const occupancy = getBarberOccupancy(barber.id)
+
+                        const value =
+                          gaugeMetric === 'revenue'
+                            ? revenue
+                            : gaugeMetric === 'occupancy'
+                              ? occupancy
+                              : attendance
                         const max =
                           gaugeMetric === 'revenue'
                             ? Math.max(5000, revenue * 1.2)
-                            : Math.max(100, attendance * 1.2)
+                            : gaugeMetric === 'occupancy'
+                              ? 100
+                              : Math.max(100, attendance * 1.2)
                         const percent = Math.min(value / (max || 1), 1)
                         const angle = percent * 180
 
@@ -896,10 +1187,16 @@ export default function Index() {
                                       style: 'currency',
                                       currency: 'BRL',
                                     }).format(value)
-                                  : value}
+                                  : gaugeMetric === 'occupancy'
+                                    ? `${value.toFixed(1)}%`
+                                    : value}
                               </div>
                               <div className="text-xs text-muted-foreground uppercase tracking-wider mt-1">
-                                {gaugeMetric === 'revenue' ? 'Faturamento' : 'Atendimentos'}
+                                {gaugeMetric === 'revenue'
+                                  ? 'Faturamento'
+                                  : gaugeMetric === 'occupancy'
+                                    ? 'Ocupação'
+                                    : 'Atendimentos'}
                               </div>
                             </div>
                           </div>
@@ -987,55 +1284,10 @@ export default function Index() {
                 </CardContent>
               </Card>
             )}
-
-            {hasAccess('dash_block_top_sellers') && (
-              <Card className="bg-glass border-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Itens Mais Vendidos (Top 5)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead className="text-right">Qtd</TableHead>
-                        <TableHead className="text-right">Receita</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {topSellers.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-[10px]">
-                              {item.type}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">{item.count}</TableCell>
-                          <TableCell className="text-right text-emerald-500 font-medium">
-                            R$ {item.revenue.toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {topSellers.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                            Nenhuma venda no período.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {hasAccess('dash_block_forecast') && (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 mt-4">
               <Card className="bg-glass border-none w-full">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
@@ -1088,7 +1340,7 @@ export default function Index() {
           )}
 
           {hasAccess('dash_block_alerts') && (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 mt-4">
               <Card className="bg-glass border-none">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">

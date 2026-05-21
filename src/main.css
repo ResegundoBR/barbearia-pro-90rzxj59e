@@ -53,6 +53,12 @@
     --chart-5: 280 60% 60%;
   }
 
+  html,
+  body,
+  #root {
+    @apply h-full overflow-hidden;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
