@@ -1054,7 +1054,7 @@ export default function Staff() {
         open={!!selectedBarberDetailed}
         onOpenChange={(v) => !v && setSelectedBarberDetailed(null)}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-[95vw] lg:max-w-6xl xl:max-w-7xl max-h-[90vh] flex flex-col">
           <DialogHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <DialogTitle>Relatório Financeiro - {selectedBarberDetailed?.name}</DialogTitle>
             <div className="flex flex-wrap gap-2 sm:mr-4">
@@ -1121,12 +1121,12 @@ export default function Staff() {
             </Card>
           </div>
 
-          <div className="flex-1 mt-4 p-1 min-h-0">
+          <div className="flex-1 mt-4 min-h-0 border rounded-md shadow-sm bg-background">
             <div id="printable-report" className="h-full">
-              <Table className="min-w-[1000px]">
+              <Table wrapperClassName="styled-scrollbar" className="min-w-[1100px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap sticky left-0 z-20 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r">
+                    <TableHead className="whitespace-nowrap sticky left-0 z-20 bg-background shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] border-r">
                       # Checkout
                     </TableHead>
                     <TableHead className="whitespace-nowrap">Data/Hora</TableHead>
@@ -1137,7 +1137,7 @@ export default function Staff() {
                     <TableHead className="whitespace-nowrap">Status</TableHead>
                     <TableHead className="text-right whitespace-nowrap">Valor Bruto</TableHead>
                     <TableHead className="text-right whitespace-nowrap">Comissão</TableHead>
-                    <TableHead className="text-right whitespace-nowrap sticky right-0 z-20 bg-background shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] border-l">
+                    <TableHead className="text-right whitespace-nowrap sticky right-0 z-20 bg-background shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] border-l">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -1145,7 +1145,7 @@ export default function Staff() {
                 <TableBody>
                   {displayedReportItems.map((item, i) => (
                     <TableRow key={`${item.id}-${i}`} className="group/row">
-                      <TableCell className="font-mono text-muted-foreground sticky left-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r transition-colors">
+                      <TableCell className="font-mono text-muted-foreground sticky left-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] border-r transition-colors">
                         {item.checkoutNumber ? `#${item.checkoutNumber}` : '-'}
                       </TableCell>
                       <TableCell>
@@ -1206,7 +1206,7 @@ export default function Staff() {
                       >
                         R$ {item.commission.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right sticky right-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] border-l transition-colors">
+                      <TableCell className="text-right sticky right-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] border-l transition-colors">
                         <Button
                           variant="ghost"
                           size="icon"
