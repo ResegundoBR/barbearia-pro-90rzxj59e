@@ -21,6 +21,7 @@ import { format } from 'date-fns'
 import { Search, Eye, History, ReceiptText } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { Separator } from '@/components/ui/separator'
+import { getContrastColor } from '@/lib/utils'
 
 export function CheckoutHistory() {
   const [checkouts, setCheckouts] = useState<any[]>([])
@@ -103,7 +104,21 @@ export function CheckoutHistory() {
               <TableRow key={c.id}>
                 <TableCell className="font-bold">#{c.checkout_number}</TableCell>
                 <TableCell>{format(new Date(c.date), 'dd/MM/yyyy HH:mm')}</TableCell>
-                <TableCell>{c.expand?.barber_id?.name || '-'}</TableCell>
+                <TableCell>
+                  {c.expand?.barber_id ? (
+                    <span
+                      className="text-xs font-bold px-2 py-1 rounded-md"
+                      style={{
+                        backgroundColor: c.expand.barber_id.color || 'hsl(var(--primary))',
+                        color: getContrastColor(c.expand.barber_id.color || 'hsl(var(--primary))'),
+                      }}
+                    >
+                      {c.expand.barber_id.name}
+                    </span>
+                  ) : (
+                    '-'
+                  )}
+                </TableCell>
                 <TableCell>{c.expand?.client_id?.name || '-'}</TableCell>
                 <TableCell className="text-right font-medium">
                   R$ {c.total_amount.toFixed(2)}

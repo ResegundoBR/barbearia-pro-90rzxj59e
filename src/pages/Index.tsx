@@ -625,15 +625,28 @@ export default function Index() {
   const serviceMixData = useMemo(() => {
     const mix: Record<string, number> = {}
     completedPeriod.forEach((a) => {
-      const cat = a.expand?.service_id?.expand?.category_id?.name || 'Sem Categoria'
+      const name = a.expand?.service_id?.name || 'Serviço Avulso'
       const price = a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0
-      mix[cat] = (mix[cat] || 0) + price
+      mix[name] = (mix[name] || 0) + price
     })
     return Object.entries(mix)
       .map(([name, value]) => ({ name, value }))
       .filter((m) => m.value > 0)
       .sort((a, b) => b.value - a.value)
   }, [completedPeriod])
+
+  const productMixData = useMemo(() => {
+    const mix: Record<string, number> = {}
+    productPurchasesPeriod.forEach((p) => {
+      const name = p.expand?.product_id?.name || 'Produto Avulso'
+      const price = p.price_at_sale || p.expand?.product_id?.price || 0
+      mix[name] = (mix[name] || 0) + price
+    })
+    return Object.entries(mix)
+      .map(([name, value]) => ({ name, value }))
+      .filter((m) => m.value > 0)
+      .sort((a, b) => b.value - a.value)
+  }, [productPurchasesPeriod])
 
   const COLORS = [
     '#10b981',
@@ -645,6 +658,7 @@ export default function Index() {
     '#ec4899',
     '#14b8a6',
   ]
+
   const mixConfig = useMemo(() => {
     const cfg: Record<string, any> = {}
     serviceMixData.forEach((item, i) => {
@@ -652,6 +666,14 @@ export default function Index() {
     })
     return cfg
   }, [serviceMixData])
+
+  const productMixConfig = useMemo(() => {
+    const cfg: Record<string, any> = {}
+    productMixData.forEach((item, i) => {
+      cfg[item.name] = { label: item.name, color: COLORS[(i + 4) % COLORS.length] }
+    })
+    return cfg
+  }, [productMixData])
 
   const getBarberOccupancy = (barberId: string) => {
     if (!periodStart || !periodEnd || businessHours.length === 0) return 0
@@ -841,41 +863,7 @@ export default function Index() {
             )}
           </div>
 
-          {hasAccess('dash_block_history') && (
-            <Card className="bg-glass border-none w-full mt-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Evolução do Faturamento (Últimos 12 Meses)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px] w-full mt-4">
-                  <ChartContainer
-                    config={{ value: { label: 'Faturamento', color: 'hsl(var(--primary))' } }}
-                    className="h-full w-full"
-                  >
-                    <BarChart
-                      data={monthlyBillingData}
-                      margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
-                    >
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                      <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(val) => `R$ ${val}`}
-                        width={60}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ChartContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
             {hasAccess('dash_block_top_sellers') && (
               <Card className="bg-glass border-none">
                 <CardHeader className="pb-2">
@@ -925,7 +913,7 @@ export default function Index() {
               <Card className="bg-glass border-none">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Mix de Serviços (Receita por Categoria)
+                    Mix de Serviços (Receita)
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -945,6 +933,50 @@ export default function Index() {
                             >
                               {serviceMixData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </ChartContainer>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                        Nenhum dado para o período.
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasAccess('dash_block_top_sellers') && (
+              <Card className="bg-glass border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Mix de Produtos (Receita)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px] w-full mt-4">
+                    {productMixData.length > 0 ? (
+                      <ChartContainer config={productMixConfig} className="h-full w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={productMixData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="value"
+                            >
+                              {productMixData.map((entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={COLORS[(index + 4) % COLORS.length]}
+                                />
                               ))}
                             </Pie>
                             <ChartTooltip content={<ChartTooltipContent />} />
@@ -1206,84 +1238,6 @@ export default function Index() {
                 </CardContent>
               </Card>
             )}
-
-            {hasAccess('dash_block_history') && (
-              <Card className="bg-glass border-none w-full mt-4">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Histórico de Vendas (Receita)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px] w-full mt-4">
-                    {historyData.length > 0 ? (
-                      <ChartContainer
-                        config={{
-                          services: { label: 'Serviços & Pacotes', color: 'hsl(var(--primary))' },
-                          products: { label: 'Produtos', color: '#10b981' },
-                        }}
-                      >
-                        <BarChart
-                          data={historyData}
-                          margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
-                          onClick={(e) => {
-                            if (e && e.activePayload && e.activePayload.length > 0) {
-                              setHistoryModalDate(e.activePayload[0].payload.fullDate)
-                            }
-                          }}
-                          className="cursor-pointer"
-                        >
-                          <defs>
-                            <linearGradient id="fillServices" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="var(--color-services)" stopOpacity={1} />
-                              <stop
-                                offset="100%"
-                                stopColor="var(--color-services)"
-                                stopOpacity={0.6}
-                              />
-                            </linearGradient>
-                            <linearGradient id="fillProducts" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="var(--color-products)" stopOpacity={1} />
-                              <stop
-                                offset="100%"
-                                stopColor="var(--color-products)"
-                                stopOpacity={0.6}
-                              />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                          <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                          <YAxis
-                            tickLine={false}
-                            axisLine={false}
-                            width={50}
-                            tickFormatter={(val) => `R$ ${val}`}
-                          />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                          <Legend verticalAlign="top" height={36} />
-                          <Bar
-                            dataKey="services"
-                            stackId="a"
-                            fill="url(#fillServices)"
-                            radius={[0, 0, 4, 4]}
-                          />
-                          <Bar
-                            dataKey="products"
-                            stackId="a"
-                            fill="url(#fillProducts)"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ChartContainer>
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                        Sem dados para o período.
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {hasAccess('dash_block_forecast') && (
@@ -1423,6 +1377,10 @@ export default function Index() {
           effectiveBarberFilter={effectiveBarberFilter}
           paymentMethods={paymentMethods}
           checkouts={checkouts}
+          monthlyBillingData={monthlyBillingData}
+          historyData={historyData}
+          setHistoryModalDate={setHistoryModalDate}
+          hasAccess={hasAccess}
         />
       )}
       {activeTab === 'packages' && <PackagesView packages={filteredPackages} />}

@@ -205,7 +205,9 @@ export default function ClienteDetail() {
         id: a.id,
         type: 'service',
         date: new Date(a.date),
-        title: `${a.expand?.service_id?.name || 'Serviço'} (${a.expand?.barber_id?.name || 'Sem profissional'})`,
+        title: a.expand?.service_id?.name || 'Serviço',
+        barberName: a.expand?.barber_id?.name || 'Sem profissional',
+        barberColor: a.expand?.barber_id?.color || 'hsl(var(--primary))',
         val: a.price || a.expand?.service_id?.price,
       }),
     )
@@ -213,8 +215,10 @@ export default function ClienteDetail() {
       list.push({
         id: p.id,
         type: 'product',
-        date: new Date(p.date),
-        title: `${p.expand?.product_id?.name || 'Produto'} (${p.expand?.barber_id?.name || 'Sem profissional'})`,
+        date: new Date(p.date || p.created),
+        title: p.expand?.product_id?.name || 'Produto',
+        barberName: p.expand?.barber_id?.name || 'Sem profissional',
+        barberColor: p.expand?.barber_id?.color || 'hsl(var(--primary))',
         val: p.price_at_sale,
       }),
     )
@@ -224,6 +228,8 @@ export default function ClienteDetail() {
         type: 'package',
         date: new Date(p.created),
         title: p.expand?.package_id?.name || 'Pacote',
+        barberName: p.expand?.barber_id?.name || 'Sem profissional',
+        barberColor: p.expand?.barber_id?.color || 'hsl(var(--primary))',
         val: p.expand?.package_id?.price,
       }),
     )
@@ -353,8 +359,19 @@ export default function ClienteDetail() {
                       {act.type === 'product' && <ShoppingBag className="size-5 text-green-500" />}
                       {act.type === 'package' && <Package className="size-5 text-purple-500" />}
                       <div>
-                        <p className="font-medium">{act.title}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{act.title}</p>
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor: act.barberColor,
+                              color: getContrastColor(act.barberColor),
+                            }}
+                          >
+                            {act.barberName}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {format(act.date, 'dd/MM/yyyy HH:mm')}
                         </p>
                       </div>

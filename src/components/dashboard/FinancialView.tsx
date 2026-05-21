@@ -1,7 +1,18 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Bar,
+} from 'recharts'
 import { ArrowDownCircle, ArrowUpCircle, DollarSign, Wallet } from 'lucide-react'
 export function FinancialView({
   completedPeriod,
@@ -12,6 +23,9 @@ export function FinancialView({
   effectiveBarberFilter,
   paymentMethods = [],
   checkouts = [],
+  monthlyBillingData = [],
+  historyData = [],
+  onHistoryDateSelect,
 }: any) {
   const serviceRevenue = completedPeriod.reduce(
     (acc: number, curr: any) =>
@@ -289,6 +303,113 @@ export function FinancialView({
                 <span>Produtos: {productPct}%</span>
                 <span>Pacotes: {packagePct}%</span>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <Card className="bg-glass border-none w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Evolução do Faturamento (Últimos 12 Meses)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px] w-full mt-4">
+              <ChartContainer
+                config={{ value: { label: 'Faturamento', color: 'hsl(var(--primary))' } }}
+                className="h-full w-full"
+              >
+                <BarChart
+                  data={monthlyBillingData}
+                  margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(val) => `R$ ${val}`}
+                    width={60}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-glass border-none w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Histórico de Vendas (Receita)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full mt-4">
+              {historyData.length > 0 ? (
+                <ChartContainer
+                  config={{
+                    services: { label: 'Serviços & Pacotes', color: 'hsl(var(--primary))' },
+                    products: { label: 'Produtos', color: '#10b981' },
+                  }}
+                >
+                  <BarChart
+                    data={historyData}
+                    margin={{ left: 12, right: 12, top: 12, bottom: 12 }}
+                    onClick={(e) => {
+                      if (
+                        e &&
+                        e.activePayload &&
+                        e.activePayload.length > 0 &&
+                        onHistoryDateSelect
+                      ) {
+                        onHistoryDateSelect(e.activePayload[0].payload.fullDate)
+                      }
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <defs>
+                      <linearGradient id="fillServices" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-services)" stopOpacity={1} />
+                        <stop offset="100%" stopColor="var(--color-services)" stopOpacity={0.6} />
+                      </linearGradient>
+                      <linearGradient id="fillProducts" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-products)" stopOpacity={1} />
+                        <stop offset="100%" stopColor="var(--color-products)" stopOpacity={0.6} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      width={50}
+                      tickFormatter={(val) => `R$ ${val}`}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Legend verticalAlign="top" height={36} />
+                    <Bar
+                      dataKey="services"
+                      stackId="a"
+                      fill="url(#fillServices)"
+                      radius={[0, 0, 4, 4]}
+                    />
+                    <Bar
+                      dataKey="products"
+                      stackId="a"
+                      fill="url(#fillProducts)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Sem dados para o período.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
