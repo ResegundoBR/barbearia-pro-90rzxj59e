@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Scissors, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { cn } from '@/lib/utils'
 import {
   Table,
   TableBody,
@@ -156,83 +158,114 @@ export function ProductsTab() {
                 </TableCell>
               </TableRow>
             ) : (
-              products.map((p) => (
-                <TableRow key={p.id} className={!p.is_active ? 'opacity-50' : ''}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {p.name}
-                      {!p.is_active && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          Inativo
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{p.expand?.category_id?.name || p.category || '-'}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(p.price)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(p.cost_price)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="font-medium">{p.stock_quantity || 0}</span>
-                      {p.stock_quantity <= 0 ? (
-                        <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">
-                          Zerado
-                        </Badge>
-                      ) : p.stock_quantity <= p.min_stock ? (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] px-1 py-0 h-4 text-amber-600 border-amber-600 bg-amber-50"
+              products.map((p) => {
+                const isZeroStock = p.stock_quantity <= 0
+                const isLowStock =
+                  !isZeroStock &&
+                  p.stock_quantity <= Math.max(p.min_stock || 0, p.reorder_point || 0)
+
+                return (
+                  <TableRow
+                    key={p.id}
+                    className={cn(
+                      !p.is_active ? 'opacity-50 grayscale-[50%]' : '',
+                      isZeroStock
+                        ? 'bg-red-50/50 hover:bg-red-50/80 dark:bg-red-950/20 dark:hover:bg-red-950/30'
+                        : '',
+                      isLowStock
+                        ? 'bg-amber-50/50 hover:bg-amber-50/80 dark:bg-amber-950/20 dark:hover:bg-amber-950/30'
+                        : '',
+                    )}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {p.name}
+                        {!p.is_active && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            Inativo
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{p.expand?.category_id?.name || p.category || '-'}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(p.price)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(p.cost_price)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <span
+                          className={cn(
+                            'font-medium',
+                            isZeroStock
+                              ? 'text-red-600 font-bold'
+                              : isLowStock
+                                ? 'text-amber-600 font-bold'
+                                : '',
+                          )}
                         >
-                          Baixo
-                        </Badge>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleToggleActive(p)}
-                      title={p.is_active ? 'Desativar' : 'Ativar'}
-                    >
-                      {p.is_active ? (
-                        <EyeOff className="w-4 h-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                      onClick={() => {
-                        setConsumeProduct(p)
-                        setConsumeForm({ quantity: 1, barber_id: '', description: '' })
-                        setConsumeOpen(true)
-                      }}
-                      title="Registrar Consumo Profissional"
-                    >
-                      <Scissors className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(p)}
-                      title="Editar Produto"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(p.id)}
-                      title="Excluir Produto"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+                          {p.stock_quantity || 0}
+                        </span>
+                        {isZeroStock ? (
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">
+                            Zerado
+                          </Badge>
+                        ) : isLowStock ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1 py-0 h-4 text-amber-600 border-amber-600 bg-amber-50"
+                          >
+                            Baixo
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <div className="flex justify-end items-center gap-3">
+                        <div
+                          className="flex items-center justify-center mr-2"
+                          title={p.is_active ? 'Desativar Produto' : 'Ativar Produto'}
+                        >
+                          <Switch
+                            checked={p.is_active}
+                            onCheckedChange={() => handleToggleActive(p)}
+                            className="data-[state=checked]:bg-emerald-500"
+                          />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8"
+                          onClick={() => {
+                            setConsumeProduct(p)
+                            setConsumeForm({ quantity: 1, barber_id: '', description: '' })
+                            setConsumeOpen(true)
+                          }}
+                          title="Registrar Consumo Profissional"
+                        >
+                          <Scissors className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleEdit(p)}
+                          title="Editar Produto"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleDelete(p.id)}
+                          title="Excluir Produto"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>

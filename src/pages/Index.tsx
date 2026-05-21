@@ -22,7 +22,7 @@ import {
   getProductPurchases,
   getPaymentMethods,
 } from '@/services/api'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   format,
   startOfWeek,
@@ -81,7 +81,12 @@ export default function Index() {
   const { user } = useAuth()
   const { hasAccess } = usePermissions()
   const isAdmin =
-    user?.access_level === 'Admin' || user?.email === 'reginaldo.segundo@planagroup.com.br'
+    user?.access_level === 'Admin' ||
+    user?.access_level === 'Socio' ||
+    user?.email === 'reginaldo.segundo@planagroup.com.br' ||
+    user?.email === 'alissonmayer7@gmail.com'
+
+  const canViewAllClients = isAdmin
 
   const [isLoading, setIsLoading] = useState(true)
   const [appointments, setAppointments] = useState<any[]>([])
@@ -383,6 +388,72 @@ export default function Index() {
         return dA.getTime() - dB.getTime()
       })
   }, [clients, effectiveBarberFilter])
+
+  const birthdayDashboardData = useMemo(() => {
+    const today = startOfDay(new Date())
+    const tomorrowDate = addDays(today, 1)
+    const nextWeekStart = addDays(today, 2)
+    const nextWeekEnd = addDays(today, 8)
+
+    const filterClientByBarber = (c: any) => {
+      if (canViewAllClients) return true
+      return c.preferred_barber_id === loggedInBarber?.id || c.created_by_id === loggedInBarber?.id
+    }
+
+    const bdayToday: any[] = []
+    const bdayTomorrow: any[] = []
+    const bdayNextWeek: any[] = []
+
+    clients.forEach((c) => {
+      if (!c.birthday) return
+      if (!filterClientByBarber(c)) return
+
+      const b = new Date(c.birthday)
+      if (isNaN(b.getTime())) return
+
+      const bMonth = b.getMonth()
+      const bDate = b.getDate()
+
+      if (bDate === today.getDate() && bMonth === today.getMonth()) {
+        bdayToday.push(c)
+      } else if (bDate === tomorrowDate.getDate() && bMonth === tomorrowDate.getMonth()) {
+        bdayTomorrow.push(c)
+      } else {
+        const bThisYear = new Date(today.getFullYear(), bMonth, bDate)
+        const bNextYear = new Date(today.getFullYear() + 1, bMonth, bDate)
+        if (
+          (bThisYear >= nextWeekStart && bThisYear <= nextWeekEnd) ||
+          (bNextYear >= nextWeekStart && bNextYear <= nextWeekEnd)
+        ) {
+          bdayNextWeek.push(c)
+        }
+      }
+    })
+
+    const sortByBday = (arr: any[]) => {
+      return arr.sort((a, b) => {
+        const dA = new Date(
+          today.getFullYear(),
+          new Date(a.birthday).getMonth(),
+          new Date(a.birthday).getDate(),
+        )
+        const dB = new Date(
+          today.getFullYear(),
+          new Date(b.birthday).getMonth(),
+          new Date(b.birthday).getDate(),
+        )
+        if (dA < today) dA.setFullYear(dA.getFullYear() + 1)
+        if (dB < today) dB.setFullYear(dB.getFullYear() + 1)
+        return dA.getTime() - dB.getTime()
+      })
+    }
+
+    return {
+      today: sortByBday(bdayToday),
+      tomorrow: sortByBday(bdayTomorrow),
+      nextWeek: sortByBday(bdayNextWeek),
+    }
+  }, [clients, canViewAllClients, loggedInBarber?.id])
 
   const peakData = useMemo(() => {
     const hours = Array.from({ length: 13 }, (_, i) => i + 8)
@@ -1389,14 +1460,14 @@ export default function Index() {
           )}
 
           {hasAccess('dash_block_alerts') && (
-            <div className="grid grid-cols-1 gap-4 mt-4">
-              <Card className="bg-glass border-none">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <Card className="bg-glass border-none h-full">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
                     Alertas
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <CardContent className="grid grid-cols-1 gap-3">
                   {lowStockProductsList.length > 0 && (
                     <div
                       className="flex items-center justify-between gap-3 bg-orange-500/10 text-orange-500 p-2 rounded-md cursor-pointer"
@@ -1471,6 +1542,110 @@ export default function Index() {
                       <ChevronRight className="size-4 opacity-50" />
                     </div>
                   )}
+                </CardContent>
+              </Card>
+
+              <Card className="bg-glass border-none h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
+                    Aniversariantes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col">
+                  <Tabs defaultValue="hoje" className="flex-1 flex flex-col">
+                    <TabsList className="w-full grid grid-cols-3">
+                      <TabsTrigger value="hoje" className="text-xs">
+                        Hoje ({birthdayDashboardData.today.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="amanha" className="text-xs">
+                        Amanhã ({birthdayDashboardData.tomorrow.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="semana" className="text-xs">
+                        Próx. Semana ({birthdayDashboardData.nextWeek.length})
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="hoje" className="flex-1 mt-4">
+                      {birthdayDashboardData.today.length === 0 ? (
+                        <div className="flex h-full min-h-[100px] items-center justify-center text-sm text-muted-foreground">
+                          Nenhum aniversariante hoje.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {birthdayDashboardData.today.map((c: any) => (
+                            <div
+                              key={c.id}
+                              className="flex items-center gap-3 p-2 rounded-md bg-purple-500/10 text-purple-600"
+                            >
+                              <Gift className="size-4 shrink-0" />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold">
+                                  {c.name} {c.surname}
+                                </span>
+                                <span className="text-xs opacity-80">
+                                  {format(new Date(c.birthday), 'dd/MM/yyyy')}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="amanha" className="flex-1 mt-4">
+                      {birthdayDashboardData.tomorrow.length === 0 ? (
+                        <div className="flex h-full min-h-[100px] items-center justify-center text-sm text-muted-foreground">
+                          Nenhum aniversariante amanhã.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {birthdayDashboardData.tomorrow.map((c: any) => (
+                            <div
+                              key={c.id}
+                              className="flex items-center gap-3 p-2 rounded-md bg-muted text-foreground"
+                            >
+                              <Gift className="size-4 shrink-0 opacity-50" />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {c.name} {c.surname}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(c.birthday), 'dd/MM/yyyy')}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="semana" className="flex-1 mt-4">
+                      {birthdayDashboardData.nextWeek.length === 0 ? (
+                        <div className="flex h-full min-h-[100px] items-center justify-center text-sm text-muted-foreground">
+                          Nenhum aniversariante na próxima semana.
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1 styled-scrollbar">
+                          {birthdayDashboardData.nextWeek.map((c: any) => (
+                            <div
+                              key={c.id}
+                              className="flex items-center gap-3 p-2 rounded-md border text-foreground"
+                            >
+                              <Gift className="size-4 shrink-0 opacity-40 text-muted-foreground" />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {c.name} {c.surname}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(c.birthday), 'dd/MM/yyyy')}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             </div>

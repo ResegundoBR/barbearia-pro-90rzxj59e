@@ -63,6 +63,7 @@ import { useRealtime } from '@/hooks/use-realtime'
 import pb from '@/lib/pocketbase/client'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 import { Calendar } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DateRange } from 'react-day-picker'
@@ -1125,19 +1126,21 @@ export default function Staff() {
             <div id="printable-report" className="h-full">
               <Table wrapperClassName="styled-scrollbar" className="min-w-[1100px]">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="whitespace-nowrap sticky left-0 z-20 bg-background shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] border-r">
+                  <TableRow className="border-b-0 border-transparent hover:bg-transparent">
+                    <TableHead className="whitespace-nowrap sticky left-0 z-20 bg-background shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] px-4">
                       # Checkout
                     </TableHead>
-                    <TableHead className="whitespace-nowrap">Data/Hora</TableHead>
-                    <TableHead className="whitespace-nowrap">Tipo</TableHead>
-                    <TableHead className="whitespace-nowrap min-w-[200px]">Descrição</TableHead>
-                    <TableHead className="whitespace-nowrap">Cliente</TableHead>
-                    <TableHead className="whitespace-nowrap">Vencimento</TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">Valor Bruto</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">Comissão</TableHead>
-                    <TableHead className="text-right whitespace-nowrap sticky right-0 z-20 bg-background shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] border-l">
+                    <TableHead className="whitespace-nowrap px-4">Data/Hora</TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Tipo</TableHead>
+                    <TableHead className="whitespace-nowrap min-w-[200px] px-4">
+                      Descrição
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Cliente</TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Vencimento</TableHead>
+                    <TableHead className="whitespace-nowrap px-4">Status</TableHead>
+                    <TableHead className="text-right whitespace-nowrap px-4">Valor Bruto</TableHead>
+                    <TableHead className="text-right whitespace-nowrap px-4">Comissão</TableHead>
+                    <TableHead className="text-right whitespace-nowrap sticky right-0 z-20 bg-background shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] px-4">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -1145,13 +1148,13 @@ export default function Staff() {
                 <TableBody>
                   {displayedReportItems.map((item, i) => (
                     <TableRow key={`${item.id}-${i}`} className="group/row">
-                      <TableCell className="font-mono text-muted-foreground sticky left-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] border-r transition-colors">
+                      <TableCell className="font-mono text-muted-foreground sticky left-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] transition-colors px-4">
                         {item.checkoutNumber ? `#${item.checkoutNumber}` : '-'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-4">
                         {format(item.date, 'dd/MM/yyyy')} às {item.time}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-4">
                         <Badge
                           variant="outline"
                           className={
@@ -1167,9 +1170,9 @@ export default function Staff() {
                           {item.type}
                         </Badge>
                       </TableCell>
-                      <TableCell>{item.item}</TableCell>
-                      <TableCell>{item.client}</TableCell>
-                      <TableCell>
+                      <TableCell className="px-4">{item.item}</TableCell>
+                      <TableCell className="px-4">{item.client}</TableCell>
+                      <TableCell className="px-4">
                         <span className="font-medium text-muted-foreground">
                           {item.dueDate
                             ? format(item.dueDate, 'dd/MM/yyyy')
@@ -1182,16 +1185,16 @@ export default function Staff() {
                               )}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-4">
                         <Badge
-                          variant="outline"
-                          className={
+                          className={cn(
+                            'font-bold uppercase border-0 text-[11px] tracking-wider',
                             item.status === 'paid'
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                              ? 'bg-emerald-600 hover:bg-emerald-600 text-white'
                               : item.status === 'partial'
-                                ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                : 'bg-slate-100 text-slate-800 border-slate-200'
-                          }
+                                ? 'bg-amber-500 hover:bg-amber-500 text-white'
+                                : 'bg-orange-600 hover:bg-orange-600 text-white',
+                          )}
                         >
                           {item.status === 'paid'
                             ? 'Pago'
@@ -1200,13 +1203,13 @@ export default function Staff() {
                               : 'Pendente'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
+                      <TableCell className="text-right px-4">R$ {item.price.toFixed(2)}</TableCell>
                       <TableCell
-                        className={`text-right font-semibold ${item.commission < 0 ? 'text-red-600' : 'text-emerald-600'}`}
+                        className={`text-right font-semibold px-4 ${item.commission < 0 ? 'text-red-600' : 'text-emerald-600'}`}
                       >
                         R$ {item.commission.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right sticky right-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] border-l transition-colors">
+                      <TableCell className="text-right sticky right-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] transition-colors px-4">
                         <Button
                           variant="ghost"
                           size="icon"

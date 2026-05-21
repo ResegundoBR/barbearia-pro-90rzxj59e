@@ -176,7 +176,7 @@ export default function Fornecedores() {
                           className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 ml-2"
                         >
                           <Clock className="w-3 h-3 mr-1" />
-                          Pendente
+                          Compra Pendente
                         </Badge>
                       )}
                     </div>
