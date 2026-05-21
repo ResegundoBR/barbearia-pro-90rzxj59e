@@ -468,8 +468,8 @@ export default function Staff() {
             <style>
               body { font-family: sans-serif; padding: 20px; color: #333; }
               table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f4f4f4; }
+              th, td { border-bottom: 1px solid #ddd; padding: 12px 8px; text-align: left; }
+              th { background-color: #f4f4f4; border-bottom: 2px solid #ddd; }
               .text-right { text-align: right; }
               .font-bold { font-weight: bold; }
               .header { margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
@@ -1137,20 +1137,24 @@ export default function Staff() {
               <Table wrapperClassName="styled-scrollbar" className="min-w-[1100px]">
                 <TableHeader>
                   <TableRow className="border-b-0 border-transparent hover:bg-transparent">
-                    <TableHead className="whitespace-nowrap sticky left-0 z-20 bg-background shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] px-4">
+                    <TableHead className="whitespace-nowrap sticky left-0 z-20 bg-background shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] px-4 py-3">
                       # Checkout
                     </TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Data/Hora</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Tipo</TableHead>
-                    <TableHead className="whitespace-nowrap min-w-[200px] px-4">
+                    <TableHead className="whitespace-nowrap px-4 py-3">Data/Hora</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-3">Tipo</TableHead>
+                    <TableHead className="whitespace-nowrap min-w-[200px] px-4 py-3">
                       Descrição
                     </TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Cliente</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Vencimento</TableHead>
-                    <TableHead className="whitespace-nowrap px-4">Status</TableHead>
-                    <TableHead className="text-right whitespace-nowrap px-4">Valor Bruto</TableHead>
-                    <TableHead className="text-right whitespace-nowrap px-4">Comissão</TableHead>
-                    <TableHead className="text-right whitespace-nowrap sticky right-0 z-20 bg-background shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] px-4">
+                    <TableHead className="whitespace-nowrap px-4 py-3">Cliente</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-3">Vencimento</TableHead>
+                    <TableHead className="whitespace-nowrap px-4 py-3">Status</TableHead>
+                    <TableHead className="text-right whitespace-nowrap px-4 py-3">
+                      Valor Bruto
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap px-4 py-3">
+                      Comissão
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap sticky right-0 z-20 bg-background shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] px-4 py-3">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -1158,13 +1162,13 @@ export default function Staff() {
                 <TableBody>
                   {displayedReportItems.map((item, i) => (
                     <TableRow key={`${item.id}-${i}`} className="group/row">
-                      <TableCell className="font-mono text-muted-foreground sticky left-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] transition-colors px-4">
+                      <TableCell className="font-mono text-muted-foreground sticky left-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] transition-colors px-4 py-3">
                         {item.checkoutNumber ? `#${item.checkoutNumber}` : '-'}
                       </TableCell>
-                      <TableCell className="px-4">
+                      <TableCell className="px-4 py-3">
                         {format(item.date, 'dd/MM/yyyy')} às {item.time}
                       </TableCell>
-                      <TableCell className="px-4">
+                      <TableCell className="px-4 py-3">
                         <Badge
                           variant="outline"
                           className={
@@ -1180,9 +1184,9 @@ export default function Staff() {
                           {item.type}
                         </Badge>
                       </TableCell>
-                      <TableCell className="px-4">{item.item}</TableCell>
-                      <TableCell className="px-4">{item.client}</TableCell>
-                      <TableCell className="px-4">
+                      <TableCell className="px-4 py-3">{item.item}</TableCell>
+                      <TableCell className="px-4 py-3">{item.client}</TableCell>
+                      <TableCell className="px-4 py-3">
                         <span className="font-medium text-muted-foreground">
                           {item.dueDate
                             ? format(item.dueDate, 'dd/MM/yyyy')
@@ -1195,15 +1199,15 @@ export default function Staff() {
                               )}
                         </span>
                       </TableCell>
-                      <TableCell className="px-4">
+                      <TableCell className="px-4 py-3">
                         <Badge
                           className={cn(
                             'font-bold uppercase border-0 text-[11px] tracking-wider shadow-sm',
                             item.status === 'paid'
-                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              ? 'bg-[#10b981] hover:bg-[#059669] text-white'
                               : item.status === 'partial'
-                                ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                                : 'bg-rose-600 hover:bg-rose-700 text-white',
+                                ? 'bg-orange-400 hover:bg-orange-500 text-white'
+                                : 'bg-[#f59e0b] hover:bg-[#d97706] text-white',
                           )}
                         >
                           {item.status === 'paid'
@@ -1213,13 +1217,15 @@ export default function Staff() {
                               : 'Pendente'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right px-4">R$ {item.price.toFixed(2)}</TableCell>
+                      <TableCell className="text-right px-4 py-3">
+                        R$ {item.price.toFixed(2)}
+                      </TableCell>
                       <TableCell
-                        className={`text-right font-semibold px-4 ${item.commission < 0 ? 'text-red-600' : 'text-emerald-600'}`}
+                        className={`text-right font-semibold px-4 py-3 ${item.commission < 0 ? 'text-red-600' : 'text-emerald-600'}`}
                       >
                         R$ {item.commission.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right sticky right-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] transition-colors px-4">
+                      <TableCell className="text-right sticky right-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_12px_-4px_rgba(0,0,0,0.5)] transition-colors px-4 py-3">
                         <Button
                           variant="ghost"
                           size="icon"

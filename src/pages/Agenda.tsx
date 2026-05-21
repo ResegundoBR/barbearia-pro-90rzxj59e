@@ -801,7 +801,11 @@ export default function Agenda() {
                               key={c.id}
                               value={`${c.name} ${c.phone}`}
                               onSelect={() => {
-                                setForm({ ...form, client_id: c.id })
+                                const updates: any = { client_id: c.id }
+                                if (c.preferred_barber_id) {
+                                  updates.barber_id = c.preferred_barber_id
+                                }
+                                setForm({ ...form, ...updates })
                                 setClientSearchOpen(false)
                               }}
                             >
