@@ -1019,7 +1019,9 @@ export default function Staff() {
                         </Badge>
                       ) : (
                         <div className="flex flex-col">
-                          <span className="font-semibold text-foreground">{displayPayDate}</span>
+                          <span className="font-bold text-yellow-500 dark:text-yellow-400">
+                            {displayPayDate}
+                          </span>
                           <span className="text-xs text-muted-foreground">Próx. Acerto</span>
                         </div>
                       )}
@@ -1161,7 +1163,7 @@ export default function Staff() {
                 </TableHeader>
                 <TableBody>
                   {displayedReportItems.map((item, i) => (
-                    <TableRow key={`${item.id}-${i}`} className="group/row">
+                    <TableRow key={`${item.id}-${i}`} className="group/row border-b-0">
                       <TableCell className="font-mono text-muted-foreground sticky left-0 z-10 bg-background group-hover/row:bg-muted/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.5)] transition-colors px-4 py-3">
                         {item.checkoutNumber ? `#${item.checkoutNumber}` : '-'}
                       </TableCell>
@@ -1238,7 +1240,7 @@ export default function Staff() {
                     </TableRow>
                   ))}
                   {displayedReportItems.length === 0 && (
-                    <TableRow>
+                    <TableRow className="border-b-0">
                       <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                         Nenhuma transação encontrada com os filtros selecionados.
                       </TableCell>

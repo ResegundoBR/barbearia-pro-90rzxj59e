@@ -495,7 +495,7 @@ export default function Index() {
 
     return Object.values(counts)
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
+      .slice(0, 10)
   }, [completedPeriod, productPurchasesPeriod, packagesPeriod])
 
   const historyData = useMemo(() => {
@@ -980,7 +980,7 @@ export default function Index() {
               <Card className="bg-glass border-none">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Itens Mais Vendidos (Top 5)
+                    Itens Mais Vendidos (Top 10)
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-4">
@@ -1676,7 +1676,7 @@ export default function Index() {
           <ScrollArea className="flex-1 w-full mt-4">
             <div className="overflow-x-auto">
               <Table className="min-w-[500px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                   <TableRow>
                     <TableHead>Produto</TableHead>
                     <TableHead className="text-right">Estoque Atual</TableHead>
@@ -1717,7 +1717,7 @@ export default function Index() {
           <ScrollArea className="flex-1 w-full mt-4">
             <div className="overflow-x-auto">
               <Table className="min-w-[500px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                   <TableRow>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Pacote</TableHead>
@@ -1760,7 +1760,7 @@ export default function Index() {
           <ScrollArea className="flex-1 w-full mt-4">
             <div className="overflow-x-auto">
               <Table className="min-w-[500px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Cliente</TableHead>
@@ -1802,7 +1802,7 @@ export default function Index() {
           <ScrollArea className="flex-1 w-full mt-4">
             <div className="overflow-x-auto">
               <Table className="min-w-[600px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                   <TableRow>
                     <TableHead>Horário</TableHead>
                     <TableHead>Cliente</TableHead>
@@ -1859,7 +1859,7 @@ export default function Index() {
             <div className="overflow-x-auto">
               {dashboardModal === 'revenue' && (
                 <Table className="min-w-[600px]">
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                     <TableRow>
                       <TableHead>Data e Hora</TableHead>
                       <TableHead>Cliente</TableHead>
@@ -1890,7 +1890,7 @@ export default function Index() {
               )}
               {dashboardModal === 'clients' && (
                 <Table className="min-w-[500px]">
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                     <TableRow>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Profissional(is)</TableHead>
@@ -1917,7 +1917,7 @@ export default function Index() {
               )}
               {dashboardModal === 'new_clients' && (
                 <Table className="min-w-[500px]">
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                     <TableRow>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Data Cadastro</TableHead>
@@ -1965,7 +1965,7 @@ export default function Index() {
           <ScrollArea className="flex-1 w-full mt-4">
             <div className="overflow-x-auto">
               <Table className="min-w-[600px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                   <TableRow>
                     <TableHead>Data/Hora</TableHead>
                     <TableHead>Cliente</TableHead>
@@ -2066,7 +2066,7 @@ export default function Index() {
           <ScrollArea className="flex-1 w-full mt-4">
             <div className="overflow-x-auto">
               <Table className="min-w-[600px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                   <TableRow>
                     <TableHead>Data/Hora</TableHead>
                     <TableHead>Cliente</TableHead>
@@ -2167,7 +2167,7 @@ export default function Index() {
           <ScrollArea className="flex-1 w-full mt-4">
             <div className="overflow-x-auto">
               <Table className="min-w-[600px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                   <TableRow>
                     <TableHead>Data/Hora</TableHead>
                     <TableHead>Cliente</TableHead>
