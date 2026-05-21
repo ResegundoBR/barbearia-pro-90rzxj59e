@@ -245,31 +245,51 @@ export function FinancialView({
           <CardHeader>
             <CardTitle>Métodos de Pagamento</CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="px-2 sm:px-4 pb-4">
             {paymentMethodsDist.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-full w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={paymentMethodsDist}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
+              <div className="flex flex-col w-full">
+                <div className="h-[200px] w-full mt-2">
+                  <ChartContainer config={chartConfig} className="h-full w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart margin={{ top: 10, bottom: 10 }}>
+                        <Pie
+                          data={paymentMethodsDist}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {paymentMethodsDist.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
+                <div className="mt-4 flex flex-col gap-2 px-2">
+                  {paymentMethodsDist.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 text-xs text-muted-foreground"
                     >
-                      {paymentMethodsDist.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span className="truncate" title={item.name}>
+                        {item.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
                 Nenhum dado para o período.
               </div>
             )}

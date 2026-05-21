@@ -872,29 +872,26 @@ export default function Index() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-2 sm:px-4">
-                  <Table className="table-fixed w-full">
+                  <Table className="w-full table-fixed">
                     <TableHeader>
-                      <TableRow className="text-xs">
-                        <TableHead className="w-full h-8 px-2">Item</TableHead>
-                        <TableHead className="w-0 whitespace-nowrap h-8 px-2">Tipo</TableHead>
-                        <TableHead className="w-0 whitespace-nowrap text-center h-8 px-2">
+                      <TableRow className="text-[11px] hover:bg-transparent">
+                        <TableHead className="h-7 px-2">Item</TableHead>
+                        <TableHead className="w-[60px] sm:w-[70px] h-7 px-2">Tipo</TableHead>
+                        <TableHead className="w-[35px] sm:w-[45px] text-center h-7 px-2">
                           Qtd
                         </TableHead>
-                        <TableHead className="w-0 whitespace-nowrap text-right h-8 px-2">
+                        <TableHead className="w-[70px] sm:w-[80px] text-right h-7 px-2">
                           Receita
                         </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {topSellers.map((item, idx) => (
-                        <TableRow key={idx} className="text-xs">
-                          <TableCell
-                            className="font-medium px-2 py-2 truncate max-w-[100px] sm:max-w-[140px]"
-                            title={item.name}
-                          >
+                        <TableRow key={idx} className="text-[11px]">
+                          <TableCell className="font-medium px-2 py-1.5 truncate" title={item.name}>
                             {item.name}
                           </TableCell>
-                          <TableCell className="px-2 py-2 w-0 whitespace-nowrap">
+                          <TableCell className="px-2 py-1.5">
                             <Badge
                               variant="outline"
                               className="text-[9px] px-1 py-0 font-medium whitespace-nowrap"
@@ -902,10 +899,8 @@ export default function Index() {
                               {item.type}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-center px-2 py-2 w-0 whitespace-nowrap">
-                            {item.count}
-                          </TableCell>
-                          <TableCell className="text-right text-emerald-500 font-medium px-2 py-2 w-0 whitespace-nowrap">
+                          <TableCell className="text-center px-2 py-1.5">{item.count}</TableCell>
+                          <TableCell className="text-right text-emerald-500 font-medium px-2 py-1.5 whitespace-nowrap">
                             R$ {item.revenue.toFixed(2)}
                           </TableCell>
                         </TableRow>
@@ -933,41 +928,57 @@ export default function Index() {
                     Mix de Serviços (Receita)
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-[250px] w-full mt-4">
-                    {serviceMixData.length > 0 ? (
-                      <ChartContainer config={mixConfig} className="h-full w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={serviceMixData}
-                              cx="65%"
-                              cy="50%"
-                              innerRadius={45}
-                              outerRadius={65}
-                              paddingAngle={5}
-                              dataKey="value"
-                            >
-                              {serviceMixData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Legend
-                              layout="vertical"
-                              verticalAlign="middle"
-                              align="left"
-                              wrapperStyle={{ fontSize: '11px', paddingRight: '10px' }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </ChartContainer>
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                        Nenhum dado para o período.
+                <CardContent className="px-2 sm:px-4 pb-4">
+                  {serviceMixData.length > 0 ? (
+                    <div className="flex flex-col w-full">
+                      <div className="h-[200px] w-full mt-2">
+                        <ChartContainer config={mixConfig} className="h-full w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart margin={{ top: 10, bottom: 10 }}>
+                              <Pie
+                                data={serviceMixData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={55}
+                                outerRadius={80}
+                                paddingAngle={2}
+                                dataKey="value"
+                                stroke="none"
+                              >
+                                {serviceMixData.map((entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={COLORS[index % COLORS.length]}
+                                  />
+                                ))}
+                              </Pie>
+                              <ChartTooltip content={<ChartTooltipContent />} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </ChartContainer>
                       </div>
-                    )}
-                  </div>
+                      <div className="mt-4 flex flex-col gap-2 px-2">
+                        {serviceMixData.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 text-xs text-muted-foreground"
+                          >
+                            <div
+                              className="w-3 h-3 rounded-full shrink-0"
+                              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                            />
+                            <span className="truncate" title={item.name}>
+                              {item.name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
+                      Nenhum dado para o período.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -979,44 +990,57 @@ export default function Index() {
                     Mix de Produtos (Receita)
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-[250px] w-full mt-4">
-                    {productMixData.length > 0 ? (
-                      <ChartContainer config={productMixConfig} className="h-full w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={productMixData}
-                              cx="65%"
-                              cy="50%"
-                              innerRadius={45}
-                              outerRadius={65}
-                              paddingAngle={5}
-                              dataKey="value"
-                            >
-                              {productMixData.map((entry, index) => (
-                                <Cell
-                                  key={`cell-${index}`}
-                                  fill={COLORS[(index + 4) % COLORS.length]}
-                                />
-                              ))}
-                            </Pie>
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Legend
-                              layout="vertical"
-                              verticalAlign="middle"
-                              align="left"
-                              wrapperStyle={{ fontSize: '11px', paddingRight: '10px' }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </ChartContainer>
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                        Nenhum dado para o período.
+                <CardContent className="px-2 sm:px-4 pb-4">
+                  {productMixData.length > 0 ? (
+                    <div className="flex flex-col w-full">
+                      <div className="h-[200px] w-full mt-2">
+                        <ChartContainer config={productMixConfig} className="h-full w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart margin={{ top: 10, bottom: 10 }}>
+                              <Pie
+                                data={productMixData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={55}
+                                outerRadius={80}
+                                paddingAngle={2}
+                                dataKey="value"
+                                stroke="none"
+                              >
+                                {productMixData.map((entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={COLORS[(index + 4) % COLORS.length]}
+                                  />
+                                ))}
+                              </Pie>
+                              <ChartTooltip content={<ChartTooltipContent />} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </ChartContainer>
                       </div>
-                    )}
-                  </div>
+                      <div className="mt-4 flex flex-col gap-2 px-2">
+                        {productMixData.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 text-xs text-muted-foreground"
+                          >
+                            <div
+                              className="w-3 h-3 rounded-full shrink-0"
+                              style={{ backgroundColor: COLORS[(index + 4) % COLORS.length] }}
+                            />
+                            <span className="truncate" title={item.name}>
+                              {item.name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
+                      Nenhum dado para o período.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
