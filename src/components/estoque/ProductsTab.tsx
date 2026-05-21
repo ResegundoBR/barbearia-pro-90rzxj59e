@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, Scissors } from 'lucide-react'
+import { Plus, Pencil, Trash2, Scissors, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -9,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { getProducts, deleteProduct } from '@/services/products'
+import { getProducts, deleteProduct, updateProduct } from '@/services/products'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ProductFormDialog } from './ProductFormDialog'
 import { useToast } from '@/hooks/use-toast'
@@ -72,6 +73,16 @@ export function ProductsTab() {
       } catch (err: any) {
         toast({ title: 'Erro', description: err.message, variant: 'destructive' })
       }
+    }
+  }
+
+  const handleToggleActive = async (p: any) => {
+    try {
+      await updateProduct(p.id, { is_active: !p.is_active })
+      toast({ title: `Produto ${!p.is_active ? 'ativado' : 'desativado'}` })
+      loadData()
+    } catch (err: any) {
+      toast({ title: 'Erro ao alterar status', description: err.message, variant: 'destructive' })
     }
   }
 
@@ -146,13 +157,50 @@ export function ProductsTab() {
               </TableRow>
             ) : (
               products.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>{p.name}</TableCell>
+                <TableRow key={p.id} className={!p.is_active ? 'opacity-50' : ''}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {p.name}
+                      {!p.is_active && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Inativo
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{p.expand?.category_id?.name || p.category || '-'}</TableCell>
                   <TableCell className="text-right">{formatCurrency(p.price)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(p.cost_price)}</TableCell>
-                  <TableCell className="text-right font-medium">{p.stock_quantity || 0}</TableCell>
                   <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="font-medium">{p.stock_quantity || 0}</span>
+                      {p.stock_quantity <= 0 ? (
+                        <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">
+                          Zerado
+                        </Badge>
+                      ) : p.stock_quantity <= p.min_stock ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1 py-0 h-4 text-amber-600 border-amber-600 bg-amber-50"
+                        >
+                          Baixo
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleToggleActive(p)}
+                      title={p.is_active ? 'Desativar' : 'Ativar'}
+                    >
+                      {p.is_active ? (
+                        <EyeOff className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

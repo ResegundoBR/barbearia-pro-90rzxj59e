@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   PackageSearch,
   ChevronRight,
+  Gift,
 } from 'lucide-react'
 import {
   getAppointments,
@@ -105,9 +106,9 @@ export default function Index() {
     }
   }, [hasAccess, activeTab])
 
-  const [alertModal, setAlertModal] = useState<'risk' | 'packages' | 'stock' | 'tomorrow' | null>(
-    null,
-  )
+  const [alertModal, setAlertModal] = useState<
+    'risk' | 'packages' | 'stock' | 'tomorrow' | 'birthdays' | null
+  >(null)
   const [dashboardModal, setDashboardModal] = useState<
     'revenue' | 'clients' | 'new_clients' | null
   >(null)
@@ -339,6 +340,49 @@ export default function Index() {
   const lowStockProductsList = products.filter(
     (p) => (p.stock_quantity || 0) <= Math.max(p.reorder_point || 0, p.min_stock || 0),
   )
+
+  const birthdayClientsList = useMemo(() => {
+    const todayDate = startOfDay(new Date())
+    const nextWeek = addDays(todayDate, 7)
+
+    return clients
+      .filter((c) => {
+        if (!c.birthday) return false
+        if (
+          effectiveBarberFilter !== 'all' &&
+          c.preferred_barber_id !== effectiveBarberFilter &&
+          c.created_by_id !== effectiveBarberFilter
+        ) {
+          return false
+        }
+
+        const b = new Date(c.birthday)
+        if (isNaN(b.getTime())) return false
+
+        const bThisYear = new Date(todayDate.getFullYear(), b.getMonth(), b.getDate())
+        const bNextYear = new Date(todayDate.getFullYear() + 1, b.getMonth(), b.getDate())
+
+        return (
+          (bThisYear >= todayDate && bThisYear <= nextWeek) ||
+          (bNextYear >= todayDate && bNextYear <= nextWeek)
+        )
+      })
+      .sort((a, b) => {
+        const dA = new Date(
+          todayDate.getFullYear(),
+          new Date(a.birthday).getMonth(),
+          new Date(a.birthday).getDate(),
+        )
+        const dB = new Date(
+          todayDate.getFullYear(),
+          new Date(b.birthday).getMonth(),
+          new Date(b.birthday).getDate(),
+        )
+        if (dA < todayDate) dA.setFullYear(dA.getFullYear() + 1)
+        if (dB < todayDate) dB.setFullYear(dB.getFullYear() + 1)
+        return dA.getTime() - dB.getTime()
+      })
+  }, [clients, effectiveBarberFilter])
 
   const peakData = useMemo(() => {
     const hours = Array.from({ length: 13 }, (_, i) => i + 8)
@@ -1411,6 +1455,22 @@ export default function Index() {
                     </div>
                     <ChevronRight className="size-4 opacity-50" />
                   </div>
+                  {birthdayClientsList.length > 0 && (
+                    <div
+                      className="flex items-center justify-between gap-3 bg-purple-500/10 text-purple-600 p-2 rounded-md cursor-pointer"
+                      onClick={() => setAlertModal('birthdays')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Gift className="size-5 shrink-0" />
+                        <div>
+                          <p className="font-semibold text-sm">
+                            {birthdayClientsList.length} aniversariantes em breve
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="size-4 opacity-50" />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -1510,6 +1570,48 @@ export default function Index() {
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
                         Nenhum pacote com 1 uso restante.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={alertModal === 'birthdays'} onOpenChange={(v) => !v && setAlertModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Aniversariantes - Próximos 7 dias</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 w-full mt-4">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[500px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Contato</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {birthdayClientsList.map((c) => {
+                    const bDate = new Date(c.birthday)
+                    return (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">{format(bDate, 'dd/MM')}</TableCell>
+                        <TableCell>
+                          {c.name} {c.surname}
+                        </TableCell>
+                        <TableCell>{c.whatsapp || c.phone || '-'}</TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {birthdayClientsList.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                        Nenhum aniversariante.
                       </TableCell>
                     </TableRow>
                   )}

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Plus, Building2, ExternalLink } from 'lucide-react'
+import { Plus, Building2, ExternalLink, Clock } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -25,6 +26,7 @@ import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
 import { createCategory } from '@/services/categories'
+import { getInventoryPurchases } from '@/services/inventory_purchases'
 
 const applyCpfCnpjMask = (value: string) => {
   const digits = value.replace(/\D/g, '')
@@ -37,6 +39,7 @@ const applyCpfCnpjMask = (value: string) => {
 export default function Fornecedores() {
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
+  const [purchases, setPurchases] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [newCatName, setNewCatName] = useState('')
@@ -55,12 +58,14 @@ export default function Fornecedores() {
 
   const loadData = async () => {
     try {
-      const [supData, catData] = await Promise.all([
+      const [supData, catData, purData] = await Promise.all([
         pb.collection('suppliers').getFullList({ sort: 'name', expand: 'category_id' }),
         pb.collection('categories').getFullList({ filter: 'type="product"' }),
+        getInventoryPurchases(),
       ])
       setSuppliers(supData)
       setCategories(catData)
+      setPurchases(purData)
     } catch (e) {
       console.error(e)
     } finally {
@@ -74,6 +79,7 @@ export default function Fornecedores() {
 
   useRealtime('suppliers', loadData)
   useRealtime('categories', loadData)
+  useRealtime('inventory_purchases', loadData)
 
   const handleSave = async () => {
     setErrors({})
@@ -162,6 +168,17 @@ export default function Fornecedores() {
                     <div className="flex items-center gap-2">
                       <Building2 className="size-4 text-muted-foreground" />
                       {sup.name}
+                      {purchases.some(
+                        (p) => p.supplier_id === sup.id && p.status === 'pending',
+                      ) && (
+                        <Badge
+                          variant="secondary"
+                          className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 ml-2"
+                        >
+                          <Clock className="w-3 h-3 mr-1" />
+                          Pendente
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>{applyCpfCnpjMask(sup.document)}</TableCell>
