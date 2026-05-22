@@ -75,6 +75,7 @@ import {
   subWeeks,
   addMonths,
   subMonths,
+  isValid,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn, getContrastColor } from '@/lib/utils'
@@ -146,6 +147,8 @@ export default function Agenda() {
       end = endOfWeek(endOfMonth(selectedDate), { weekStartsOn: 0 })
     }
 
+    if (!isValid(start) || !isValid(end)) return
+
     const startStr = format(start, 'yyyy-MM-dd 00:00:00')
     const endStr = format(end, 'yyyy-MM-dd 23:59:59')
 
@@ -211,6 +214,8 @@ export default function Agenda() {
       return toast({ title: 'Selecione um profissional', variant: 'destructive' })
     if (!blockForm.start_date || !blockForm.end_date)
       return toast({ title: 'Selecione as datas', variant: 'destructive' })
+    if (!isValid(blockForm.start_date) || !isValid(blockForm.end_date))
+      return toast({ title: 'Datas inválidas', variant: 'destructive' })
 
     const [sh, sm] = blockForm.start_time.split(':').map(Number)
     const start = new Date(blockForm.start_date)
@@ -275,6 +280,8 @@ export default function Agenda() {
     if (!form.barber_id)
       return toast({ title: 'Selecione um profissional', variant: 'destructive' })
     if (!form.date) return toast({ title: 'Selecione a data', variant: 'destructive' })
+    if (!form.time) return toast({ title: 'Selecione um horário', variant: 'destructive' })
+    if (!isValid(form.date)) return toast({ title: 'Data inválida', variant: 'destructive' })
 
     try {
       const isPkg = form.item_id.startsWith('pkg_')
@@ -326,10 +333,17 @@ export default function Agenda() {
 
   const handleOpenDetail = (apt: any) => {
     setSelectedApt(apt)
+    let parsedDate = new Date()
+    if (apt.date) {
+      const d = new Date(apt.date)
+      if (isValid(d)) {
+        parsedDate = d
+      }
+    }
     setEditForm({
       barber_id: apt.barber_id || '',
       service_id: apt.service_id || '',
-      date: new Date(apt.date),
+      date: parsedDate,
       time: apt.time || '',
       end_time: apt.end_time || '',
       status: apt.status || 'Confirmado',
@@ -341,6 +355,9 @@ export default function Agenda() {
   const handleUpdateBooking = async () => {
     if (!editForm.barber_id || !editForm.service_id || !editForm.date || !editForm.time) {
       return toast({ title: 'Preencha os campos obrigatórios.', variant: 'destructive' })
+    }
+    if (!isValid(editForm.date)) {
+      return toast({ title: 'Data inválida.', variant: 'destructive' })
     }
     try {
       const payload = {
@@ -384,9 +401,10 @@ export default function Agenda() {
   }, [blocks, barberFilter])
 
   const getEventsForDay = (day: Date) => {
-    const dayApts = filteredApts.filter(
-      (a) => a.date && a.date.startsWith(format(day, 'yyyy-MM-dd')),
-    )
+    if (!isValid(day)) return []
+
+    const dayStr = format(day, 'yyyy-MM-dd')
+    const dayApts = filteredApts.filter((a) => a.date && a.date.startsWith(dayStr))
 
     const dStart = new Date(day)
     dStart.setHours(0, 0, 0, 0)
@@ -395,15 +413,17 @@ export default function Agenda() {
 
     const dayBlocks = filteredBlocks
       .filter((b) => {
+        if (!b.start_time || !b.end_time) return false
         const bStart = new Date(b.start_time)
         const bEnd = new Date(b.end_time)
+        if (!isValid(bStart) || !isValid(bEnd)) return false
         return bStart <= dEnd && bEnd >= dStart
       })
       .map((b) => {
         const bStart = new Date(b.start_time)
         const bEnd = new Date(b.end_time)
-        const isSameStartDay = format(bStart, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')
-        const isSameEndDay = format(bEnd, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')
+        const isSameStartDay = isValid(bStart) && format(bStart, 'yyyy-MM-dd') === dayStr
+        const isSameEndDay = isValid(bEnd) && format(bEnd, 'yyyy-MM-dd') === dayStr
 
         return {
           ...b,
@@ -429,7 +449,7 @@ export default function Agenda() {
         let status = apt.status
         if (status === 'Concluído' && apt.date) {
           const aptDateTime = new Date(`${apt.date.split(' ')[0]}T${apt.time || '00:00'}`)
-          if (aptDateTime > new Date()) {
+          if (isValid(aptDateTime) && aptDateTime > new Date()) {
             status = 'Confirmado'
           }
         }
@@ -493,8 +513,11 @@ export default function Agenda() {
     })
 
     return (
-      <div key={day.toISOString()} className="flex-1 border-r min-w-[120px] relative">
-        {view === 'week' && (
+      <div
+        key={isValid(day) ? day.toISOString() : Math.random()}
+        className="flex-1 border-r min-w-[120px] relative"
+      >
+        {view === 'week' && isValid(day) && (
           <div className="h-12 border-b flex flex-col items-center justify-center bg-muted/20 sticky top-0 z-20">
             <span className="text-xs uppercase font-medium">
               {format(day, 'EEE', { locale: ptBR })}
@@ -597,17 +620,19 @@ export default function Agenda() {
         <div className="grid grid-cols-7 flex-1 auto-rows-fr">
           {days.map((day) => {
             const events = getEventsForDay(day)
-            const isToday = isSameDay(day, new Date())
+            const isToday = isValid(day) ? isSameDay(day, new Date()) : false
             return (
               <div
-                key={day.toISOString()}
+                key={isValid(day) ? day.toISOString() : Math.random()}
                 className={cn(
                   'border-b border-r p-1 overflow-hidden hover:bg-muted/10 cursor-pointer flex flex-col',
-                  !isSameMonth(day, selectedDate) && 'opacity-40',
+                  (!isValid(day) || !isSameMonth(day, selectedDate)) && 'opacity-40',
                 )}
                 onClick={() => {
-                  setSelectedDate(day)
-                  setView('day')
+                  if (isValid(day)) {
+                    setSelectedDate(day)
+                    setView('day')
+                  }
                 }}
               >
                 <div className="text-right mb-1">
@@ -619,7 +644,7 @@ export default function Agenda() {
                         : 'text-muted-foreground',
                     )}
                   >
-                    {format(day, 'd')}
+                    {isValid(day) ? format(day, 'd') : ''}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1 flex-1 overflow-hidden">
@@ -629,7 +654,7 @@ export default function Agenda() {
                       const aptDateTime = new Date(
                         `${apt.date.split(' ')[0]}T${apt.time || '00:00'}`,
                       )
-                      if (aptDateTime > new Date()) {
+                      if (isValid(aptDateTime) && aptDateTime > new Date()) {
                         status = 'Confirmado'
                       }
                     }
@@ -744,9 +769,11 @@ export default function Agenda() {
         return getEventsForDay(day).map((e) => ({ ...e, displayDate: day }))
       })
       .sort((a, b) => {
-        const dateA = new Date(`${a.date.split(' ')[0]}T${a.time}:00`)
-        const dateB = new Date(`${b.date.split(' ')[0]}T${b.time}:00`)
-        return dateA.getTime() - dateB.getTime()
+        const dateA = new Date(`${a.date?.split(' ')[0] || ''}T${a.time || '00:00'}:00`)
+        const dateB = new Date(`${b.date?.split(' ')[0] || ''}T${b.time || '00:00'}:00`)
+        const validA = isValid(dateA) ? dateA.getTime() : 0
+        const validB = isValid(dateB) ? dateB.getTime() : 0
+        return validA - validB
       })
 
     return (
@@ -762,7 +789,7 @@ export default function Agenda() {
                 let status = apt.status
                 if (status === 'Concluído' && apt.date) {
                   const aptDateTime = new Date(`${apt.date.split(' ')[0]}T${apt.time || '00:00'}`)
-                  if (aptDateTime > new Date()) {
+                  if (isValid(aptDateTime) && aptDateTime > new Date()) {
                     status = 'Confirmado'
                   }
                 }
@@ -793,7 +820,9 @@ export default function Agenda() {
                     <div className="flex items-center gap-4 pl-3 py-1">
                       <div className="flex flex-col items-center justify-center w-16 h-14 bg-muted/30 rounded-md border shadow-sm">
                         <span className="text-sm font-extrabold text-foreground">
-                          {apt.displayDate ? format(apt.displayDate, 'dd/MM') : ''}
+                          {apt.displayDate && isValid(apt.displayDate)
+                            ? format(apt.displayDate, 'dd/MM')
+                            : ''}
                         </span>
                         <span className="text-xs font-bold text-foreground">{apt.time}</span>
                       </div>
@@ -851,12 +880,13 @@ export default function Agenda() {
     )
   }
 
-  const headerLabel =
-    view === 'day'
+  const headerLabel = isValid(selectedDate)
+    ? view === 'day'
       ? format(selectedDate, "dd 'de' MMMM, yyyy", { locale: ptBR })
       : view === 'week'
         ? `${format(startOfWeek(selectedDate, { weekStartsOn: 0 }), 'dd MMM', { locale: ptBR })} - ${format(endOfWeek(selectedDate, { weekStartsOn: 0 }), 'dd MMM, yyyy', { locale: ptBR })}`
         : format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR })
+    : 'Data Inválida'
 
   return (
     <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-8rem)] flex flex-col space-y-4 max-w-7xl mx-auto animate-fade-in">
@@ -1055,7 +1085,7 @@ export default function Agenda() {
                       )}
                     >
                       <CalendarIcon className="mr-2 size-4" />
-                      {form.date ? (
+                      {form.date && isValid(form.date) ? (
                         format(form.date, 'dd/MM/yyyy', { locale: ptBR })
                       ) : (
                         <span>Selecione</span>
@@ -1189,7 +1219,7 @@ export default function Agenda() {
                       )}
                     >
                       <CalendarIcon className="mr-2 size-4" />
-                      {blockForm.start_date ? (
+                      {blockForm.start_date && isValid(blockForm.start_date) ? (
                         format(blockForm.start_date, 'dd/MM/yyyy', { locale: ptBR })
                       ) : (
                         <span>Selecione</span>
@@ -1239,7 +1269,7 @@ export default function Agenda() {
                       )}
                     >
                       <CalendarIcon className="mr-2 size-4" />
-                      {blockForm.end_date ? (
+                      {blockForm.end_date && isValid(blockForm.end_date) ? (
                         format(blockForm.end_date, 'dd/MM/yyyy', { locale: ptBR })
                       ) : (
                         <span>Selecione</span>
@@ -1336,9 +1366,9 @@ export default function Agenda() {
                     <div>
                       <p className="text-sm text-muted-foreground">Início</p>
                       <p className="font-medium">
-                        {selectedApt.start_time
+                        {selectedApt.start_time && isValid(new Date(selectedApt.start_time))
                           ? format(new Date(selectedApt.start_time), 'dd/MM/yyyy HH:mm')
-                          : ''}
+                          : 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -1349,9 +1379,9 @@ export default function Agenda() {
                     <div>
                       <p className="text-sm text-muted-foreground">Fim</p>
                       <p className="font-medium">
-                        {selectedApt.end_time
+                        {selectedApt.end_time && isValid(new Date(selectedApt.end_time))
                           ? format(new Date(selectedApt.end_time), 'dd/MM/yyyy HH:mm')
-                          : ''}
+                          : 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -1396,8 +1426,10 @@ export default function Agenda() {
                     <div>
                       <p className="text-sm text-muted-foreground">Data e Hora</p>
                       <p className="font-medium">
-                        {selectedApt.date ? format(new Date(selectedApt.date), 'dd/MM/yyyy') : ''} •{' '}
-                        {selectedApt.time} às {selectedApt.end_time || '--:--'}
+                        {selectedApt.date && isValid(new Date(selectedApt.date))
+                          ? format(new Date(selectedApt.date), 'dd/MM/yyyy')
+                          : 'N/A'}{' '}
+                        • {selectedApt.time || '--:--'} às {selectedApt.end_time || '--:--'}
                       </p>
                     </div>
                   </div>
@@ -1475,7 +1507,7 @@ export default function Agenda() {
                             )}
                           >
                             <CalendarIcon className="mr-2 size-4" />
-                            {editForm.date ? (
+                            {editForm.date && isValid(editForm.date) ? (
                               format(editForm.date, 'dd/MM/yyyy', { locale: ptBR })
                             ) : (
                               <span>Selecione</span>
