@@ -36,15 +36,24 @@ let permsPromise: Promise<any> | null = null
 
 export function usePermissions() {
   const { user } = useAuth()
+
+  const isAdmin =
+    user?.access_level === 'Admin' ||
+    user?.email === 'reginaldo.segundo@planagroup.com.br' ||
+    user?.email === 'alissonmayer7@gmail.com'
+
   const [rolePerms, setRolePerms] = useState<any>(cachedPerms || defaultPerms)
   const [loadingPerms, setLoadingPerms] = useState(!cachedPerms)
 
   useEffect(() => {
-    if (cachedPerms) return
+    if (cachedPerms) {
+      setLoadingPerms(false)
+      return
+    }
     if (!permsPromise) {
       permsPromise = pb
         .collection('settings')
-        .getFirstListItem('key="role_permissions"')
+        .getFirstListItem('key="role_permissions"', { requestKey: null })
         .then((r) => {
           cachedPerms = r.value || defaultPerms
           return cachedPerms
@@ -64,11 +73,6 @@ export function usePermissions() {
     rolePerms[user?.access_level || 'Autonomo'] ||
     defaultPerms[user?.access_level as keyof typeof defaultPerms] ||
     []
-
-  const isAdmin =
-    user?.access_level === 'Admin' ||
-    user?.email === 'reginaldo.segundo@planagroup.com.br' ||
-    user?.email === 'alissonmayer7@gmail.com'
 
   const hasAccess = (module: string) => {
     if (isAdmin) return true

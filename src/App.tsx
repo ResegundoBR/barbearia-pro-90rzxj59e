@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import './overrides.css'
@@ -6,36 +6,49 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
-import Login from './pages/Login'
-import RecuperarSenha from './pages/RecuperarSenha'
-import Index from './pages/Index'
-import Agenda from './pages/Agenda'
-import Clientes from './pages/Clientes'
-import ClienteDetail from './pages/ClienteDetail'
-import Estoque from './pages/Estoque'
-import Checkout from './pages/Checkout'
-import Staff from './pages/Staff'
-import Settings from './pages/Settings'
-import UsersPage from './pages/Users'
-import Financeiro from './pages/Financeiro'
-import ProdutosCategorias from './pages/ProdutosCategorias'
-import Fornecedores from './pages/Fornecedores'
-import FornecedorDetail from './pages/FornecedorDetail'
-import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
+
+const Login = lazy(() => import('./pages/Login'))
+const RecuperarSenha = lazy(() => import('./pages/RecuperarSenha'))
+const Index = lazy(() => import('./pages/Index'))
+const Agenda = lazy(() => import('./pages/Agenda'))
+const Clientes = lazy(() => import('./pages/Clientes'))
+const ClienteDetail = lazy(() => import('./pages/ClienteDetail'))
+const Estoque = lazy(() => import('./pages/Estoque'))
+const Checkout = lazy(() => import('./pages/Checkout'))
+const Staff = lazy(() => import('./pages/Staff'))
+const Settings = lazy(() => import('./pages/Settings'))
+const UsersPage = lazy(() => import('./pages/Users'))
+const Financeiro = lazy(() => import('./pages/Financeiro'))
+const ProdutosCategorias = lazy(() => import('./pages/ProdutosCategorias'))
+const Fornecedores = lazy(() => import('./pages/Fornecedores'))
+const FornecedorDetail = lazy(() => import('./pages/FornecedorDetail'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+
+function LoadingFallback() {
+  return (
+    <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
+      <p className="text-gray-600 font-medium">Carregando...</p>
+    </div>
+  )
+}
+
+function PageLoadingFallback() {
+  return (
+    <div className="h-full w-full flex flex-col items-center justify-center min-h-[50vh]">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+    </div>
+  )
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
 
   if (loading) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
-        <p className="text-gray-600 font-medium">Carregando...</p>
-      </div>
-    )
+    return <LoadingFallback />
   }
 
   if (!isAuthenticated) {
@@ -55,12 +68,8 @@ function RouteGuard({ module, children }: { module: string; children: React.Reac
     }
   }, [module])
 
-  if (loadingPerms) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
-      </div>
-    )
+  if (loadingPerms && !isAdmin) {
+    return <PageLoadingFallback />
   }
 
   if (!isAdmin && !hasAccess(module)) {
@@ -72,26 +81,21 @@ function RouteGuard({ module, children }: { module: string; children: React.Reac
     return <Navigate to="/dashboard" replace />
   }
 
-  return <>{children}</>
+  return <Suspense fallback={<PageLoadingFallback />}>{children}</Suspense>
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
 
   if (loading) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
-        <p className="text-gray-600 font-medium">Carregando...</p>
-      </div>
-    )
+    return <LoadingFallback />
   }
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
   }
 
-  return <>{children}</>
+  return <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
 }
 
 const App = () => (
@@ -125,7 +129,14 @@ const App = () => (
               </ProtectedRoute>
             }
           >
-            <Route path="/dashboard" element={<Index />} />
+            <Route
+              path="/dashboard"
+              element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <Index />
+                </Suspense>
+              }
+            />
             <Route
               path="/agenda"
               element={
@@ -224,7 +235,14 @@ const App = () => (
             />
           </Route>
 
-          <Route path="*" element={<NotFound />} />
+          <Route
+            path="*"
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <NotFound />
+              </Suspense>
+            }
+          />
         </Routes>
       </TooltipProvider>
     </BrowserRouter>

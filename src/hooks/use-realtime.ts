@@ -27,10 +27,18 @@ export function useRealtime<TRecord extends RecordModel = RecordModel>(
     let unsubscribeFn: (() => Promise<void>) | undefined
     let cancelled = false
 
+    const throttledCallback = (e: RecordSubscription<TRecord>) => {
+      if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+        window.requestAnimationFrame(() => {
+          if (!cancelled) callbackRef.current(e)
+        })
+      } else {
+        if (!cancelled) callbackRef.current(e)
+      }
+    }
+
     pb.collection<TRecord>(collectionName)
-      .subscribe('*', (e) => {
-        callbackRef.current(e)
-      })
+      .subscribe('*', throttledCallback)
       .then((fn) => {
         if (cancelled) {
           fn().catch(() => {})
@@ -38,7 +46,9 @@ export function useRealtime<TRecord extends RecordModel = RecordModel>(
           unsubscribeFn = fn
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('SSE Subscribe error:', err)
+      })
 
     return () => {
       cancelled = true
