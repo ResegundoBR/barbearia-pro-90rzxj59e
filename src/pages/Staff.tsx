@@ -116,6 +116,7 @@ export default function Staff() {
   const [form, setForm] = useState<any>({
     name: '',
     work_level: 'autonomo',
+    work_regime: 'fixed',
     payment_schedule_config: {
       frequency: 'semanal',
       cycles: [
@@ -499,6 +500,7 @@ export default function Staff() {
     setForm({
       name: '',
       work_level: 'autonomo',
+      work_regime: 'fixed',
       payment_schedule_config: {
         frequency: 'semanal',
         cycles: [
@@ -1322,20 +1324,38 @@ export default function Staff() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Nível de Trabalho</Label>
-              <Select
-                value={form.work_level}
-                onValueChange={(v) => setForm({ ...form, work_level: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="autonomo">Autônomo (Comissionado)</SelectItem>
-                  <SelectItem value="socio">Sócio (100% Repasse)</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nível de Trabalho</Label>
+                <Select
+                  value={form.work_level}
+                  onValueChange={(v) => setForm({ ...form, work_level: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="autonomo">Autônomo (Comissionado)</SelectItem>
+                    <SelectItem value="socio">Sócio (100% Repasse)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Regime (Disponibilidade)</Label>
+                <Select
+                  value={form.work_regime || 'fixed'}
+                  onValueChange={(v) => setForm({ ...form, work_regime: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">Horário Fixo</SelectItem>
+                    <SelectItem value="on_demand">Sob Demanda</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {form.work_level === 'autonomo' && (

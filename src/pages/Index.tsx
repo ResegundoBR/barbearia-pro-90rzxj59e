@@ -679,7 +679,16 @@ export default function Index() {
     checkouts,
   ])
 
-  const totalWorkingMinutesInPeriod = useMemo(() => {
+  const fixedBarbers = useMemo(
+    () => barbers.filter((b) => b.work_regime !== 'on_demand'),
+    [barbers],
+  )
+  const onDemandBarbers = useMemo(
+    () => barbers.filter((b) => b.work_regime === 'on_demand'),
+    [barbers],
+  )
+
+  const baseShopMinutesInPeriod = useMemo(() => {
     if (!periodStart || !periodEnd || businessHours.length === 0) return 0
     let minutes = 0
     let d = new Date(periodStart)
@@ -690,25 +699,92 @@ export default function Index() {
     while (d <= actualEnd) {
       const dayOfWeek = d.getDay().toString()
       const bh = businessHours.find((b) => b.day_of_week === dayOfWeek && b.is_active)
-      if (bh) {
+      if (bh && bh.open_time && bh.close_time) {
         const [oH, oM] = bh.open_time.split(':').map(Number)
         const [cH, cM] = bh.close_time.split(':').map(Number)
-        minutes += cH * 60 + cM - (oH * 60 + oM)
+        minutes += Math.max(0, cH * 60 + cM - (oH * 60 + oM))
       }
       d = addDays(d, 1)
     }
-    const activeBarbersCount = effectiveBarberFilter === 'all' ? barbers.length : 1
-    return minutes * activeBarbersCount
-  }, [periodStart, periodEnd, businessHours, barbers.length, effectiveBarberFilter])
+    return minutes
+  }, [periodStart, periodEnd, businessHours])
 
-  const usedMinutesInPeriod = useMemo(() => {
-    return completedPeriod.reduce((acc, a) => {
-      return acc + (a.expand?.service_id?.duration_minutes || 0)
-    }, 0)
+  const productivityMetrics = useMemo(() => {
+    let fixedProd = 0
+    let onDemandProd = 0
+
+    completedPeriod.forEach((a) => {
+      const dur = a.expand?.service_id?.duration_minutes || 0
+      const b = barbers.find((bar) => bar.id === a.barber_id)
+      if (b?.work_regime === 'on_demand') {
+        onDemandProd += dur
+      } else {
+        fixedProd += dur
+      }
+    })
+
+    let fixedCount = fixedBarbers.length
+    if (effectiveBarberFilter !== 'all') {
+      const b = barbers.find((bar) => bar.id === effectiveBarberFilter)
+      if (b?.work_regime === 'on_demand') {
+        fixedCount = 0
+      } else {
+        fixedCount = 1
+      }
+    }
+
+    const fixedCap = baseShopMinutesInPeriod * fixedCount
+    const onDemandCap = onDemandProd
+
+    const totalCap = fixedCap + onDemandCap
+    const totalProd = fixedProd + onDemandProd
+    const idleTime = Math.max(0, fixedCap - fixedProd)
+    const occRate = totalCap > 0 ? (totalProd / totalCap) * 100 : 0
+
+    return {
+      totalCapacity: totalCap,
+      totalProductive: totalProd,
+      idleTime,
+      occupancyRate: occRate,
+    }
+  }, [
+    completedPeriod,
+    barbers,
+    baseShopMinutesInPeriod,
+    fixedBarbers.length,
+    effectiveBarberFilter,
+  ])
+
+  const occupancyRate = productivityMetrics.occupancyRate
+
+  const heatmapData = useMemo(() => {
+    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+    const hours = Array.from({ length: 13 }, (_, i) => i + 8)
+
+    const grid = days.map((d) => ({
+      day: d,
+      hours: hours.map((h) => ({ hour: h, count: 0 })),
+    }))
+
+    completedPeriod.forEach((a) => {
+      if (!a.date || !a.time) return
+      const d = new Date(a.date).getDay()
+      const h = parseInt(a.time.split(':')[0], 10)
+
+      if (h >= 8 && h <= 20) {
+        grid[d].hours[h - 8].count++
+      }
+    })
+
+    let maxCount = 0
+    grid.forEach((d) =>
+      d.hours.forEach((h) => {
+        if (h.count > maxCount) maxCount = h.count
+      }),
+    )
+
+    return { grid, maxCount, hours }
   }, [completedPeriod])
-
-  const occupancyRate =
-    totalWorkingMinutesInPeriod > 0 ? (usedMinutesInPeriod / totalWorkingMinutesInPeriod) * 100 : 0
 
   const monthlyBillingData = useMemo(() => {
     const monthsData: Record<string, number> = {}
@@ -788,32 +864,19 @@ export default function Index() {
   }, [productMixData])
 
   const getBarberOccupancy = (barberId: string) => {
-    if (!periodStart || !periodEnd || businessHours.length === 0) return 0
-    let minutes = 0
-    let d = new Date(periodStart)
-    const end = new Date(periodEnd)
-    const today = startOfDay(new Date())
-    const actualEnd = end > today ? today : end
-
-    while (d <= actualEnd) {
-      const dayOfWeek = d.getDay().toString()
-      const bh = businessHours.find((b) => b.day_of_week === dayOfWeek && b.is_active)
-      if (bh) {
-        const [oH, oM] = bh.open_time.split(':').map(Number)
-        const [cH, cM] = bh.close_time.split(':').map(Number)
-        minutes += cH * 60 + cM - (oH * 60 + oM)
-      }
-      d = addDays(d, 1)
-    }
-    if (minutes === 0) return 0
-
+    const barber = barbers.find((b) => b.id === barberId)
     const barberUsed = completedPeriod
       .filter((a) => a.barber_id === barberId)
       .reduce((acc, a) => {
         return acc + (a.expand?.service_id?.duration_minutes || 0)
       }, 0)
 
-    return (barberUsed / minutes) * 100
+    if (barber?.work_regime === 'on_demand') {
+      return barberUsed > 0 ? 100 : 0
+    }
+
+    if (baseShopMinutesInPeriod === 0) return 0
+    return (barberUsed / baseShopMinutesInPeriod) * 100
   }
 
   return (
@@ -964,12 +1027,19 @@ export default function Index() {
               <Card className="bg-glass border-none">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4 space-y-0">
                   <CardTitle className="text-xs font-medium text-muted-foreground truncate mr-2">
-                    Taxa Ocupação
+                    Eficiência
                   </CardTitle>
                   <Clock className="size-4 text-indigo-500 shrink-0" />
                 </CardHeader>
                 <CardContent className="px-4 pb-4">
-                  <div className="text-2xl font-bold">{occupancyRate.toFixed(1)}%</div>
+                  <div className="text-2xl font-bold">
+                    {occupancyRate.toFixed(1)}%{' '}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">Ocup.</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {Math.floor(productivityMetrics.idleTime / 60)}h{' '}
+                    {productivityMetrics.idleTime % 60}m ociosos
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -1160,51 +1230,103 @@ export default function Index() {
 
           <div className="grid grid-cols-1 gap-4 mt-4">
             {hasAccess('dash_block_peak') && (
-              <Card className="bg-glass border-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Horários de Pico
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[280px] w-full mt-4 pb-4">
-                    <ChartContainer
-                      config={{ count: { label: 'Agendamentos', color: 'hsl(var(--primary))' } }}
-                      className="h-full w-full"
-                    >
-                      <AreaChart
-                        data={peakData}
-                        margin={{ left: 0, right: 20, top: 20, bottom: 10 }}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="bg-glass border-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Horários de Pico (Volume)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[280px] w-full mt-4 pb-4">
+                      <ChartContainer
+                        config={{ count: { label: 'Agendamentos', color: 'hsl(var(--primary))' } }}
+                        className="h-full w-full"
                       >
-                        <defs>
-                          <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.1} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="hour"
-                          tickLine={false}
-                          axisLine={false}
-                          tickMargin={10}
-                          minTickGap={10}
-                        />
-                        <YAxis tickLine={false} axisLine={false} width={40} tickMargin={5} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Area
-                          type="monotone"
-                          dataKey="count"
-                          stroke="var(--color-count)"
-                          strokeWidth={2}
-                          fillOpacity={1}
-                          fill="url(#fillCount)"
-                        />
-                      </AreaChart>
-                    </ChartContainer>
-                  </div>
-                </CardContent>
-              </Card>
+                        <AreaChart
+                          data={peakData}
+                          margin={{ left: 0, right: 20, top: 20, bottom: 10 }}
+                        >
+                          <defs>
+                            <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.8} />
+                              <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.1} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="hour"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={10}
+                            minTickGap={10}
+                          />
+                          <YAxis tickLine={false} axisLine={false} width={40} tickMargin={5} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Area
+                            type="monotone"
+                            dataKey="count"
+                            stroke="var(--color-count)"
+                            strokeWidth={2}
+                            fillOpacity={1}
+                            fill="url(#fillCount)"
+                          />
+                        </AreaChart>
+                      </ChartContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-glass border-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Mapa de Calor (Ocupação por Dia/Hora)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="w-full mt-4 pb-4 overflow-x-auto">
+                      <div className="min-w-[400px] flex flex-col gap-1">
+                        {heatmapData.grid.map((dayRow, i) => (
+                          <div key={i} className="flex gap-2 items-center">
+                            <div className="text-xs font-medium text-muted-foreground w-8 text-right shrink-0">
+                              {dayRow.day}
+                            </div>
+                            <div className="flex gap-1 flex-1">
+                              {dayRow.hours.map((h, j) => {
+                                const opacity =
+                                  heatmapData.maxCount > 0 ? h.count / heatmapData.maxCount : 0
+                                return (
+                                  <div
+                                    key={j}
+                                    className="w-full h-8 rounded bg-primary transition-opacity"
+                                    style={{
+                                      opacity: opacity === 0 ? 0.05 : Math.max(0.15, opacity),
+                                    }}
+                                    title={`${dayRow.day} às ${h.hour}h: ${h.count} agendamentos`}
+                                  />
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex gap-2 items-center mt-1">
+                          <div className="w-8 shrink-0" />
+                          <div className="flex gap-1 flex-1">
+                            {heatmapData.hours.map((h) => (
+                              <div
+                                key={h}
+                                className="w-full text-center text-[10px] text-muted-foreground"
+                              >
+                                {h}h
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {hasAccess('dash_tab_overview') && (

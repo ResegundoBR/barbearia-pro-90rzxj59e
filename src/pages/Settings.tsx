@@ -126,6 +126,25 @@ export default function Settings() {
 
       const bList = await pb.collection('barbers').getFullList({ sort: 'name' })
       setBarbers(bList)
+
+      const bhList = await pb.collection('business_hours').getFullList({ sort: 'day_of_week' })
+
+      const defaultDays = [
+        { day_of_week: '0', is_active: false, open_time: '09:00', close_time: '18:00' },
+        { day_of_week: '1', is_active: true, open_time: '09:00', close_time: '18:00' },
+        { day_of_week: '2', is_active: true, open_time: '09:00', close_time: '18:00' },
+        { day_of_week: '3', is_active: true, open_time: '09:00', close_time: '18:00' },
+        { day_of_week: '4', is_active: true, open_time: '09:00', close_time: '18:00' },
+        { day_of_week: '5', is_active: true, open_time: '09:00', close_time: '18:00' },
+        { day_of_week: '6', is_active: true, open_time: '09:00', close_time: '18:00' },
+      ]
+
+      const mergedBh = defaultDays.map((def) => {
+        const existing = bhList.find((b) => b.day_of_week === def.day_of_week)
+        return existing || def
+      })
+
+      setBusinessHours(mergedBh)
     } catch (e) {
       console.error(e)
     }
@@ -142,6 +161,29 @@ export default function Settings() {
   const [permForm, setPermForm] = useState<any>({ Admin: ['*'], Socio: [], Autonomo: [] })
 
   const [notifRules, setNotifRules] = useState<any[]>([])
+
+  const [businessHours, setBusinessHours] = useState<any[]>([])
+
+  const handleSaveBusinessHours = async () => {
+    try {
+      for (const bh of businessHours) {
+        if (bh.id) {
+          await pb.collection('business_hours').update(bh.id, bh)
+        } else {
+          await pb.collection('business_hours').create(bh)
+        }
+      }
+      toast({ title: 'Horários atualizados com sucesso!' })
+    } catch (err) {
+      toast({ title: 'Erro ao salvar horários', variant: 'destructive' })
+    }
+  }
+
+  const updateBusinessHour = (index: number, field: string, value: any) => {
+    const newBh = [...businessHours]
+    newBh[index] = { ...newBh[index], [field]: value }
+    setBusinessHours(newBh)
+  }
 
   const loadNotificationRules = async () => {
     try {
@@ -440,11 +482,80 @@ export default function Settings() {
       <Tabs defaultValue="geral" className="w-full">
         <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="geral">Geral (Marca)</TabsTrigger>
+          <TabsTrigger value="business_hours">Horário de Funcionamento</TabsTrigger>
           <TabsTrigger value="permissions">Permissões de Acesso</TabsTrigger>
           <TabsTrigger value="categories">Configurações de Categorias</TabsTrigger>
           <TabsTrigger value="financial">Regras Financeiras</TabsTrigger>
           <TabsTrigger value="notifications">Gerenciamento de Notificações</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="business_hours" className="space-y-4">
+          <Card className="border-border shadow-sm max-w-3xl">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Horário de Funcionamento</CardTitle>
+                <CardDescription>
+                  Defina os dias e horários de funcionamento da barbearia.
+                </CardDescription>
+              </div>
+              <Button onClick={handleSaveBusinessHours}>Salvar Horários</Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {businessHours.map((bh, i) => {
+                  const days = [
+                    'Domingo',
+                    'Segunda',
+                    'Terça',
+                    'Quarta',
+                    'Quinta',
+                    'Sexta',
+                    'Sábado',
+                  ]
+                  const dayName = days[parseInt(bh.day_of_week)]
+                  return (
+                    <div
+                      key={bh.day_of_week}
+                      className="flex items-center justify-between p-3 border rounded-md"
+                    >
+                      <div className="flex items-center gap-4 w-1/3">
+                        <Switch
+                          checked={bh.is_active}
+                          onCheckedChange={(v) => updateBusinessHour(i, 'is_active', v)}
+                        />
+                        <Label className="font-semibold">{dayName}</Label>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-1 justify-end">
+                        {bh.is_active ? (
+                          <>
+                            <Input
+                              type="time"
+                              value={bh.open_time}
+                              onChange={(e) => updateBusinessHour(i, 'open_time', e.target.value)}
+                              className="w-32"
+                            />
+                            <span className="text-muted-foreground">até</span>
+                            <Input
+                              type="time"
+                              value={bh.close_time}
+                              onChange={(e) => updateBusinessHour(i, 'close_time', e.target.value)}
+                              className="w-32"
+                            />
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground text-sm italic mr-12">
+                            Fechado
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="permissions" className="space-y-4">
           <Card className="border-border shadow-sm">
