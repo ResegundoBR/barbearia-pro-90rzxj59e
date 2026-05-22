@@ -51,11 +51,15 @@ import {
   getServices,
   createAppointment,
   getClientPackages,
-  consumePackage,
   createClient,
   updateAppointment,
 } from '@/services/api'
-import { getBarberBlocks, createBarberBlock, deleteBarberBlock } from '@/services/barber_blocks'
+import {
+  getBarberBlocks,
+  createBarberBlock,
+  deleteBarberBlock,
+  updateBarberBlock,
+} from '@/services/barber_blocks'
 import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
@@ -132,6 +136,14 @@ export default function Agenda() {
     time: '',
     end_time: '',
     status: '',
+  })
+  const [editBlockForm, setEditBlockForm] = useState({
+    barber_id: '',
+    start_date: new Date(),
+    start_time: '09:00',
+    end_date: new Date(),
+    end_time: '18:00',
+    reason: '',
   })
 
   const loadData = async () => {
@@ -247,6 +259,44 @@ export default function Agenda() {
     }
   }
 
+  const handleUpdateBlock = async () => {
+    if (!editBlockForm.barber_id)
+      return toast({ title: 'Selecione um profissional', variant: 'destructive' })
+    if (!editBlockForm.start_date || !editBlockForm.end_date)
+      return toast({ title: 'Selecione as datas', variant: 'destructive' })
+    if (!isValid(editBlockForm.start_date) || !isValid(editBlockForm.end_date))
+      return toast({ title: 'Datas inválidas', variant: 'destructive' })
+
+    const [sh, sm] = editBlockForm.start_time.split(':').map(Number)
+    const start = new Date(editBlockForm.start_date)
+    start.setHours(sh, sm, 0, 0)
+
+    const [eh, em] = editBlockForm.end_time.split(':').map(Number)
+    const end = new Date(editBlockForm.end_date)
+    end.setHours(eh, em, 0, 0)
+
+    if (end <= start) {
+      return toast({
+        title: 'Data/Hora final deve ser maior que a inicial',
+        variant: 'destructive',
+      })
+    }
+
+    try {
+      await updateBarberBlock(selectedApt.id, {
+        barber_id: editBlockForm.barber_id,
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        reason: editBlockForm.reason,
+      })
+      toast({ title: 'Bloqueio atualizado com sucesso!' })
+      setDetailOpen(false)
+      loadData()
+    } catch (err) {
+      toast({ title: getErrorMessage(err) || 'Erro ao atualizar bloqueio', variant: 'destructive' })
+    }
+  }
+
   const handleDeleteBlock = async (id: string) => {
     try {
       await deleteBarberBlock(id)
@@ -333,21 +383,34 @@ export default function Agenda() {
 
   const handleOpenDetail = (apt: any) => {
     setSelectedApt(apt)
-    let parsedDate = new Date()
-    if (apt.date) {
-      const d = new Date(apt.date)
-      if (isValid(d)) {
-        parsedDate = d
+    if (apt.isBlock) {
+      const startDate = new Date(apt.start_time)
+      const endDate = new Date(apt.end_time)
+      setEditBlockForm({
+        barber_id: apt.barber_id || '',
+        start_date: isValid(startDate) ? startDate : new Date(),
+        start_time: isValid(startDate) ? format(startDate, 'HH:mm') : '09:00',
+        end_date: isValid(endDate) ? endDate : new Date(),
+        end_time: isValid(endDate) ? format(endDate, 'HH:mm') : '18:00',
+        reason: apt.reason || '',
+      })
+    } else {
+      let parsedDate = new Date()
+      if (apt.date) {
+        const d = new Date(apt.date)
+        if (isValid(d)) {
+          parsedDate = d
+        }
       }
+      setEditForm({
+        barber_id: apt.barber_id || '',
+        service_id: apt.service_id || '',
+        date: parsedDate,
+        time: apt.time || '',
+        end_time: apt.end_time || '',
+        status: apt.status || 'Confirmado',
+      })
     }
-    setEditForm({
-      barber_id: apt.barber_id || '',
-      service_id: apt.service_id || '',
-      date: parsedDate,
-      time: apt.time || '',
-      end_time: apt.end_time || '',
-      status: apt.status || 'Confirmado',
-    })
     setIsEditMode(false)
     setDetailOpen(true)
   }
@@ -610,105 +673,108 @@ export default function Agenda() {
 
     return (
       <div className="flex-1 flex flex-col min-h-0 bg-card rounded-md border overflow-hidden">
-        <div className="grid grid-cols-7 border-b bg-muted/20">
+        <div className="grid grid-cols-7 border-b bg-muted/20 shrink-0">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
             <div key={d} className="p-2 text-center text-xs font-semibold uppercase">
               {d}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 flex-1 auto-rows-fr">
-          {days.map((day) => {
-            const events = getEventsForDay(day)
-            const isToday = isValid(day) ? isSameDay(day, new Date()) : false
-            return (
-              <div
-                key={isValid(day) ? day.toISOString() : Math.random()}
-                className={cn(
-                  'border-b border-r p-1 overflow-hidden hover:bg-muted/10 cursor-pointer flex flex-col',
-                  (!isValid(day) || !isSameMonth(day, selectedDate)) && 'opacity-40',
-                )}
-                onClick={() => {
-                  if (isValid(day)) {
-                    setSelectedDate(day)
-                    setView('day')
-                  }
-                }}
-              >
-                <div className="text-right mb-1">
-                  <span
-                    className={cn(
-                      'inline-flex items-center justify-center text-xs w-6 h-6 rounded-full',
-                      isToday
-                        ? 'bg-primary text-primary-foreground font-bold'
-                        : 'text-muted-foreground',
-                    )}
-                  >
-                    {isValid(day) ? format(day, 'd') : ''}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1 flex-1 overflow-hidden">
-                  {events.slice(0, 4).map((apt) => {
-                    let status = apt.status
-                    if (status === 'Concluído' && apt.date) {
-                      const aptDateTime = new Date(
-                        `${apt.date.split(' ')[0]}T${apt.time || '00:00'}`,
-                      )
-                      if (isValid(aptDateTime) && aptDateTime > new Date()) {
-                        status = 'Confirmado'
-                      }
-                    }
-
-                    const isCompleted = status === 'Concluído'
-                    const isCanceled = status === 'Cancelado'
-                    const isFaltou = status === 'FALTOU'
-                    const isMissed = isFaltou
-                    const isBlock = apt.isBlock
-
-                    const bgColor = isMissed
-                      ? '#000000'
-                      : isBlock
-                        ? '#e5e7eb'
-                        : apt.expand?.barber_id?.color || 'hsl(var(--primary))'
-                    const textColor = isBlock ? '#374151' : getContrastColor(bgColor)
-
-                    return (
-                      <div
-                        key={apt.id}
-                        className={cn(
-                          'text-[8px] truncate px-1 py-0.5 mb-0.5 rounded-sm shadow-sm font-bold border border-black/5 leading-none flex flex-col gap-0.5',
-                          isCompleted ? 'opacity-50' : 'opacity-100',
-                          !isCompleted && isCanceled && 'opacity-50 grayscale',
-                          isBlock && 'border-gray-300',
-                        )}
-                        style={{
-                          backgroundColor: bgColor,
-                          color: textColor,
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleOpenDetail(apt)
-                        }}
-                      >
-                        <span className="truncate">
-                          {isBlock ? apt.reason || 'Bloqueio' : apt.expand?.client_id?.name}
-                        </span>
-                        <span className="truncate text-[7px] font-medium opacity-90">
-                          {apt.time}
-                        </span>
-                      </div>
-                    )
-                  })}
-                  {events.length > 4 && (
-                    <div className="text-[10px] text-muted-foreground font-medium pl-1">
-                      +{events.length - 4} mais
-                    </div>
+        <ScrollArea className="flex-1">
+          <div className="grid grid-cols-7 min-h-full auto-rows-[minmax(120px,1fr)]">
+            {days.map((day) => {
+              const events = getEventsForDay(day)
+              const isToday = isValid(day) ? isSameDay(day, new Date()) : false
+              return (
+                <div
+                  key={isValid(day) ? day.toISOString() : Math.random()}
+                  className={cn(
+                    'border-b border-r p-1 overflow-hidden hover:bg-muted/10 cursor-pointer flex flex-col',
+                    (!isValid(day) || !isSameMonth(day, selectedDate)) && 'opacity-40',
                   )}
+                  onClick={() => {
+                    if (isValid(day)) {
+                      setSelectedDate(day)
+                      setView('day')
+                    }
+                  }}
+                >
+                  <div className="text-right mb-1">
+                    <span
+                      className={cn(
+                        'inline-flex items-center justify-center text-xs w-6 h-6 rounded-full',
+                        isToday
+                          ? 'bg-primary text-primary-foreground font-bold'
+                          : 'text-muted-foreground',
+                      )}
+                    >
+                      {isValid(day) ? format(day, 'd') : ''}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1 overflow-hidden">
+                    {events.slice(0, 4).map((apt) => {
+                      let status = apt.status
+                      if (status === 'Concluído' && apt.date) {
+                        const aptDateTime = new Date(
+                          `${apt.date.split(' ')[0]}T${apt.time || '00:00'}`,
+                        )
+                        if (isValid(aptDateTime) && aptDateTime > new Date()) {
+                          status = 'Confirmado'
+                        }
+                      }
+
+                      const isCompleted = status === 'Concluído'
+                      const isCanceled = status === 'Cancelado'
+                      const isFaltou = status === 'FALTOU'
+                      const isMissed = isFaltou
+                      const isBlock = apt.isBlock
+
+                      const bgColor = isMissed
+                        ? '#000000'
+                        : isBlock
+                          ? '#e5e7eb'
+                          : apt.expand?.barber_id?.color || 'hsl(var(--primary))'
+                      const textColor = isBlock ? '#374151' : getContrastColor(bgColor)
+
+                      return (
+                        <div
+                          key={apt.id}
+                          className={cn(
+                            'text-[8px] truncate px-1 py-0.5 mb-0.5 rounded-sm shadow-sm font-bold border border-black/5 leading-none flex flex-col gap-0.5',
+                            isCompleted ? 'opacity-50' : 'opacity-100',
+                            !isCompleted && isCanceled && 'opacity-50 grayscale',
+                            isBlock && 'border-gray-300',
+                          )}
+                          style={{
+                            backgroundColor: bgColor,
+                            color: textColor,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenDetail(apt)
+                          }}
+                        >
+                          <span className="truncate">
+                            {isBlock ? apt.reason || 'Bloqueio' : apt.expand?.client_id?.name}
+                          </span>
+                          <span className="truncate text-[7px] font-medium opacity-90">
+                            {apt.time}
+                          </span>
+                        </div>
+                      )
+                    })}
+                    {events.length > 4 && (
+                      <div className="text-[10px] text-muted-foreground font-medium pl-1">
+                        +{events.length - 4} mais
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+          <ScrollBar orientation="vertical" />
+        </ScrollArea>
       </div>
     )
   }
@@ -1179,7 +1245,7 @@ export default function Agenda() {
         </DialogContent>
       </Dialog>
 
-      {/* BLOCK TIME DIALOG */}
+      {/* BLOCK TIME DIALOG (Create) */}
       <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1330,12 +1396,14 @@ export default function Agenda() {
             <DialogTitle className="flex items-center justify-between">
               <span>
                 {selectedApt?.isBlock
-                  ? 'Detalhes do Bloqueio'
+                  ? isEditMode
+                    ? 'Editar Bloqueio'
+                    : 'Detalhes do Bloqueio'
                   : isEditMode
                     ? 'Editar Agendamento'
                     : 'Detalhes do Agendamento'}
               </span>
-              {!isEditMode && !selectedApt?.isBlock && (
+              {!isEditMode && (
                 <Button variant="ghost" size="icon" onClick={() => setIsEditMode(true)}>
                   <Edit2 className="size-4" />
                 </Button>
@@ -1349,53 +1417,196 @@ export default function Agenda() {
           {selectedApt && (
             <div className="py-4">
               {selectedApt.isBlock ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                      <Scissors className="size-5 text-primary" />
+                !isEditMode ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 p-2 rounded-full">
+                        <Scissors className="size-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Profissional</p>
+                        <p className="font-medium">{selectedApt.expand?.barber_id?.name}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Profissional</p>
-                      <p className="font-medium">{selectedApt.expand?.barber_id?.name}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 p-2 rounded-full">
+                        <CalendarDays className="size-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Início</p>
+                        <p className="font-medium">
+                          {selectedApt.start_time && isValid(new Date(selectedApt.start_time))
+                            ? format(new Date(selectedApt.start_time), 'dd/MM/yyyy HH:mm')
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 p-2 rounded-full">
+                        <Clock className="size-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Fim</p>
+                        <p className="font-medium">
+                          {selectedApt.end_time && isValid(new Date(selectedApt.end_time))
+                            ? format(new Date(selectedApt.end_time), 'dd/MM/yyyy HH:mm')
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    {selectedApt.reason && (
+                      <div className="bg-muted p-3 rounded-md mt-4 text-sm">
+                        <strong>Motivo:</strong> {selectedApt.reason}
+                      </div>
+                    )}
+                    <div className="pt-4 border-t mt-4 flex justify-between">
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleDeleteBlock(selectedApt.id)}
+                      >
+                        Remover Bloqueio
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                      <CalendarDays className="size-5 text-primary" />
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Profissional</Label>
+                      <Select
+                        value={editBlockForm.barber_id}
+                        onValueChange={(v) => setEditBlockForm({ ...editBlockForm, barber_id: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {visibleBarbers.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>
+                              {b.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Início</p>
-                      <p className="font-medium">
-                        {selectedApt.start_time && isValid(new Date(selectedApt.start_time))
-                          ? format(new Date(selectedApt.start_time), 'dd/MM/yyyy HH:mm')
-                          : 'N/A'}
-                      </p>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2 flex flex-col">
+                        <Label>Data Inicial</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                'w-full justify-start text-left font-normal',
+                                !editBlockForm.start_date && 'text-muted-foreground',
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 size-4" />
+                              {editBlockForm.start_date && isValid(editBlockForm.start_date) ? (
+                                format(editBlockForm.start_date, 'dd/MM/yyyy', { locale: ptBR })
+                              ) : (
+                                <span>Selecione</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" style={{ zIndex: 9999 }}>
+                            <Calendar
+                              mode="single"
+                              selected={editBlockForm.start_date}
+                              onSelect={(d) =>
+                                d && setEditBlockForm({ ...editBlockForm, start_date: d })
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Hora Inicial</Label>
+                        <Select
+                          value={editBlockForm.start_time}
+                          onValueChange={(v) =>
+                            setEditBlockForm({ ...editBlockForm, start_time: v })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[200px]">
+                            {timeSlots.map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {t}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2 flex flex-col">
+                        <Label>Data Final</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                'w-full justify-start text-left font-normal',
+                                !editBlockForm.end_date && 'text-muted-foreground',
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 size-4" />
+                              {editBlockForm.end_date && isValid(editBlockForm.end_date) ? (
+                                format(editBlockForm.end_date, 'dd/MM/yyyy', { locale: ptBR })
+                              ) : (
+                                <span>Selecione</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" style={{ zIndex: 9999 }}>
+                            <Calendar
+                              mode="single"
+                              selected={editBlockForm.end_date}
+                              onSelect={(d) =>
+                                d && setEditBlockForm({ ...editBlockForm, end_date: d })
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Hora Final</Label>
+                        <Select
+                          value={editBlockForm.end_time}
+                          onValueChange={(v) => setEditBlockForm({ ...editBlockForm, end_time: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[200px]">
+                            {timeSlots.map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {t}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Motivo (opcional)</Label>
+                      <Input
+                        placeholder="Ex: Almoço, Médico, Folga..."
+                        value={editBlockForm.reason}
+                        onChange={(e) =>
+                          setEditBlockForm({ ...editBlockForm, reason: e.target.value })
+                        }
+                      />
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                      <Clock className="size-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Fim</p>
-                      <p className="font-medium">
-                        {selectedApt.end_time && isValid(new Date(selectedApt.end_time))
-                          ? format(new Date(selectedApt.end_time), 'dd/MM/yyyy HH:mm')
-                          : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  {selectedApt.reason && (
-                    <div className="bg-muted p-3 rounded-md mt-4 text-sm">
-                      <strong>Motivo:</strong> {selectedApt.reason}
-                    </div>
-                  )}
-                  <div className="pt-4 border-t mt-4 flex justify-between">
-                    <Button variant="destructive" onClick={() => handleDeleteBlock(selectedApt.id)}>
-                      Remover Bloqueio
-                    </Button>
-                  </div>
-                </div>
+                )
               ) : !isEditMode ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
@@ -1592,7 +1803,9 @@ export default function Agenda() {
                 <Button variant="outline" onClick={() => setIsEditMode(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={handleUpdateBooking}>Salvar Alterações</Button>
+                <Button onClick={selectedApt?.isBlock ? handleUpdateBlock : handleUpdateBooking}>
+                  Salvar Alterações
+                </Button>
               </>
             ) : (
               <Button variant="outline" onClick={() => setDetailOpen(false)}>
