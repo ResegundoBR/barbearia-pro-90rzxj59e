@@ -384,8 +384,8 @@ export default function Agenda() {
   const handleOpenDetail = (apt: any) => {
     setSelectedApt(apt)
     if (apt.isBlock) {
-      const startDate = new Date(apt.start_time)
-      const endDate = new Date(apt.end_time)
+      const startDate = new Date(apt.original_start_time || apt.start_time)
+      const endDate = new Date(apt.original_end_time || apt.end_time)
       setEditBlockForm({
         barber_id: apt.barber_id || '',
         start_date: isValid(startDate) ? startDate : new Date(),
@@ -494,6 +494,8 @@ export default function Agenda() {
           date: format(day, 'yyyy-MM-dd 12:00:00'),
           time: isSameStartDay ? format(bStart, 'HH:mm') : '08:00',
           end_time: isSameEndDay ? format(bEnd, 'HH:mm') : '20:00',
+          original_start_time: b.start_time,
+          original_end_time: b.end_time,
           status: 'Bloqueado',
           expand: {
             barber_id: data.barbers.find((barb) => barb.id === b.barber_id),
@@ -1434,9 +1436,15 @@ export default function Agenda() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Início</p>
-                        <p className="font-medium">
-                          {selectedApt.start_time && isValid(new Date(selectedApt.start_time))
-                            ? format(new Date(selectedApt.start_time), 'dd/MM/yyyy HH:mm')
+                        <p className="font-medium text-foreground">
+                          {(selectedApt.original_start_time || selectedApt.start_time) &&
+                          isValid(
+                            new Date(selectedApt.original_start_time || selectedApt.start_time),
+                          )
+                            ? format(
+                                new Date(selectedApt.original_start_time || selectedApt.start_time),
+                                'dd/MM/yyyy HH:mm',
+                              )
                             : 'N/A'}
                         </p>
                       </div>
@@ -1447,9 +1455,13 @@ export default function Agenda() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Fim</p>
-                        <p className="font-medium">
-                          {selectedApt.end_time && isValid(new Date(selectedApt.end_time))
-                            ? format(new Date(selectedApt.end_time), 'dd/MM/yyyy HH:mm')
+                        <p className="font-medium text-foreground">
+                          {(selectedApt.original_end_time || selectedApt.end_time) &&
+                          isValid(new Date(selectedApt.original_end_time || selectedApt.end_time))
+                            ? format(
+                                new Date(selectedApt.original_end_time || selectedApt.end_time),
+                                'dd/MM/yyyy HH:mm',
+                              )
                             : 'N/A'}
                         </p>
                       </div>
