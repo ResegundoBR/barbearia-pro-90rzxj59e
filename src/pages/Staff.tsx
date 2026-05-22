@@ -37,6 +37,7 @@ import {
   CheckCircle2,
   Receipt,
   RefreshCw,
+  Edit,
 } from 'lucide-react'
 import {
   format,
@@ -117,6 +118,9 @@ export default function Staff() {
     name: '',
     work_level: 'autonomo',
     work_regime: 'fixed',
+    commission_type: 'percentage',
+    commission_value: 0,
+    color: '#3b82f6',
     payment_schedule_config: {
       frequency: 'semanal',
       cycles: [
@@ -501,7 +505,30 @@ export default function Staff() {
       name: '',
       work_level: 'autonomo',
       work_regime: 'fixed',
+      commission_type: 'percentage',
+      commission_value: 0,
+      color: '#3b82f6',
       payment_schedule_config: {
+        frequency: 'semanal',
+        cycles: [
+          { workDays: [1, 2, 3], paymentDay: 4 },
+          { workDays: [4, 5, 6], paymentDay: 1 },
+        ],
+      },
+    })
+    setBDialog(true)
+  }
+
+  const editBarber = (b: any) => {
+    setForm({
+      id: b.id,
+      name: b.name || '',
+      work_level: b.work_level || 'autonomo',
+      work_regime: b.work_regime || 'fixed',
+      commission_type: b.commission_type || 'percentage',
+      commission_value: b.commission_value || 0,
+      color: b.color || '#3b82f6',
+      payment_schedule_config: b.payment_schedule_config || {
         frequency: 'semanal',
         cycles: [
           { workDays: [1, 2, 3], paymentDay: 4 },
@@ -816,8 +843,7 @@ export default function Staff() {
         payload.commission_type = 'percentage'
         payload.commission_value = 100
       } else {
-        payload.commission_type = 'percentage'
-        payload.commission_value = 0
+        payload.commission_value = Math.max(0, Number(payload.commission_value))
       }
       if (payload.id) {
         const { id, ...data } = payload
@@ -1046,6 +1072,16 @@ export default function Staff() {
                             title="Pagar Comissões"
                           >
                             <Wallet className="size-4 text-blue-600" />
+                          </Button>
+                        )}
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => editBarber(b)}
+                            title="Editar Profissional"
+                          >
+                            <Edit className="size-4 text-slate-600" />
                           </Button>
                         )}
                       </div>
@@ -1358,9 +1394,57 @@ export default function Staff() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label>Cor de Identificação</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="color"
+                  value={form.color || '#3b82f6'}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  className="w-12 h-10 p-1 cursor-pointer"
+                />
+                <Input
+                  type="text"
+                  value={form.color || '#3b82f6'}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  className="flex-1 font-mono uppercase"
+                  placeholder="#000000"
+                />
+              </div>
+            </div>
+
             {form.work_level === 'autonomo' && (
               <div className="space-y-4 border p-4 rounded-lg bg-muted/20">
-                <div className="flex items-center justify-between">
+                <div className="grid grid-cols-2 gap-4 pb-4 border-b border-border/50">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Tipo de Comissão</Label>
+                    <Select
+                      value={form.commission_type || 'percentage'}
+                      onValueChange={(v) => setForm({ ...form, commission_type: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Porcentagem (%)</SelectItem>
+                        <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Valor Base</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.commission_value ?? ''}
+                      onChange={(e) => setForm({ ...form, commission_value: e.target.value })}
+                      placeholder={form.commission_type === 'percentage' ? '%' : 'R$'}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
                   <Label className="text-base font-semibold">Configuração de Pagamento</Label>
                 </div>
 
