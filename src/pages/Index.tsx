@@ -1702,7 +1702,8 @@ export default function Index() {
                                   {c.name} {c.surname}
                                 </span>
                                 <span className="text-xs opacity-80">
-                                  {format(new Date(c.birthday), 'dd/MM/yyyy')}
+                                  {format(new Date(c.birthday), 'dd/MM/yyyy')} • Prof:{' '}
+                                  {c.expand?.preferred_barber_id?.name || 'Não informado'}
                                 </span>
                               </div>
                             </div>
@@ -1729,7 +1730,8 @@ export default function Index() {
                                   {c.name} {c.surname}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  {format(new Date(c.birthday), 'dd/MM/yyyy')}
+                                  {format(new Date(c.birthday), 'dd/MM/yyyy')} • Prof:{' '}
+                                  {c.expand?.preferred_barber_id?.name || 'Não informado'}
                                 </span>
                               </div>
                             </div>
@@ -1756,7 +1758,8 @@ export default function Index() {
                                   {c.name} {c.surname}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  {format(new Date(c.birthday), 'dd/MM/yyyy')}
+                                  {format(new Date(c.birthday), 'dd/MM/yyyy')} • Prof:{' '}
+                                  {c.expand?.preferred_barber_id?.name || 'Não informado'}
                                 </span>
                               </div>
                             </div>
@@ -1886,6 +1889,7 @@ export default function Index() {
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Cliente</TableHead>
+                    <TableHead>Profissional</TableHead>
                     <TableHead>Contato</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1898,13 +1902,16 @@ export default function Index() {
                         <TableCell>
                           {c.name} {c.surname}
                         </TableCell>
+                        <TableCell>
+                          {c.expand?.preferred_barber_id?.name || 'Não informado'}
+                        </TableCell>
                         <TableCell>{c.whatsapp || c.phone || '-'}</TableCell>
                       </TableRow>
                     )
                   })}
                   {birthdayClientsList.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
                         Nenhum aniversariante.
                       </TableCell>
                     </TableRow>
