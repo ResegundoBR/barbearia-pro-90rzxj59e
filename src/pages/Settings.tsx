@@ -19,8 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Trash2, Edit } from 'lucide-react'
+import { Plus, Trash2, Edit, Download, Upload, Users, Package, Truck } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { ImportDialog } from '@/components/ImportDialog'
+import { TIER_LIMITS } from '@/lib/tiers'
 import {
   Dialog,
   DialogContent,
@@ -163,6 +165,7 @@ export default function Settings() {
   const [notifRules, setNotifRules] = useState<any[]>([])
 
   const [businessHours, setBusinessHours] = useState<any[]>([])
+  const [importType, setImportType] = useState<string | null>(null)
 
   const handleSaveBusinessHours = async () => {
     try {
@@ -470,6 +473,136 @@ export default function Settings() {
     }))
   }
 
+  const handleDownloadTemplate = (type: string) => {
+    let headers = ''
+    if (type === 'clientes') {
+      headers = 'Nome,Sobrenome,Celular,Fone Secundario,Nascimento,Profissional,Localização\nExemplo,Silva,11999999999,,01/01/1990,João,Mora Perto'
+    } else if (type === 'produtos') {
+      headers = 'Nome,Preço,Preço de Custo,Categoria,Estoque\nPomada,35.50,15.00,Cabelo,10'
+    } else if (type === 'fornecedores') {
+      headers = 'Nome,Documento,Telefone,WhatsApp,Endereço,Contato\nFornecedor XYZ,12.345.678/0001-90,1133333333,11999999999,Rua A 123,Carlos'
+    }
+    
+    const blob = new Blob([headers], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `modelo_${type}.csv`
+    link.click()
+  }
+
+  const handleImportData = async (data: any[]) => {
+    if (importType === 'clientes') {
+      try {
+        const u = await pb.collection('users').getOne(user.id, { expand: 'organization_id' })
+        const plan = u.expand?.organization_id?.plan || user.plan || 'Free'
+        const limit = TIER_LIMITS[plan as 'Free'|'Basic'|'Pro'|'Platinum']?.clients
+        if (limit && limit !== Infinity) {
+          const currentClients = await pb.collection('clients').getList(1, 1)
+          if (currentClients.totalItems + data.length > limit) {
+            throw new Error(`Limite do plano (${plan}) excedido. O limite é de ${limit} clientes.`)
+          }
+        }
+      } catch (e: any) {
+        return { success: 0, errors: data.length, errorsList: [e.message || 'Erro ao validar limites do plano.'] }
+      }
+
+      const allBarbers = await pb.collection('barbers').getFullList()
+      let success = 0, errors = 0
+      const errorsList: string[] = []
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i]
+        try {
+          const payload: any = {
+            name: row.Nome?.trim(),
+            surname: row.Sobrenome?.trim(),
+            phone: row.Celular?.replace(/\D/g, ''),
+            phone_secondary: row['Fone Secundario']?.replace(/\D/g, ''),
+          }
+          if (row.Nascimento) {
+            const parts = row.Nascimento.split('/')
+            if (parts.length === 3) payload.birthday = `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00.000Z`
+          }
+          if (row.Localização) {
+            const loc = row.Localização.toLowerCase()
+            if (loc.includes('passagem')) payload.location_type = 'passage'
+            else if (loc.includes('perto')) payload.location_type = 'nearby'
+            else if (loc.includes('mora cidade')) payload.location_type = 'mora_cidade'
+            else if (loc.includes('outra cidade')) payload.location_type = 'other_city'
+          }
+          if (row.Profissional) {
+            const b = allBarbers.find((b: any) => b.name.toLowerCase() === row.Profissional.toLowerCase().trim())
+            if (b) payload.preferred_barber_id = b.id
+          }
+          await pb.collection('clients').create(payload)
+          success++
+        } catch (e: any) {
+          errors++
+          errorsList.push(`Linha ${i+2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
+        }
+      }
+      return { success, errors, errorsList }
+    } else if (importType === 'produtos') {
+      const cats = await pb.collection('categories').getFullList()
+      let success = 0, errors = 0
+      const errorsList: string[] = []
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i]
+        try {
+          let catId = undefined
+          if (row.Categoria) {
+            const cName = row.Categoria.trim()
+            let c = cats.find((c: any) => c.name.toLowerCase() === cName.toLowerCase())
+            if (!c) {
+              c = await pb.collection('categories').create({ name: cName, type: 'product' })
+              cats.push(c)
+            }
+            catId = c.id
+          }
+          const payload = {
+            name: row.Nome?.trim(),
+            price: parseFloat(row['Preço']?.replace(',', '.') || '0'),
+            cost_price: parseFloat(row['Preço de Custo']?.replace(',', '.') || '0'),
+            category_id: catId,
+            stock_quantity: parseInt(row.Estoque || '0', 10),
+            is_active: true
+          }
+          await pb.collection('products').create(payload)
+          success++
+        } catch (e: any) {
+          errors++
+          errorsList.push(`Linha ${i+2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
+        }
+      }
+      return { success, errors, errorsList }
+    } else if (importType === 'fornecedores') {
+      let success = 0, errors = 0
+      const errorsList: string[] = []
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i]
+        try {
+          const payload = {
+            name: row.Nome?.trim(),
+            document: row.Documento?.replace(/[\.\-\/]/g, ''),
+            phone: row.Telefone?.replace(/\D/g, ''),
+            whatsapp: row.WhatsApp?.replace(/\D/g, ''),
+            address: row.Endereço?.trim(),
+            contact_person: row.Contato?.trim()
+          }
+          await pb.collection('suppliers').create(payload)
+          success++
+        } catch (e: any) {
+          errors++
+          errorsList.push(`Linha ${i+2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
+        }
+      }
+      return { success, errors, errorsList }
+    }
+    return { success: 0, errors: 0, errorsList: [] }
+  }
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 animate-fade-in">
       <div>
@@ -487,6 +620,7 @@ export default function Settings() {
           <TabsTrigger value="categories">Configurações de Categorias</TabsTrigger>
           <TabsTrigger value="financial">Regras Financeiras</TabsTrigger>
           <TabsTrigger value="notifications">Gerenciamento de Notificações</TabsTrigger>
+          <TabsTrigger value="imports">Modelos de Importação</TabsTrigger>
         </TabsList>
 
         <TabsContent value="business_hours" className="space-y-4">
@@ -825,6 +959,72 @@ export default function Settings() {
           </Card>
         </TabsContent>
       </Tabs>
+
+        <TabsContent value="imports" className="space-y-4">
+          <Card className="border-border shadow-sm max-w-4xl">
+            <CardHeader>
+              <CardTitle>Central de Importação</CardTitle>
+              <CardDescription>
+                Baixe os modelos e importe seus dados em massa para o sistema.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="border rounded-xl p-4 flex flex-col items-center text-center space-y-4 bg-muted/10">
+                <div className="p-3 bg-primary/10 text-primary rounded-full">
+                  <Users className="size-6" />
+                </div>
+                <h4 className="font-bold">Clientes</h4>
+                <p className="text-sm text-muted-foreground">Importe sua base de clientes com datas de nascimento e preferências.</p>
+                <div className="flex w-full gap-2 mt-auto">
+                  <Button variant="outline" className="flex-1 text-xs" onClick={() => handleDownloadTemplate('clientes')}>
+                    <Download className="size-4 mr-1" /> Modelo
+                  </Button>
+                  <Button className="flex-1 text-xs" onClick={() => setImportType('clientes')}>
+                    <Upload className="size-4 mr-1" /> Importar
+                  </Button>
+                </div>
+              </div>
+              <div className="border rounded-xl p-4 flex flex-col items-center text-center space-y-4 bg-muted/10">
+                <div className="p-3 bg-primary/10 text-primary rounded-full">
+                  <Package className="size-6" />
+                </div>
+                <h4 className="font-bold">Produtos</h4>
+                <p className="text-sm text-muted-foreground">Importe o inventário com preços e crie categorias automaticamente.</p>
+                <div className="flex w-full gap-2 mt-auto">
+                  <Button variant="outline" className="flex-1 text-xs" onClick={() => handleDownloadTemplate('produtos')}>
+                    <Download className="size-4 mr-1" /> Modelo
+                  </Button>
+                  <Button className="flex-1 text-xs" onClick={() => setImportType('produtos')}>
+                    <Upload className="size-4 mr-1" /> Importar
+                  </Button>
+                </div>
+              </div>
+              <div className="border rounded-xl p-4 flex flex-col items-center text-center space-y-4 bg-muted/10">
+                <div className="p-3 bg-primary/10 text-primary rounded-full">
+                  <Truck className="size-6" />
+                </div>
+                <h4 className="font-bold">Fornecedores</h4>
+                <p className="text-sm text-muted-foreground">Importe dados de contato e documentos dos fornecedores.</p>
+                <div className="flex w-full gap-2 mt-auto">
+                  <Button variant="outline" className="flex-1 text-xs" onClick={() => handleDownloadTemplate('fornecedores')}>
+                    <Download className="size-4 mr-1" /> Modelo
+                  </Button>
+                  <Button className="flex-1 text-xs" onClick={() => setImportType('fornecedores')}>
+                    <Upload className="size-4 mr-1" /> Importar
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <ImportDialog
+        open={!!importType}
+        onOpenChange={(v) => { if (!v) setImportType(null) }}
+        title={`Importar ${importType === 'clientes' ? 'Clientes' : importType === 'produtos' ? 'Produtos' : 'Fornecedores'}`}
+        onImport={handleImportData}
+      />
 
       <Dialog open={isNotifOpen} onOpenChange={setIsNotifOpen}>
         <DialogContent>
