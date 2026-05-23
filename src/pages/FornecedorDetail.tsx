@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { phoneMask, cpfCnpjMask } from '@/lib/utils'
 
 export default function FornecedorDetail() {
   const { id } = useParams()
@@ -180,9 +181,9 @@ export default function FornecedorDetail() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">{supplier.name}</h2>
           <p className="text-muted-foreground text-sm">
-            {supplier.document && `Documento: ${supplier.document} | `}
+            {supplier.document && `Documento: ${cpfCnpjMask(supplier.document)} | `}
             Contato: {supplier.contact_person || 'N/A'}{' '}
-            {supplier.whatsapp && `(${supplier.whatsapp})`}
+            {supplier.whatsapp && `(${phoneMask(supplier.whatsapp)})`}
           </p>
         </div>
       </div>
@@ -199,7 +200,9 @@ export default function FornecedorDetail() {
             </div>
             <div>
               <p className="text-sm font-semibold">Telefone</p>
-              <p className="text-sm text-muted-foreground">{supplier.phone || 'Não informado'}</p>
+              <p className="text-sm text-muted-foreground">
+                {phoneMask(supplier.phone) || 'Não informado'}
+              </p>
             </div>
             <div>
               <p className="text-sm font-semibold">Categorias Fornecidas</p>

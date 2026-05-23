@@ -13,15 +13,16 @@ import { Upload, FileSpreadsheet } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 export function parseCSV(str: string) {
-  const firstLine = str.split('\n')[0] || ''
+  const cleanStr = str.replace(/^\uFEFF/, '')
+  const firstLine = cleanStr.split('\n')[0] || ''
   const separator = firstLine.split(';').length > firstLine.split(',').length ? ';' : ','
 
   const result = []
   let row: string[] = []
   let inQuotes = false
   let val = ''
-  for (let i = 0; i < str.length; i++) {
-    const char = str[i]
+  for (let i = 0; i < cleanStr.length; i++) {
+    const char = cleanStr[i]
     if (inQuotes) {
       if (char === '"') {
         if (str[i + 1] === '"') {

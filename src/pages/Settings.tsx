@@ -36,6 +36,7 @@ import { Badge } from '@/components/ui/badge'
 import { CategoriasTab } from '@/pages/produtos-categorias/CategoriasTab'
 import { Switch } from '@/components/ui/switch'
 import { usePermissions } from '@/hooks/use-permissions'
+import { getRowVal, parseImportDate } from '@/lib/utils'
 
 export default function Settings() {
   const { user } = useAuth()
@@ -477,15 +478,15 @@ export default function Settings() {
     let headers = ''
     if (type === 'clientes') {
       headers =
-        'Nome,Sobrenome,Celular,Fone Secundario,Nascimento,Profissional,Localização\nExemplo,Silva,11999999999,,01/01/1990,João,Mora Perto'
+        'Nome;Sobrenome;Celular;Fone Secundario;Nascimento;Profissional;Localização\nExemplo;Silva;11999999999;;01/01/1990;João;Mora Perto'
     } else if (type === 'produtos') {
-      headers = 'Nome,Preço,Preço de Custo,Categoria,Estoque\nPomada,35.50,15.00,Cabelo,10'
+      headers = 'Nome;Preço;Preço de Custo;Categoria;Estoque\nPomada;35,50;15,00;Cabelo;10'
     } else if (type === 'fornecedores') {
       headers =
-        'Nome,Documento,Telefone,WhatsApp,Endereço,Contato\nFornecedor XYZ,12.345.678/0001-90,1133333333,11999999999,Rua A 123,Carlos'
+        'Nome;Documento;Telefone;WhatsApp;Endereço;Contato\nFornecedor XYZ;12.345.678/0001-90;1133333333;11999999999;Rua A 123;Carlos'
     }
 
-    const blob = new Blob([headers], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + headers], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
     link.download = `modelo_${type}.csv`
@@ -520,35 +521,51 @@ export default function Settings() {
       for (let i = 0; i < data.length; i++) {
         const row = data[i]
         try {
+          const name = getRowVal(row, ['nome'])
+          const surname = getRowVal(row, ['sobrenome'])
+          const phone = getRowVal(row, ['celular', 'telefone'])
+          const phoneSec = getRowVal(row, ['fone secundario', 'celular 2', 'telefone 2'])
+          const birth = getRowVal(row, ['nascimento', 'data de nascimento', 'aniversario'])
+          const locVal = getRowVal(row, ['localizacao', 'local', 'localização'])
+          const profVal = getRowVal(row, ['profissional', 'barbeiro', 'atendente'])
+
+          if (!name) throw new Error('Nome é obrigatório')
+
           const payload: any = {
-            name: row.Nome?.trim(),
-            surname: row.Sobrenome?.trim(),
-            phone: row.Celular?.replace(/\D/g, ''),
-            phone_secondary: row['Fone Secundario']?.replace(/\D/g, ''),
+            name: name.trim(),
+            surname: surname.trim(),
+            phone: phone.replace(/\D/g, ''),
+            phone_secondary: phoneSec.replace(/\D/g, ''),
+            organization_id: user?.organization_id || user?.expand?.organization_id?.id,
           }
-          if (row.Nascimento) {
-            const parts = row.Nascimento.split('/')
-            if (parts.length === 3)
-              payload.birthday = `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00.000Z`
+
+          if (birth) {
+            const bDate = parseImportDate(birth)
+            if (bDate) payload.birthday = bDate
           }
-          if (row.Localização) {
-            const loc = row.Localização.toLowerCase()
+
+          if (locVal) {
+            const loc = locVal.toLowerCase()
             if (loc.includes('passagem')) payload.location_type = 'passage'
             else if (loc.includes('perto')) payload.location_type = 'nearby'
             else if (loc.includes('mora cidade')) payload.location_type = 'mora_cidade'
             else if (loc.includes('outra cidade')) payload.location_type = 'other_city'
           }
-          if (row.Profissional) {
+
+          if (profVal) {
             const b = allBarbers.find(
-              (b: any) => b.name.toLowerCase() === row.Profissional.toLowerCase().trim(),
+              (b: any) => b.name.toLowerCase() === profVal.toLowerCase().trim(),
             )
             if (b) payload.preferred_barber_id = b.id
           }
+
           await pb.collection('clients').create(payload)
           success++
         } catch (e: any) {
           errors++
-          errorsList.push(`Linha ${i + 2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
+          errorsList.push(
+            `Linha ${i + 2} (${getRowVal(row, ['nome']) || 'Sem Nome'}): ${e.message}`,
+          )
         }
       }
       return { success, errors, errorsList }
@@ -561,29 +578,46 @@ export default function Settings() {
       for (let i = 0; i < data.length; i++) {
         const row = data[i]
         try {
+          const name = getRowVal(row, ['nome'])
+          const priceStr = getRowVal(row, ['preco', 'valor', 'preço'])
+          const costStr = getRowVal(row, ['preco de custo', 'custo', 'preço de custo'])
+          const catStr = getRowVal(row, ['categoria'])
+          const stockStr = getRowVal(row, ['estoque', 'quantidade'])
+
+          if (!name) throw new Error('Nome é obrigatório')
+
           let catId = undefined
-          if (row.Categoria) {
-            const cName = row.Categoria.trim()
+          if (catStr) {
+            const cName = catStr.trim()
             let c = cats.find((c: any) => c.name.toLowerCase() === cName.toLowerCase())
             if (!c) {
-              c = await pb.collection('categories').create({ name: cName, type: 'product' })
+              c = await pb
+                .collection('categories')
+                .create({
+                  name: cName,
+                  type: 'product',
+                  organization_id: user?.organization_id || user?.expand?.organization_id?.id,
+                })
               cats.push(c)
             }
             catId = c.id
           }
           const payload = {
-            name: row.Nome?.trim(),
-            price: parseFloat(row['Preço']?.replace(',', '.') || '0'),
-            cost_price: parseFloat(row['Preço de Custo']?.replace(',', '.') || '0'),
+            name: name.trim(),
+            price: parseFloat(priceStr.replace(',', '.') || '0'),
+            cost_price: parseFloat(costStr.replace(',', '.') || '0'),
             category_id: catId,
-            stock_quantity: parseInt(row.Estoque || '0', 10),
+            stock_quantity: parseInt(stockStr || '0', 10),
             is_active: true,
+            organization_id: user?.organization_id || user?.expand?.organization_id?.id,
           }
           await pb.collection('products').create(payload)
           success++
         } catch (e: any) {
           errors++
-          errorsList.push(`Linha ${i + 2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
+          errorsList.push(
+            `Linha ${i + 2} (${getRowVal(row, ['nome']) || 'Sem Nome'}): ${e.message}`,
+          )
         }
       }
       return { success, errors, errorsList }
@@ -595,19 +629,32 @@ export default function Settings() {
       for (let i = 0; i < data.length; i++) {
         const row = data[i]
         try {
-          const payload = {
-            name: row.Nome?.trim(),
-            document: row.Documento?.replace(/[.\-/]/g, ''),
-            phone: row.Telefone?.replace(/\D/g, ''),
-            whatsapp: row.WhatsApp?.replace(/\D/g, ''),
-            address: row.Endereço?.trim(),
-            contact_person: row.Contato?.trim(),
+          const name = getRowVal(row, ['nome', 'razao social'])
+          const doc = getRowVal(row, ['documento', 'cpf/cnpj', 'cnpj', 'cpf'])
+          const phone = getRowVal(row, ['telefone', 'fone'])
+          const whatsapp = getRowVal(row, ['whatsapp', 'wpp'])
+          const address = getRowVal(row, ['endereco', 'endereço'])
+          const contact = getRowVal(row, ['contato', 'pessoa de contato'])
+
+          if (!name) throw new Error('Nome é obrigatório')
+
+          const payload: any = {
+            name: name.trim(),
+            document: doc.replace(/\D/g, ''),
+            phone: phone.replace(/\D/g, ''),
+            whatsapp: whatsapp.replace(/\D/g, ''),
+            address: address.trim(),
+            contact_person: contact.trim(),
+            organization_id: user?.organization_id || user?.expand?.organization_id?.id,
           }
+
           await pb.collection('suppliers').create(payload)
           success++
         } catch (e: any) {
           errors++
-          errorsList.push(`Linha ${i + 2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
+          errorsList.push(
+            `Linha ${i + 2} (${getRowVal(row, ['nome']) || 'Sem Nome'}): ${e.message}`,
+          )
         }
       }
       return { success, errors, errorsList }

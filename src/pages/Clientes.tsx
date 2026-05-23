@@ -38,17 +38,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
-import { getContrastColor } from '@/lib/utils'
-
-const applyPhoneMask = (v: string) => {
-  if (!v) return ''
-  let val = v.replace(/\D/g, '')
-  if (val.length > 11) val = val.slice(0, 11)
-  if (val.length > 10) return val.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3')
-  if (val.length > 5) return val.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3')
-  if (val.length > 2) return val.replace(/^(\d{2})(\d{0,5})/, '($1) $2')
-  return val
-}
+import { getContrastColor, phoneMask, getRowVal, parseImportDate } from '@/lib/utils'
 
 const defForm = {
   name: '',
@@ -83,13 +73,13 @@ export default function Clientes() {
     for (let i = 0; i < data.length; i++) {
       const row = data[i]
       try {
-        const name = row['Nome'] || row['nome'] || ''
-        const surname = row['Sobrenome'] || row['sobrenome'] || ''
-        const phoneRaw = row['Celular'] || row['celular'] || ''
-        const phoneSecRaw = row['Fone Secundario'] || row['fone secundario'] || ''
-        const birthRaw = row['Nascimento'] || row['nascimento'] || ''
-        const profRaw = row['Profissional'] || row['profissional'] || ''
-        const locRaw = row['Localização'] || row['localização'] || row['localizacao'] || ''
+        const name = getRowVal(row, ['nome'])
+        const surname = getRowVal(row, ['sobrenome'])
+        const phoneRaw = getRowVal(row, ['celular', 'telefone'])
+        const phoneSecRaw = getRowVal(row, ['fone secundario', 'celular 2', 'telefone 2'])
+        const birthRaw = getRowVal(row, ['nascimento', 'data de nascimento', 'aniversario'])
+        const profRaw = getRowVal(row, ['profissional', 'barbeiro', 'atendente'])
+        const locRaw = getRowVal(row, ['localizacao', 'local', 'localização'])
 
         if (!name) throw new Error('Nome é obrigatório')
 
@@ -98,13 +88,7 @@ export default function Clientes() {
           return d.slice(0, 11)
         }
 
-        let birthday = ''
-        if (birthRaw) {
-          const parts = birthRaw.split('/')
-          if (parts.length === 3) {
-            birthday = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
-          }
-        }
+        let birthday = parseImportDate(birthRaw)
 
         let preferred_barber_id = ''
         if (profRaw) {
@@ -130,8 +114,9 @@ export default function Clientes() {
           phone_secondary: cleanPhone(phoneSecRaw),
           location_type,
           is_active: true,
+          organization_id: user?.organization_id || user?.expand?.organization_id?.id,
         }
-        if (birthday) payload.birthday = birthday + ' 12:00:00.000Z'
+        if (birthday) payload.birthday = birthday
         if (preferred_barber_id) payload.preferred_barber_id = preferred_barber_id
         if (loggedInBarber) payload.created_by_id = loggedInBarber.id
 
@@ -305,7 +290,7 @@ export default function Clientes() {
                       className="min-h-[44px]"
                       value={formData.phone}
                       onChange={(e) =>
-                        setFormData({ ...formData, phone: applyPhoneMask(e.target.value) })
+                        setFormData({ ...formData, phone: phoneMask(e.target.value) })
                       }
                       placeholder="(00) 00000-0000"
                     />
@@ -318,7 +303,7 @@ export default function Clientes() {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          phone_secondary: applyPhoneMask(e.target.value),
+                          phone_secondary: phoneMask(e.target.value),
                         })
                       }
                       placeholder="(00) 00000-0000"
@@ -439,10 +424,10 @@ export default function Clientes() {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <div>{c.phone}</div>
+                          <div>{phoneMask(c.phone)}</div>
                           {c.phone_secondary && (
                             <div className="text-sm text-muted-foreground">
-                              {c.phone_secondary} (Sec)
+                              {phoneMask(c.phone_secondary)} (Sec)
                             </div>
                           )}
                         </div>

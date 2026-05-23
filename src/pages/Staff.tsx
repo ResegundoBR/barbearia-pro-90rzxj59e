@@ -64,7 +64,7 @@ import { useRealtime } from '@/hooks/use-realtime'
 import pb from '@/lib/pocketbase/client'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
+import { cn, phoneMask } from '@/lib/utils'
 import { Calendar } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { DateRange } from 'react-day-picker'
@@ -1021,7 +1021,9 @@ export default function Staff() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {b.expand?.user_id?.whatsapp || (
+                      {b.expand?.user_id?.whatsapp ? (
+                        phoneMask(b.expand.user_id.whatsapp)
+                      ) : (
                         <span className="text-muted-foreground italic">Não informado</span>
                       )}
                     </TableCell>

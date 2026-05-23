@@ -30,6 +30,7 @@ import pb from '@/lib/pocketbase/client'
 import { toast } from 'sonner'
 import { Loader2, Plus, Edit2, Trash2, Mail } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { phoneMask } from '@/lib/utils'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([])
@@ -259,7 +260,9 @@ export default function UsersPage() {
                           {u.whatsapp && (
                             <div className="flex items-center gap-2 text-muted-foreground">
                               <span className="text-xs">WA:</span>
-                              <span className="break-all whitespace-normal">{u.whatsapp}</span>
+                              <span className="break-all whitespace-normal">
+                                {phoneMask(u.whatsapp)}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -351,8 +354,10 @@ export default function UsersPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">WhatsApp</label>
                 <Input
-                  value={formData.whatsapp}
-                  onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                  value={phoneMask(formData.whatsapp)}
+                  onChange={(e) =>
+                    setFormData({ ...formData, whatsapp: phoneMask(e.target.value) })
+                  }
                   placeholder="(00) 00000-0000"
                 />
                 {fieldErrors.whatsapp && (

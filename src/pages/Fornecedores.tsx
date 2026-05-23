@@ -28,16 +28,11 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
 import { createCategory } from '@/services/categories'
 import { getInventoryPurchases } from '@/services/inventory_purchases'
-
-const applyCpfCnpjMask = (value: string) => {
-  const digits = value.replace(/\D/g, '')
-  if (digits.length <= 11) {
-    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-  }
-  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
-}
+import { phoneMask, cpfCnpjMask, getRowVal } from '@/lib/utils'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function Fornecedores() {
+  const { user } = useAuth()
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [purchases, setPurchases] = useState<any[]>([])
@@ -68,13 +63,12 @@ export default function Fornecedores() {
     for (let i = 0; i < data.length; i++) {
       const row = data[i]
       try {
-        const name = row['Nome'] || row['nome'] || ''
-        const docRaw = row['CPF/CNPJ'] || row['cpf/cnpj'] || row['documento'] || ''
-        const address = row['Endereço'] || row['endereço'] || row['endereco'] || ''
-        const contact = row['Pessoa de Contato'] || row['pessoa de contato'] || ''
-        const phoneRaw =
-          row['WhatsApp/Fone'] || row['whatsapp/fone'] || row['telefone'] || row['whatsapp'] || ''
-        const catRaw = row['Categoria'] || row['categoria'] || ''
+        const name = getRowVal(row, ['nome', 'razao social'])
+        const docRaw = getRowVal(row, ['documento', 'cpf/cnpj', 'cnpj', 'cpf'])
+        const address = getRowVal(row, ['endereco', 'endereço'])
+        const contact = getRowVal(row, ['contato', 'pessoa de contato'])
+        const phoneRaw = getRowVal(row, ['telefone', 'fone', 'whatsapp', 'wpp', 'whatsapp/fone'])
+        const catRaw = getRowVal(row, ['categoria'])
 
         if (!name) throw new Error('Nome é obrigatório')
 
@@ -91,6 +85,7 @@ export default function Fornecedores() {
             const newCat = await pb.collection('categories').create({
               name: catName,
               type: 'product',
+              organization_id: user?.organization_id || user?.expand?.organization_id?.id,
             })
             categoriesMap.set(lowerCat, newCat.id)
             category_ids.push(newCat.id)
@@ -105,6 +100,7 @@ export default function Fornecedores() {
           whatsapp: phoneRaw.toString().replace(/\D/g, ''),
           phone: phoneRaw.toString().replace(/\D/g, ''),
           category_id: category_ids,
+          organization_id: user?.organization_id || user?.expand?.organization_id?.id,
         })
 
         success++
@@ -257,12 +253,12 @@ export default function Fornecedores() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>{applyCpfCnpjMask(sup.document)}</TableCell>
+                  <TableCell>{cpfCnpjMask(sup.document)}</TableCell>
                   <TableCell>
                     {sup.contact_person}
                     <br />
                     <span className="text-xs text-muted-foreground">
-                      {sup.whatsapp || sup.phone}
+                      {phoneMask(sup.whatsapp || sup.phone)}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -308,7 +304,7 @@ export default function Fornecedores() {
             <div className="space-y-2">
               <Label>CPF / CNPJ *</Label>
               <Input
-                value={applyCpfCnpjMask(formData.document)}
+                value={cpfCnpjMask(formData.document)}
                 onChange={(e) => setFormData({ ...formData, document: e.target.value })}
                 maxLength={18}
               />
@@ -332,8 +328,10 @@ export default function Fornecedores() {
               <div className="space-y-2">
                 <Label>WhatsApp / Fone</Label>
                 <Input
-                  value={formData.whatsapp}
-                  onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                  value={phoneMask(formData.whatsapp)}
+                  onChange={(e) =>
+                    setFormData({ ...formData, whatsapp: phoneMask(e.target.value) })
+                  }
                 />
               </div>
             </div>
