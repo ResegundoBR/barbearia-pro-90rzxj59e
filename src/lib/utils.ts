@@ -36,11 +36,21 @@ export function getRowVal(row: Record<string, string>, keys: string[]) {
 
 export function parseImportDate(val: string) {
   if (!val) return ''
+  val = val.trim()
   const parts = val.includes('/') ? val.split('/') : val.includes('-') ? val.split('-') : []
   if (parts.length === 3) {
-    let year = parts[2]
+    let year, month, day
+    if (parts[0].length === 4) {
+      year = parts[0]
+      month = parts[1]
+      day = parts[2]
+    } else {
+      day = parts[0]
+      month = parts[1]
+      year = parts[2]
+    }
     if (year.length === 2) year = (parseInt(year) > 50 ? '19' : '20') + year
-    return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}T12:00:00.000Z`
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T12:00:00.000Z`
   }
   const clean = val.replace(/\D/g, '')
   if (clean.length === 8) {
@@ -64,6 +74,7 @@ export function cpfCnpjMask(value: string) {
 }
 
 export function phoneMask(value: string) {
+  if (!value) return ''
   const v = value.replace(/\D/g, '').slice(0, 11)
   if (v.length >= 11) return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`
   if (v.length >= 7) return `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`

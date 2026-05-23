@@ -475,22 +475,21 @@ export default function Settings() {
   }
 
   const handleDownloadTemplate = (type: string) => {
-    let headers = ''
+    let url = ''
     if (type === 'clientes') {
-      headers =
-        'Nome;Sobrenome;Celular;Fone Secundario;Nascimento;Profissional;Localização\nExemplo;Silva;11999999999;;01/01/1990;João;Mora Perto'
+      url =
+        'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy'
     } else if (type === 'produtos') {
-      headers = 'Nome;Preço;Preço de Custo;Categoria;Estoque\nPomada;35,50;15,00;Cabelo;10'
+      url =
+        'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy'
     } else if (type === 'fornecedores') {
-      headers =
-        'Nome;Documento;Telefone;WhatsApp;Endereço;Contato\nFornecedor XYZ;12.345.678/0001-90;1133333333;11999999999;Rua A 123;Carlos'
+      url =
+        'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy'
     }
 
-    const blob = new Blob(['\uFEFF' + headers], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `modelo_${type}.csv`
-    link.click()
+    if (url) {
+      window.open(url, '_blank')
+    }
   }
 
   const handleImportData = async (data: any[]) => {
@@ -591,13 +590,11 @@ export default function Settings() {
             const cName = catStr.trim()
             let c = cats.find((c: any) => c.name.toLowerCase() === cName.toLowerCase())
             if (!c) {
-              c = await pb
-                .collection('categories')
-                .create({
-                  name: cName,
-                  type: 'product',
-                  organization_id: user?.organization_id || user?.expand?.organization_id?.id,
-                })
+              c = await pb.collection('categories').create({
+                name: cName,
+                type: 'product',
+                organization_id: user?.organization_id || user?.expand?.organization_id?.id,
+              })
               cats.push(c)
             }
             catId = c.id
@@ -1038,13 +1035,13 @@ export default function Settings() {
                 <div className="flex w-full gap-2 mt-auto">
                   <Button
                     variant="outline"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-[10px]"
                     onClick={() => handleDownloadTemplate('clientes')}
                   >
-                    <Download className="size-4 mr-1" /> Modelo
+                    <Download className="size-4 mr-1" /> Modelo (Sheets)
                   </Button>
                   <Button className="flex-1 text-xs" onClick={() => setImportType('clientes')}>
-                    <Upload className="size-4 mr-1" /> Importar
+                    <Upload className="size-4 mr-1" /> Importar CSV
                   </Button>
                 </div>
               </div>
@@ -1059,13 +1056,13 @@ export default function Settings() {
                 <div className="flex w-full gap-2 mt-auto">
                   <Button
                     variant="outline"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-[10px]"
                     onClick={() => handleDownloadTemplate('produtos')}
                   >
-                    <Download className="size-4 mr-1" /> Modelo
+                    <Download className="size-4 mr-1" /> Modelo (Sheets)
                   </Button>
                   <Button className="flex-1 text-xs" onClick={() => setImportType('produtos')}>
-                    <Upload className="size-4 mr-1" /> Importar
+                    <Upload className="size-4 mr-1" /> Importar CSV
                   </Button>
                 </div>
               </div>
@@ -1080,13 +1077,13 @@ export default function Settings() {
                 <div className="flex w-full gap-2 mt-auto">
                   <Button
                     variant="outline"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-[10px]"
                     onClick={() => handleDownloadTemplate('fornecedores')}
                   >
-                    <Download className="size-4 mr-1" /> Modelo
+                    <Download className="size-4 mr-1" /> Modelo (Sheets)
                   </Button>
                   <Button className="flex-1 text-xs" onClick={() => setImportType('fornecedores')}>
-                    <Upload className="size-4 mr-1" /> Importar
+                    <Upload className="size-4 mr-1" /> Importar CSV
                   </Button>
                 </div>
               </div>

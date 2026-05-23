@@ -317,8 +317,11 @@ export default function Clientes() {
                     <Input
                       type="date"
                       className="min-h-[44px]"
-                      value={formData.birthday?.split('T')[0] || ''}
-                      onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                      value={formData.birthday ? formData.birthday.split('T')[0] : ''}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setFormData({ ...formData, birthday: val ? `${val}T12:00:00.000Z` : '' })
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
