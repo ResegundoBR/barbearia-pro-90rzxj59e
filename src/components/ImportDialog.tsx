@@ -145,6 +145,24 @@ export function ImportDialog({ open, onOpenChange, title, onImport }: ImportDial
           </DialogDescription>
         </DialogHeader>
 
+        <div className="bg-muted/40 p-4 rounded-lg mt-2 text-sm border">
+          <p className="font-semibold mb-2 text-foreground">Modelo Padrão (Google Sheets):</p>
+          <p className="text-muted-foreground mb-4">
+            Para garantir que a importação funcione perfeitamente, utilize o nosso modelo oficial
+            com os cabeçalhos corretos.
+          </p>
+          <Button variant="secondary" size="sm" className="w-full sm:w-auto" asChild>
+            <a
+              href="https://docs.google.com/spreadsheets/d/1Xy9oZ02tVbOqXgT0WbVb_A_mXQ-d8lWn2l4_5aXfA/copy"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Fazer cópia do modelo
+            </a>
+          </Button>
+        </div>
+
         <div className="py-4 space-y-4">
           {!loading && !results && (
             <div className="flex justify-center flex-col items-center border-2 border-dashed border-border rounded-xl p-8 bg-muted/20">
