@@ -476,13 +476,15 @@ export default function Settings() {
   const handleDownloadTemplate = (type: string) => {
     let headers = ''
     if (type === 'clientes') {
-      headers = 'Nome,Sobrenome,Celular,Fone Secundario,Nascimento,Profissional,Localização\nExemplo,Silva,11999999999,,01/01/1990,João,Mora Perto'
+      headers =
+        'Nome,Sobrenome,Celular,Fone Secundario,Nascimento,Profissional,Localização\nExemplo,Silva,11999999999,,01/01/1990,João,Mora Perto'
     } else if (type === 'produtos') {
       headers = 'Nome,Preço,Preço de Custo,Categoria,Estoque\nPomada,35.50,15.00,Cabelo,10'
     } else if (type === 'fornecedores') {
-      headers = 'Nome,Documento,Telefone,WhatsApp,Endereço,Contato\nFornecedor XYZ,12.345.678/0001-90,1133333333,11999999999,Rua A 123,Carlos'
+      headers =
+        'Nome,Documento,Telefone,WhatsApp,Endereço,Contato\nFornecedor XYZ,12.345.678/0001-90,1133333333,11999999999,Rua A 123,Carlos'
     }
-    
+
     const blob = new Blob([headers], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -495,7 +497,7 @@ export default function Settings() {
       try {
         const u = await pb.collection('users').getOne(user.id, { expand: 'organization_id' })
         const plan = u.expand?.organization_id?.plan || user.plan || 'Free'
-        const limit = TIER_LIMITS[plan as 'Free'|'Basic'|'Pro'|'Platinum']?.clients
+        const limit = TIER_LIMITS[plan as 'Free' | 'Basic' | 'Pro' | 'Platinum']?.clients
         if (limit && limit !== Infinity) {
           const currentClients = await pb.collection('clients').getList(1, 1)
           if (currentClients.totalItems + data.length > limit) {
@@ -503,11 +505,16 @@ export default function Settings() {
           }
         }
       } catch (e: any) {
-        return { success: 0, errors: data.length, errorsList: [e.message || 'Erro ao validar limites do plano.'] }
+        return {
+          success: 0,
+          errors: data.length,
+          errorsList: [e.message || 'Erro ao validar limites do plano.'],
+        }
       }
 
       const allBarbers = await pb.collection('barbers').getFullList()
-      let success = 0, errors = 0
+      let success = 0,
+        errors = 0
       const errorsList: string[] = []
 
       for (let i = 0; i < data.length; i++) {
@@ -521,7 +528,8 @@ export default function Settings() {
           }
           if (row.Nascimento) {
             const parts = row.Nascimento.split('/')
-            if (parts.length === 3) payload.birthday = `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00.000Z`
+            if (parts.length === 3)
+              payload.birthday = `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00.000Z`
           }
           if (row.Localização) {
             const loc = row.Localização.toLowerCase()
@@ -531,20 +539,23 @@ export default function Settings() {
             else if (loc.includes('outra cidade')) payload.location_type = 'other_city'
           }
           if (row.Profissional) {
-            const b = allBarbers.find((b: any) => b.name.toLowerCase() === row.Profissional.toLowerCase().trim())
+            const b = allBarbers.find(
+              (b: any) => b.name.toLowerCase() === row.Profissional.toLowerCase().trim(),
+            )
             if (b) payload.preferred_barber_id = b.id
           }
           await pb.collection('clients').create(payload)
           success++
         } catch (e: any) {
           errors++
-          errorsList.push(`Linha ${i+2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
+          errorsList.push(`Linha ${i + 2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
         }
       }
       return { success, errors, errorsList }
     } else if (importType === 'produtos') {
       const cats = await pb.collection('categories').getFullList()
-      let success = 0, errors = 0
+      let success = 0,
+        errors = 0
       const errorsList: string[] = []
 
       for (let i = 0; i < data.length; i++) {
@@ -566,18 +577,19 @@ export default function Settings() {
             cost_price: parseFloat(row['Preço de Custo']?.replace(',', '.') || '0'),
             category_id: catId,
             stock_quantity: parseInt(row.Estoque || '0', 10),
-            is_active: true
+            is_active: true,
           }
           await pb.collection('products').create(payload)
           success++
         } catch (e: any) {
           errors++
-          errorsList.push(`Linha ${i+2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
+          errorsList.push(`Linha ${i + 2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
         }
       }
       return { success, errors, errorsList }
     } else if (importType === 'fornecedores') {
-      let success = 0, errors = 0
+      let success = 0,
+        errors = 0
       const errorsList: string[] = []
 
       for (let i = 0; i < data.length; i++) {
@@ -585,17 +597,17 @@ export default function Settings() {
         try {
           const payload = {
             name: row.Nome?.trim(),
-            document: row.Documento?.replace(/[\.\-\/]/g, ''),
+            document: row.Documento?.replace(/[.\-/]/g, ''),
             phone: row.Telefone?.replace(/\D/g, ''),
             whatsapp: row.WhatsApp?.replace(/\D/g, ''),
             address: row.Endereço?.trim(),
-            contact_person: row.Contato?.trim()
+            contact_person: row.Contato?.trim(),
           }
           await pb.collection('suppliers').create(payload)
           success++
         } catch (e: any) {
           errors++
-          errorsList.push(`Linha ${i+2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
+          errorsList.push(`Linha ${i + 2} (${row.Nome || 'Sem Nome'}): ${e.message}`)
         }
       }
       return { success, errors, errorsList }
@@ -958,7 +970,6 @@ export default function Settings() {
             </Table>
           </Card>
         </TabsContent>
-      </Tabs>
 
         <TabsContent value="imports" className="space-y-4">
           <Card className="border-border shadow-sm max-w-4xl">
@@ -974,9 +985,15 @@ export default function Settings() {
                   <Users className="size-6" />
                 </div>
                 <h4 className="font-bold">Clientes</h4>
-                <p className="text-sm text-muted-foreground">Importe sua base de clientes com datas de nascimento e preferências.</p>
+                <p className="text-sm text-muted-foreground">
+                  Importe sua base de clientes com datas de nascimento e preferências.
+                </p>
                 <div className="flex w-full gap-2 mt-auto">
-                  <Button variant="outline" className="flex-1 text-xs" onClick={() => handleDownloadTemplate('clientes')}>
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-xs"
+                    onClick={() => handleDownloadTemplate('clientes')}
+                  >
                     <Download className="size-4 mr-1" /> Modelo
                   </Button>
                   <Button className="flex-1 text-xs" onClick={() => setImportType('clientes')}>
@@ -989,9 +1006,15 @@ export default function Settings() {
                   <Package className="size-6" />
                 </div>
                 <h4 className="font-bold">Produtos</h4>
-                <p className="text-sm text-muted-foreground">Importe o inventário com preços e crie categorias automaticamente.</p>
+                <p className="text-sm text-muted-foreground">
+                  Importe o inventário com preços e crie categorias automaticamente.
+                </p>
                 <div className="flex w-full gap-2 mt-auto">
-                  <Button variant="outline" className="flex-1 text-xs" onClick={() => handleDownloadTemplate('produtos')}>
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-xs"
+                    onClick={() => handleDownloadTemplate('produtos')}
+                  >
                     <Download className="size-4 mr-1" /> Modelo
                   </Button>
                   <Button className="flex-1 text-xs" onClick={() => setImportType('produtos')}>
@@ -1004,9 +1027,15 @@ export default function Settings() {
                   <Truck className="size-6" />
                 </div>
                 <h4 className="font-bold">Fornecedores</h4>
-                <p className="text-sm text-muted-foreground">Importe dados de contato e documentos dos fornecedores.</p>
+                <p className="text-sm text-muted-foreground">
+                  Importe dados de contato e documentos dos fornecedores.
+                </p>
                 <div className="flex w-full gap-2 mt-auto">
-                  <Button variant="outline" className="flex-1 text-xs" onClick={() => handleDownloadTemplate('fornecedores')}>
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-xs"
+                    onClick={() => handleDownloadTemplate('fornecedores')}
+                  >
                     <Download className="size-4 mr-1" /> Modelo
                   </Button>
                   <Button className="flex-1 text-xs" onClick={() => setImportType('fornecedores')}>
@@ -1021,7 +1050,9 @@ export default function Settings() {
 
       <ImportDialog
         open={!!importType}
-        onOpenChange={(v) => { if (!v) setImportType(null) }}
+        onOpenChange={(v) => {
+          if (!v) setImportType(null)
+        }}
         title={`Importar ${importType === 'clientes' ? 'Clientes' : importType === 'produtos' ? 'Produtos' : 'Fornecedores'}`}
         onImport={handleImportData}
       />
