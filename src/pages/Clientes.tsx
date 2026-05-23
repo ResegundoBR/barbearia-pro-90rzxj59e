@@ -28,8 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { UserPlus, Edit, Eye } from 'lucide-react'
+import { UserPlus, Edit, Eye, Upload } from 'lucide-react'
 import { getClients, createClient, updateClient, getBarbers } from '@/services/api'
+import pb from '@/lib/pocketbase/client'
+import { ImportDialog } from '@/components/ImportDialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RankingDashboard } from '@/components/RankingDashboard'
 import { useToast } from '@/hooks/use-toast'
@@ -68,7 +70,84 @@ export default function Clientes() {
   const [isOpen, setIsOpen] = useState(false)
   const [formData, setFormData] = useState<any>(defForm)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [isImportOpen, setIsImportOpen] = useState(false)
   const { toast } = useToast()
+
+  const handleImport = async (data: any[]) => {
+    let success = 0
+    let errors = 0
+    const errorsList: string[] = []
+
+    const barbersMap = new Map(barbers.map((b) => [b.name.toLowerCase().trim(), b.id]))
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i]
+      try {
+        const name = row['Nome'] || row['nome'] || ''
+        const surname = row['Sobrenome'] || row['sobrenome'] || ''
+        const phoneRaw = row['Celular'] || row['celular'] || ''
+        const phoneSecRaw = row['Fone Secundario'] || row['fone secundario'] || ''
+        const birthRaw = row['Nascimento'] || row['nascimento'] || ''
+        const profRaw = row['Profissional'] || row['profissional'] || ''
+        const locRaw = row['Localização'] || row['localização'] || row['localizacao'] || ''
+
+        if (!name) throw new Error('Nome é obrigatório')
+
+        const cleanPhone = (p: string) => {
+          const d = p.replace(/\D/g, '')
+          return d.slice(0, 11)
+        }
+
+        let birthday = ''
+        if (birthRaw) {
+          const parts = birthRaw.split('/')
+          if (parts.length === 3) {
+            birthday = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+          }
+        }
+
+        let preferred_barber_id = ''
+        if (profRaw) {
+          const bId = barbersMap.get(profRaw.toLowerCase().trim())
+          if (bId) {
+            preferred_barber_id = bId
+          } else {
+            throw new Error(`Profissional "${profRaw}" não encontrado`)
+          }
+        }
+
+        let location_type = 'nearby'
+        const loc = locRaw.toLowerCase().trim()
+        if (loc === 'de passagem') location_type = 'passage'
+        else if (loc === 'mora perto') location_type = 'nearby'
+        else if (loc === 'mora cidade') location_type = 'mora_cidade'
+        else if (loc === 'outra cidade') location_type = 'other_city'
+
+        const payload: any = {
+          name,
+          surname,
+          phone: cleanPhone(phoneRaw),
+          phone_secondary: cleanPhone(phoneSecRaw),
+          location_type,
+          is_active: true,
+        }
+        if (birthday) payload.birthday = birthday + ' 12:00:00.000Z'
+        if (preferred_barber_id) payload.preferred_barber_id = preferred_barber_id
+        if (loggedInBarber) payload.created_by_id = loggedInBarber.id
+
+        await pb.collection('clients').create(payload)
+
+        success++
+      } catch (err: any) {
+        errors++
+        errorsList.push(`Linha ${i + 2}: ${err.message}`)
+      }
+    }
+
+    if (success > 0) loadData()
+
+    return { success, errors, errorsList }
+  }
 
   const loadData = async () => {
     setClients(await getClients())
@@ -144,11 +223,23 @@ export default function Clientes() {
           <p className="text-muted-foreground">Gerencie seus clientes e acompanhe histórico.</p>
         </div>
         {hasAccess('action_delete') && (
-          <Button onClick={openNew} className="gap-2">
-            <UserPlus className="size-4" /> Novo Cliente
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsImportOpen(true)} className="gap-2">
+              <Upload className="size-4" /> Importar
+            </Button>
+            <Button onClick={openNew} className="gap-2">
+              <UserPlus className="size-4" /> Novo Cliente
+            </Button>
+          </div>
         )}
       </div>
+
+      <ImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        title="Importar Clientes"
+        onImport={handleImport}
+      />
 
       <Tabs defaultValue="lista">
         <TabsList className="mb-4">

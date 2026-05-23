@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Plus, Building2, ExternalLink, Clock } from 'lucide-react'
+import { Plus, Building2, ExternalLink, Clock, Upload } from 'lucide-react'
+import { ImportDialog } from '@/components/ImportDialog'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -54,7 +55,69 @@ export default function Fornecedores() {
     category_id: [] as string[],
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isImportOpen, setIsImportOpen] = useState(false)
   const { toast } = useToast()
+
+  const handleImport = async (data: any[]) => {
+    let success = 0
+    let errorsCount = 0
+    const errorsList: string[] = []
+
+    const categoriesMap = new Map(categories.map((c) => [c.name.toLowerCase().trim(), c.id]))
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i]
+      try {
+        const name = row['Nome'] || row['nome'] || ''
+        const docRaw = row['CPF/CNPJ'] || row['cpf/cnpj'] || row['documento'] || ''
+        const address = row['Endereço'] || row['endereço'] || row['endereco'] || ''
+        const contact = row['Pessoa de Contato'] || row['pessoa de contato'] || ''
+        const phoneRaw =
+          row['WhatsApp/Fone'] || row['whatsapp/fone'] || row['telefone'] || row['whatsapp'] || ''
+        const catRaw = row['Categoria'] || row['categoria'] || ''
+
+        if (!name) throw new Error('Nome é obrigatório')
+
+        const document = docRaw.toString().replace(/\D/g, '')
+        if (!document) throw new Error('CPF/CNPJ é obrigatório')
+
+        let category_ids: string[] = []
+        if (catRaw) {
+          const catName = catRaw.trim()
+          const lowerCat = catName.toLowerCase()
+          if (categoriesMap.has(lowerCat)) {
+            category_ids.push(categoriesMap.get(lowerCat)!)
+          } else {
+            const newCat = await pb.collection('categories').create({
+              name: catName,
+              type: 'product',
+            })
+            categoriesMap.set(lowerCat, newCat.id)
+            category_ids.push(newCat.id)
+          }
+        }
+
+        await pb.collection('suppliers').create({
+          name,
+          document,
+          address,
+          contact_person: contact,
+          whatsapp: phoneRaw.toString().replace(/\D/g, ''),
+          phone: phoneRaw.toString().replace(/\D/g, ''),
+          category_id: category_ids,
+        })
+
+        success++
+      } catch (err: any) {
+        errorsCount++
+        errorsList.push(`Linha ${i + 2}: ${err.message}`)
+      }
+    }
+
+    if (success > 0) loadData()
+
+    return { success, errors: errorsCount, errorsList }
+  }
 
   const loadData = async () => {
     try {
@@ -117,25 +180,38 @@ export default function Fornecedores() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Compras/Fornec.</h2>
-        <Button
-          onClick={() => {
-            setFormData({
-              name: '',
-              document: '',
-              address: '',
-              phone: '',
-              whatsapp: '',
-              contact_person: '',
-              category_id: [],
-            })
-            setErrors({})
-            setDialogOpen(true)
-          }}
-        >
-          <Plus className="size-4 mr-2" />
-          Novo Fornecedor
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <Upload className="size-4 mr-2" />
+            Importar
+          </Button>
+          <Button
+            onClick={() => {
+              setFormData({
+                name: '',
+                document: '',
+                address: '',
+                phone: '',
+                whatsapp: '',
+                contact_person: '',
+                category_id: [],
+              })
+              setErrors({})
+              setDialogOpen(true)
+            }}
+          >
+            <Plus className="size-4 mr-2" />
+            Novo Fornecedor
+          </Button>
+        </div>
       </div>
+
+      <ImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        title="Importar Fornecedores"
+        onImport={handleImport}
+      />
 
       <div className="border rounded-md bg-card">
         <Table>

@@ -1,0 +1,1 @@
+import{v as e,y as t}from"./format-BUAFcs3P.js";function n(n,r,i){let a=e(n,i?.in);return isNaN(r)?t(i?.in||n,NaN):(r&&a.setDate(a.getDate()+r),a)}function r(t,n){let r=e(t,n?.in);return r.setDate(1),r.setHours(0,0,0,0),r}export{n,r as t};
