@@ -1,1 +1,112 @@
-import{a as e,n as t,t as n}from"./jsx-runtime-m7G7yzlP.js";import{t as r}from"./circle-alert-ClsqWs4r.js";import{H as i,St as a,U as o,bt as s,ct as c,i as l,t as u}from"./index-CXmOAr77.js";import{a as d,n as f,o as p,r as m,t as h}from"./card-B5puzR9W.js";var g=c(`lock`,[[`rect`,{width:`18`,height:`11`,x:`3`,y:`11`,rx:`2`,ry:`2`,key:`1w4ew1`}],[`path`,{d:`M7 11V7a5 5 0 0 1 10 0v4`,key:`fwvmzm`}]]),_=e(t(),1),v=n();function y(){let[e,t]=(0,_.useState)(``),[n,c]=(0,_.useState)(``),[y,b]=(0,_.useState)(``),[x,S]=(0,_.useState)(!1),{signIn:C}=l(),w=a();return(0,v.jsx)(`div`,{className:`min-h-screen flex items-center justify-center bg-gray-50 p-4`,children:(0,v.jsxs)(h,{className:`w-full max-w-md shadow-lg border-amber-100/50`,children:[(0,v.jsxs)(d,{className:`space-y-2 text-center pb-6`,children:[(0,v.jsx)(`div`,{className:`mx-auto bg-amber-100 text-amber-600 w-16 h-16 rounded-full flex items-center justify-center mb-4`,children:(0,v.jsx)(g,{className:`w-8 h-8`})}),(0,v.jsx)(p,{className:`text-2xl font-bold`,children:`Acesso ao Sistema`}),(0,v.jsx)(m,{children:`Faça login para gerenciar sua barbearia`})]}),(0,v.jsxs)(f,{children:[y&&(0,v.jsxs)(`div`,{className:`mb-6 p-4 bg-red-50 text-red-600 rounded-lg flex items-center gap-3 text-sm border border-red-100 animate-fade-in`,children:[(0,v.jsx)(r,{className:`w-5 h-5 shrink-0`}),(0,v.jsx)(`p`,{children:y})]}),(0,v.jsxs)(`form`,{onSubmit:async t=>{t.preventDefault(),b(``),S(!0);let r=await C(e,n);if(S(!1),r.error){let e=r.error;e.status===400||e.status===401||e.status===403?b(`Credenciais inválidas. Verifique seu e-mail e senha.`):b(`Erro de conexão ou servidor: ${e.message||`Tente novamente mais tarde.`}`)}else w(`/agenda`)},className:`space-y-4`,children:[(0,v.jsxs)(`div`,{className:`space-y-2`,children:[(0,v.jsx)(u,{htmlFor:`email`,children:`E-mail`}),(0,v.jsx)(i,{id:`email`,type:`email`,placeholder:`exemplo@email.com`,value:e,onChange:e=>t(e.target.value),required:!0,className:`focus-visible:ring-amber-500`})]}),(0,v.jsxs)(`div`,{className:`space-y-2`,children:[(0,v.jsxs)(`div`,{className:`flex items-center justify-between`,children:[(0,v.jsx)(u,{htmlFor:`password`,children:`Senha`}),(0,v.jsx)(s,{to:`/recuperar-senha`,className:`text-sm text-amber-600 hover:text-amber-700 font-medium`,children:`Esqueci minha senha`})]}),(0,v.jsx)(i,{id:`password`,type:`password`,value:n,onChange:e=>c(e.target.value),required:!0,className:`focus-visible:ring-amber-500`})]}),(0,v.jsx)(o,{type:`submit`,className:`w-full bg-[#d99426] hover:bg-[#c48421] text-white font-medium py-2.5 mt-4 transition-colors`,disabled:x,children:x?`Autenticando...`:`Entrar`})]})]})]})})}export{y as default};
+import { a as e, n as t, t as n } from './jsx-runtime-m7G7yzlP.js'
+import { t as r } from './circle-alert-ClsqWs4r.js'
+import { H as i, St as a, U as o, bt as s, ct as c, i as l, t as u } from './index-CXmOAr77.js'
+import { a as d, n as f, o as p, r as m, t as h } from './card-B5puzR9W.js'
+var g = c(`lock`, [
+    [`rect`, { width: `18`, height: `11`, x: `3`, y: `11`, rx: `2`, ry: `2`, key: `1w4ew1` }],
+    [`path`, { d: `M7 11V7a5 5 0 0 1 10 0v4`, key: `fwvmzm` }],
+  ]),
+  _ = e(t(), 1),
+  v = n()
+function y() {
+  let [e, t] = (0, _.useState)(``),
+    [n, c] = (0, _.useState)(``),
+    [y, b] = (0, _.useState)(``),
+    [x, S] = (0, _.useState)(!1),
+    { signIn: C } = l(),
+    w = a()
+  return (0, v.jsx)(`div`, {
+    className: `min-h-screen flex items-center justify-center bg-gray-50 p-4`,
+    children: (0, v.jsxs)(h, {
+      className: `w-full max-w-md shadow-lg border-amber-100/50`,
+      children: [
+        (0, v.jsxs)(d, {
+          className: `space-y-2 text-center pb-6`,
+          children: [
+            (0, v.jsx)(`div`, {
+              className: `mx-auto bg-amber-100 text-amber-600 w-16 h-16 rounded-full flex items-center justify-center mb-4`,
+              children: (0, v.jsx)(g, { className: `w-8 h-8` }),
+            }),
+            (0, v.jsx)(p, { className: `text-2xl font-bold`, children: `Acesso ao Sistema` }),
+            (0, v.jsx)(m, { children: `Faça login para gerenciar sua barbearia` }),
+          ],
+        }),
+        (0, v.jsxs)(f, {
+          children: [
+            y &&
+              (0, v.jsxs)(`div`, {
+                className: `mb-6 p-4 bg-red-50 text-red-600 rounded-lg flex items-center gap-3 text-sm border border-red-100 animate-fade-in`,
+                children: [
+                  (0, v.jsx)(r, { className: `w-5 h-5 shrink-0` }),
+                  (0, v.jsx)(`p`, { children: y }),
+                ],
+              }),
+            (0, v.jsxs)(`form`, {
+              onSubmit: async (t) => {
+                ;(t.preventDefault(), b(``), S(!0))
+                let r = await C(e, n)
+                if ((S(!1), r.error)) {
+                  let e = r.error
+                  e.status === 400 || e.status === 401 || e.status === 403
+                    ? b(`Credenciais inválidas. Verifique seu e-mail e senha.`)
+                    : b(
+                        `Erro de conexão ou servidor: ${e.message || `Tente novamente mais tarde.`}`,
+                      )
+                } else w(`/agenda`)
+              },
+              className: `space-y-4`,
+              children: [
+                (0, v.jsxs)(`div`, {
+                  className: `space-y-2`,
+                  children: [
+                    (0, v.jsx)(u, { htmlFor: `email`, children: `E-mail` }),
+                    (0, v.jsx)(i, {
+                      id: `email`,
+                      type: `email`,
+                      placeholder: `exemplo@email.com`,
+                      value: e,
+                      onChange: (e) => t(e.target.value),
+                      required: !0,
+                      className: `focus-visible:ring-amber-500`,
+                    }),
+                  ],
+                }),
+                (0, v.jsxs)(`div`, {
+                  className: `space-y-2`,
+                  children: [
+                    (0, v.jsxs)(`div`, {
+                      className: `flex items-center justify-between`,
+                      children: [
+                        (0, v.jsx)(u, { htmlFor: `password`, children: `Senha` }),
+                        (0, v.jsx)(s, {
+                          to: `/recuperar-senha`,
+                          className: `text-sm text-amber-600 hover:text-amber-700 font-medium`,
+                          children: `Esqueci minha senha`,
+                        }),
+                      ],
+                    }),
+                    (0, v.jsx)(i, {
+                      id: `password`,
+                      type: `password`,
+                      value: n,
+                      onChange: (e) => c(e.target.value),
+                      required: !0,
+                      className: `focus-visible:ring-amber-500`,
+                    }),
+                  ],
+                }),
+                (0, v.jsx)(o, {
+                  type: `submit`,
+                  className: `w-full bg-[#d99426] hover:bg-[#c48421] text-white font-medium py-2.5 mt-4 transition-colors`,
+                  disabled: x,
+                  children: x ? `Autenticando...` : `Entrar`,
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    }),
+  })
+}
+export { y as default }
