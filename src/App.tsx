@@ -10,22 +10,51 @@ import Layout from './components/Layout'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
 
-const Login = lazy(() => import('./pages/Login'))
-const RecuperarSenha = lazy(() => import('./pages/RecuperarSenha'))
-const Index = lazy(() => import('./pages/Index'))
-const Agenda = lazy(() => import('./pages/Agenda'))
-const Clientes = lazy(() => import('./pages/Clientes'))
-const ClienteDetail = lazy(() => import('./pages/ClienteDetail'))
-const Estoque = lazy(() => import('./pages/Estoque'))
-const Checkout = lazy(() => import('./pages/Checkout'))
-const Staff = lazy(() => import('./pages/Staff'))
-const Settings = lazy(() => import('./pages/Settings'))
-const UsersPage = lazy(() => import('./pages/Users'))
-const Financeiro = lazy(() => import('./pages/Financeiro'))
-const ProdutosCategorias = lazy(() => import('./pages/ProdutosCategorias'))
-const Fornecedores = lazy(() => import('./pages/Fornecedores'))
-const FornecedorDetail = lazy(() => import('./pages/FornecedorDetail'))
-const NotFound = lazy(() => import('./pages/NotFound'))
+const isDynamicImportError = (error: unknown) => {
+  if (!(error instanceof Error)) return false
+  const msg = error.message.toLowerCase()
+  return (
+    msg.includes('failed to fetch dynamically imported module') ||
+    msg.includes('error loading dynamically imported module') ||
+    msg.includes('failed to load module script')
+  )
+}
+
+const lazyWithRetry = (componentImport: () => Promise<any>) =>
+  lazy(async () => {
+    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+      window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false',
+    )
+    try {
+      const component = await componentImport()
+      window.sessionStorage.setItem('page-has-been-force-refreshed', 'false')
+      return component
+    } catch (error) {
+      if (!pageHasAlreadyBeenForceRefreshed && isDynamicImportError(error)) {
+        window.sessionStorage.setItem('page-has-been-force-refreshed', 'true')
+        window.location.reload()
+        return { default: () => null }
+      }
+      throw error
+    }
+  })
+
+const Login = lazyWithRetry(() => import('./pages/Login'))
+const RecuperarSenha = lazyWithRetry(() => import('./pages/RecuperarSenha'))
+const Index = lazyWithRetry(() => import('./pages/Index'))
+const Agenda = lazyWithRetry(() => import('./pages/Agenda'))
+const Clientes = lazyWithRetry(() => import('./pages/Clientes'))
+const ClienteDetail = lazyWithRetry(() => import('./pages/ClienteDetail'))
+const Estoque = lazyWithRetry(() => import('./pages/Estoque'))
+const Checkout = lazyWithRetry(() => import('./pages/Checkout'))
+const Staff = lazyWithRetry(() => import('./pages/Staff'))
+const Settings = lazyWithRetry(() => import('./pages/Settings'))
+const UsersPage = lazyWithRetry(() => import('./pages/Users'))
+const Financeiro = lazyWithRetry(() => import('./pages/Financeiro'))
+const ProdutosCategorias = lazyWithRetry(() => import('./pages/ProdutosCategorias'))
+const Fornecedores = lazyWithRetry(() => import('./pages/Fornecedores'))
+const FornecedorDetail = lazyWithRetry(() => import('./pages/FornecedorDetail'))
+const NotFound = lazyWithRetry(() => import('./pages/NotFound'))
 
 function LoadingFallback() {
   return (
