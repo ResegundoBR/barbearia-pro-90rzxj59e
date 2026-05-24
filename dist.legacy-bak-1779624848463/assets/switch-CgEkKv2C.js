@@ -1,1 +1,141 @@
-import{a as e,n as t,t as n}from"./jsx-runtime-m7G7yzlP.js";import{B as r,U as i,ft as a,gt as o,ht as s,m as c,pt as l,ut as u}from"./index-CHmnQ-gm.js";var d=e(t(),1),f=n(),p=`Switch`,[m,h]=l(p),[g,_]=m(p),v=d.forwardRef((e,t)=>{let{__scopeSwitch:n,name:r,checked:i,defaultChecked:c,required:l,disabled:m,value:h=`on`,onCheckedChange:_,form:v,...y}=e,[b,x]=d.useState(null),w=s(t,e=>x(e)),T=d.useRef(!1),E=b?v||!!b.closest(`form`):!0,[D,O]=u({prop:i,defaultProp:c??!1,onChange:_,caller:p});return(0,f.jsxs)(g,{scope:n,checked:D,disabled:m,children:[(0,f.jsx)(a.button,{type:`button`,role:`switch`,"aria-checked":D,"aria-required":l,"data-state":C(D),"data-disabled":m?``:void 0,disabled:m,value:h,...y,ref:w,onClick:o(e.onClick,e=>{O(e=>!e),E&&(T.current=e.isPropagationStopped(),T.current||e.stopPropagation())})}),E&&(0,f.jsx)(S,{control:b,bubbles:!T.current,name:r,value:h,checked:D,required:l,disabled:m,form:v,style:{transform:`translateX(-100%)`}})]})});v.displayName=p;var y=`SwitchThumb`,b=d.forwardRef((e,t)=>{let{__scopeSwitch:n,...r}=e,i=_(y,n);return(0,f.jsx)(a.span,{"data-state":C(i.checked),"data-disabled":i.disabled?``:void 0,...r,ref:t})});b.displayName=y;var x=`SwitchBubbleInput`,S=d.forwardRef(({__scopeSwitch:e,control:t,checked:n,bubbles:i=!0,...a},o)=>{let l=d.useRef(null),u=s(l,o),p=c(n),m=r(t);return d.useEffect(()=>{let e=l.current;if(!e)return;let t=window.HTMLInputElement.prototype,r=Object.getOwnPropertyDescriptor(t,`checked`).set;if(p!==n&&r){let t=new Event(`click`,{bubbles:i});r.call(e,n),e.dispatchEvent(t)}},[p,n,i]),(0,f.jsx)(`input`,{type:`checkbox`,"aria-hidden":!0,defaultChecked:n,...a,tabIndex:-1,ref:u,style:{...a.style,...m,position:`absolute`,pointerEvents:`none`,opacity:0,margin:0}})});S.displayName=x;function C(e){return e?`checked`:`unchecked`}var w=v,T=b,E=d.forwardRef(({className:e,...t},n)=>(0,f.jsx)(w,{className:i(`peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input`,e),...t,ref:n,children:(0,f.jsx)(T,{className:i(`pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0`)})}));E.displayName=w.displayName;export{E as t};
+import { a as e, n as t, t as n } from './jsx-runtime-m7G7yzlP.js'
+import {
+  B as r,
+  U as i,
+  ft as a,
+  gt as o,
+  ht as s,
+  m as c,
+  pt as l,
+  ut as u,
+} from './index-CHmnQ-gm.js'
+var d = e(t(), 1),
+  f = n(),
+  p = `Switch`,
+  [m, h] = l(p),
+  [g, _] = m(p),
+  v = d.forwardRef((e, t) => {
+    let {
+        __scopeSwitch: n,
+        name: r,
+        checked: i,
+        defaultChecked: c,
+        required: l,
+        disabled: m,
+        value: h = `on`,
+        onCheckedChange: _,
+        form: v,
+        ...y
+      } = e,
+      [b, x] = d.useState(null),
+      w = s(t, (e) => x(e)),
+      T = d.useRef(!1),
+      E = b ? v || !!b.closest(`form`) : !0,
+      [D, O] = u({ prop: i, defaultProp: c ?? !1, onChange: _, caller: p })
+    return (0, f.jsxs)(g, {
+      scope: n,
+      checked: D,
+      disabled: m,
+      children: [
+        (0, f.jsx)(a.button, {
+          type: `button`,
+          role: `switch`,
+          'aria-checked': D,
+          'aria-required': l,
+          'data-state': C(D),
+          'data-disabled': m ? `` : void 0,
+          disabled: m,
+          value: h,
+          ...y,
+          ref: w,
+          onClick: o(e.onClick, (e) => {
+            ;(O((e) => !e),
+              E && ((T.current = e.isPropagationStopped()), T.current || e.stopPropagation()))
+          }),
+        }),
+        E &&
+          (0, f.jsx)(S, {
+            control: b,
+            bubbles: !T.current,
+            name: r,
+            value: h,
+            checked: D,
+            required: l,
+            disabled: m,
+            form: v,
+            style: { transform: `translateX(-100%)` },
+          }),
+      ],
+    })
+  })
+v.displayName = p
+var y = `SwitchThumb`,
+  b = d.forwardRef((e, t) => {
+    let { __scopeSwitch: n, ...r } = e,
+      i = _(y, n)
+    return (0, f.jsx)(a.span, {
+      'data-state': C(i.checked),
+      'data-disabled': i.disabled ? `` : void 0,
+      ...r,
+      ref: t,
+    })
+  })
+b.displayName = y
+var x = `SwitchBubbleInput`,
+  S = d.forwardRef(({ __scopeSwitch: e, control: t, checked: n, bubbles: i = !0, ...a }, o) => {
+    let l = d.useRef(null),
+      u = s(l, o),
+      p = c(n),
+      m = r(t)
+    return (
+      d.useEffect(() => {
+        let e = l.current
+        if (!e) return
+        let t = window.HTMLInputElement.prototype,
+          r = Object.getOwnPropertyDescriptor(t, `checked`).set
+        if (p !== n && r) {
+          let t = new Event(`click`, { bubbles: i })
+          ;(r.call(e, n), e.dispatchEvent(t))
+        }
+      }, [p, n, i]),
+      (0, f.jsx)(`input`, {
+        type: `checkbox`,
+        'aria-hidden': !0,
+        defaultChecked: n,
+        ...a,
+        tabIndex: -1,
+        ref: u,
+        style: {
+          ...a.style,
+          ...m,
+          position: `absolute`,
+          pointerEvents: `none`,
+          opacity: 0,
+          margin: 0,
+        },
+      })
+    )
+  })
+S.displayName = x
+function C(e) {
+  return e ? `checked` : `unchecked`
+}
+var w = v,
+  T = b,
+  E = d.forwardRef(({ className: e, ...t }, n) =>
+    (0, f.jsx)(w, {
+      className: i(
+        `peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input`,
+        e,
+      ),
+      ...t,
+      ref: n,
+      children: (0, f.jsx)(T, {
+        className: i(
+          `pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0`,
+        ),
+      }),
+    }),
+  )
+E.displayName = w.displayName
+export { E as t }

@@ -1,1 +1,1379 @@
-import{a as e,n as t,t as n}from"./jsx-runtime-m7G7yzlP.js";import{t as r}from"./eye-D9fW5TjU.js";import{n as i,t as a}from"./ImportDialog-B_V_6ez4.js";import{t as o}from"./square-pen-Co30ePO_.js";import{n as s,r as c,t as l}from"./toggle-group-CgKlvgUY.js";import{A as u,B as d,D as f,G as p,L as m,O as h,R as g,S as _,U as v,_ as ee,_t as te,a as y,b,c as ne,dt as x,et as re,f as ie,ft as S,gt as C,ht as w,i as ae,k as T,m as E,n as D,p as O,pt as k,q as A,r as oe,s as j,st as M,t as N,u as P,ut as se,v as ce,vt as F,x as le}from"./index-CHmnQ-gm.js";import{t as ue}from"./format-BUAFcs3P.js";import{t as I}from"./startOfMonth-Dtw_Bedr.js";import{t as L}from"./subDays-BvwDtwKl.js";import{i as R,n as z,r as de,t as fe}from"./tabs-D0cNoDYu.js";import{a as pe,c as B,m as me,n as he,r as ge,u as _e,y as ve}from"./api-Zu_OBWUL.js";import{n as V,t as H}from"./card-DHbyifQZ.js";import{a as U,i as W,n as G,o as K,r as q,t as J}from"./table-C_vNdqXn.js";import{t as Y}from"./badge-C1-D0eUj.js";import{t as ye}from"./switch-CgEkKv2C.js";var be=M(`arrow-up-right`,[[`path`,{d:`M7 7h10v10`,key:`1tivn9`}],[`path`,{d:`M7 17 17 7`,key:`1vkiza`}]]),xe=M(`medal`,[[`path`,{d:`M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15`,key:`143lza`}],[`path`,{d:`M11 12 5.12 2.2`,key:`qhuxz6`}],[`path`,{d:`m13 12 5.88-9.8`,key:`hbye0f`}],[`path`,{d:`M8 7h8`,key:`i86dvs`}],[`circle`,{cx:`12`,cy:`17`,r:`5`,key:`qbz8iq`}],[`path`,{d:`M12 18v-2h-.5`,key:`fawc4q`}]]),Se=M(`star`,[[`path`,{d:`M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z`,key:`r04s7s`}]]),Ce=M(`user-plus`,[[`path`,{d:`M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2`,key:`1yyitq`}],[`circle`,{cx:`9`,cy:`7`,r:`4`,key:`nufk8`}],[`line`,{x1:`19`,x2:`19`,y1:`8`,y2:`14`,key:`1bvyxn`}],[`line`,{x1:`22`,x2:`16`,y1:`11`,y2:`11`,key:`1shjgl`}]]),X=e(t(),1),Z=n(),we=`Radio`,[Te,Ee]=k(we),[De,Oe]=Te(we),ke=X.forwardRef((e,t)=>{let{__scopeRadio:n,name:r,checked:i=!1,required:a,disabled:o,value:s=`on`,onCheck:c,form:l,...u}=e,[d,f]=X.useState(null),p=w(t,e=>f(e)),m=X.useRef(!1),h=d?l||!!d.closest(`form`):!0;return(0,Z.jsxs)(De,{scope:n,checked:i,disabled:o,children:[(0,Z.jsx)(S.button,{type:`button`,role:`radio`,"aria-checked":i,"data-state":Pe(i),"data-disabled":o?``:void 0,disabled:o,value:s,...u,ref:p,onClick:C(e.onClick,e=>{i||c?.(),h&&(m.current=e.isPropagationStopped(),m.current||e.stopPropagation())})}),h&&(0,Z.jsx)(Ne,{control:d,bubbles:!m.current,name:r,value:s,checked:i,required:a,disabled:o,form:l,style:{transform:`translateX(-100%)`}})]})});ke.displayName=we;var Ae=`RadioIndicator`,je=X.forwardRef((e,t)=>{let{__scopeRadio:n,forceMount:r,...i}=e,a=Oe(Ae,n);return(0,Z.jsx)(x,{present:r||a.checked,children:(0,Z.jsx)(S.span,{"data-state":Pe(a.checked),"data-disabled":a.disabled?``:void 0,...i,ref:t})})});je.displayName=Ae;var Me=`RadioBubbleInput`,Ne=X.forwardRef(({__scopeRadio:e,control:t,checked:n,bubbles:r=!0,...i},a)=>{let o=X.useRef(null),s=w(o,a),c=E(n),l=d(t);return X.useEffect(()=>{let e=o.current;if(!e)return;let t=window.HTMLInputElement.prototype,i=Object.getOwnPropertyDescriptor(t,`checked`).set;if(c!==n&&i){let t=new Event(`click`,{bubbles:r});i.call(e,n),e.dispatchEvent(t)}},[c,n,r]),(0,Z.jsx)(S.input,{type:`radio`,"aria-hidden":!0,defaultChecked:n,...i,tabIndex:-1,ref:s,style:{...i.style,...l,position:`absolute`,pointerEvents:`none`,opacity:0,margin:0}})});Ne.displayName=Me;function Pe(e){return e?`checked`:`unchecked`}var Fe=[`ArrowUp`,`ArrowDown`,`ArrowLeft`,`ArrowRight`],Q=`RadioGroup`,[Ie,Le]=k(Q,[T,Ee]),Re=T(),ze=Ee(),[Be,Ve]=Ie(Q),He=X.forwardRef((e,t)=>{let{__scopeRadioGroup:n,name:r,defaultValue:i,value:a,required:o=!1,disabled:s=!1,orientation:c,dir:l,loop:d=!0,onValueChange:f,...p}=e,m=Re(n),g=u(l),[_,v]=se({prop:a,defaultProp:i??null,onChange:f,caller:Q});return(0,Z.jsx)(Be,{scope:n,name:r,required:o,disabled:s,value:_,onValueChange:v,children:(0,Z.jsx)(h,{asChild:!0,...m,orientation:c,dir:g,loop:d,children:(0,Z.jsx)(S.div,{role:`radiogroup`,"aria-required":o,"aria-orientation":c,"data-disabled":s?``:void 0,dir:g,...p,ref:t})})})});He.displayName=Q;var Ue=`RadioGroupItem`,We=X.forwardRef((e,t)=>{let{__scopeRadioGroup:n,disabled:r,...i}=e,a=Ve(Ue,n),o=a.disabled||r,s=Re(n),c=ze(n),l=X.useRef(null),u=w(t,l),d=a.value===i.value,p=X.useRef(!1);return X.useEffect(()=>{let e=e=>{Fe.includes(e.key)&&(p.current=!0)},t=()=>p.current=!1;return document.addEventListener(`keydown`,e),document.addEventListener(`keyup`,t),()=>{document.removeEventListener(`keydown`,e),document.removeEventListener(`keyup`,t)}},[]),(0,Z.jsx)(f,{asChild:!0,...s,focusable:!o,active:d,children:(0,Z.jsx)(ke,{disabled:o,required:a.required,checked:d,...c,...i,name:a.name,ref:u,onCheck:()=>a.onValueChange(i.value),onKeyDown:C(e=>{e.key===`Enter`&&e.preventDefault()}),onFocus:C(i.onFocus,()=>{p.current&&l.current?.click()})})})});We.displayName=Ue;var Ge=`RadioGroupIndicator`,Ke=X.forwardRef((e,t)=>{let{__scopeRadioGroup:n,...r}=e;return(0,Z.jsx)(je,{...ze(n),...r,ref:t})});Ke.displayName=Ge;var qe=He,Je=We,Ye=Ke,Xe=X.forwardRef(({className:e,...t},n)=>(0,Z.jsx)(qe,{className:v(`grid gap-2`,e),...t,ref:n}));Xe.displayName=qe.displayName;var $=X.forwardRef(({className:e,...t},n)=>(0,Z.jsx)(Je,{ref:n,className:v(`aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`,e),...t,children:(0,Z.jsx)(Ye,{className:`flex items-center justify-center`,children:(0,Z.jsx)(re,{className:`h-2.5 w-2.5 fill-current text-current`})})}));$.displayName=Je.displayName;function Ze(){let[e,t]=(0,X.useState)(`current_month`),[n,r]=(0,X.useState)([]),[i,a]=(0,X.useState)([]),[o,u]=(0,X.useState)(!1),[d,f]=(0,X.useState)(`revenue`),[p,m]=(0,X.useState)(`Qtd`),[h,g]=(0,X.useState)(0),_=()=>g(e=>e+1);D(`appointments`,_),D(`product_purchases`,_),D(`client_logs`,_),(0,X.useEffect)(()=>{async function t(){u(!0);try{let t=new Date,n=I(t);e===`last_3_months`&&(n=L(t,90)),e===`last_6_months`&&(n=L(t,180));let i=`created >= '${ue(n,`yyyy-MM-dd`)+` 00:00:00.000Z`}'`,[o,s,c,l,u,d]=await Promise.all([_e(),ge(i),me(i),B(`event_type = 'no_show' && ${i}`),y.collection(`services`).getFullList(),y.collection(`products`).getFullList()]),f={},p={};o.forEach(e=>{f[e.id]={client:e,totalSpent:0,totalVisits:0,noShows:0}}),s.forEach(e=>{if(e.status===`Concluído`&&(e.client_id&&f[e.client_id]&&(f[e.client_id].totalSpent+=e.price||e.expand?.service_id?.price||0,f[e.client_id].totalVisits+=1),e.service_id)){if(!p[e.service_id]){let t=u.find(t=>t.id===e.service_id);p[e.service_id]={id:e.service_id,name:t?.name||`Serviço`,type:`Serviço`,qtd:0,vlr:0}}p[e.service_id].qtd+=1,p[e.service_id].vlr+=e.price||e.expand?.service_id?.price||0}}),c.forEach(e=>{if(e.client_id&&f[e.client_id]&&(f[e.client_id].totalSpent+=e.price_at_sale||0),e.product_id){if(!p[e.product_id]){let t=d.find(t=>t.id===e.product_id);p[e.product_id]={id:e.product_id,name:t?.name||`Produto`,type:`Produto`,qtd:0,vlr:0}}p[e.product_id].qtd+=1,p[e.product_id].vlr+=e.price_at_sale||0}}),l.forEach(e=>{f[e.client_id]&&(f[e.client_id].noShows+=1)}),r(Object.values(f)),a(Object.values(p))}catch(e){console.error(e)}finally{u(!1)}}t()},[e,h]);let v=(0,X.useMemo)(()=>{let e=n.filter(e=>e.totalVisits>0||e.totalSpent>0);return d===`revenue`?e.sort((e,t)=>t.totalSpent-e.totalSpent):e.sort((e,t)=>t.totalVisits-e.totalVisits)},[n,d]),ee=(0,X.useMemo)(()=>n.filter(e=>e.noShows>0).sort((e,t)=>t.noShows-e.noShows),[n]),te=(0,X.useMemo)(()=>{let e=[...i];return p===`Vlr`?e.sort((e,t)=>t.vlr-e.vlr).slice(0,10):e.sort((e,t)=>t.qtd-e.qtd).slice(0,10)},[i,p]),b=Math.max(...n.map(e=>e.totalSpent),1),x=Math.max(...n.map(e=>e.totalVisits),1);return(0,Z.jsx)(`div`,{className:`space-y-4`,children:(0,Z.jsxs)(fe,{defaultValue:`top`,className:`w-full`,children:[(0,Z.jsxs)(`div`,{className:`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4`,children:[(0,Z.jsxs)(de,{children:[(0,Z.jsx)(R,{value:`top`,children:`Top Clientes`}),(0,Z.jsx)(R,{value:`items`,children:`Itens mais vendidos`}),(0,Z.jsx)(R,{value:`noshow`,children:`Análise de Faltas`})]}),(0,Z.jsxs)(j,{value:e,onValueChange:t,children:[(0,Z.jsx)(ie,{className:`w-[180px]`,children:(0,Z.jsx)(O,{placeholder:`Período`})}),(0,Z.jsxs)(ne,{children:[(0,Z.jsx)(P,{value:`current_month`,children:`Mês Atual`}),(0,Z.jsx)(P,{value:`last_3_months`,children:`Últimos 3 Meses`}),(0,Z.jsx)(P,{value:`last_6_months`,children:`Últimos 6 Meses`})]})]})]}),(0,Z.jsxs)(z,{value:`top`,className:`space-y-4 mt-0`,children:[(0,Z.jsx)(`div`,{className:`flex justify-end`,children:(0,Z.jsxs)(l,{type:`single`,value:d,onValueChange:e=>{e&&f(e)},className:`bg-muted p-1 rounded-md border`,children:[(0,Z.jsx)(s,{value:`revenue`,className:`px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm`,children:`Faturamento`}),(0,Z.jsx)(s,{value:`frequency`,className:`px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm`,children:`Atendimento`})]})}),(0,Z.jsx)(H,{children:(0,Z.jsx)(V,{className:`p-0 overflow-x-auto`,children:(0,Z.jsxs)(J,{className:`min-w-[600px]`,children:[(0,Z.jsx)(U,{children:(0,Z.jsxs)(K,{children:[(0,Z.jsx)(W,{children:`Cliente`}),(0,Z.jsx)(W,{className:`text-right`,children:`Total Gasto`}),(0,Z.jsx)(W,{className:`text-center`,children:`Visitas`}),(0,Z.jsx)(W,{className:`text-center`,children:`Status`})]})}),(0,Z.jsx)(G,{children:o?(0,Z.jsx)(K,{children:(0,Z.jsx)(q,{colSpan:4,className:`text-center py-8`,children:`Carregando...`})}):v.length===0?(0,Z.jsx)(K,{children:(0,Z.jsx)(q,{colSpan:4,className:`text-center py-8 text-muted-foreground`,children:`Nenhum dado encontrado para o período.`})}):v.slice(0,7).map(e=>(0,Z.jsxs)(K,{children:[(0,Z.jsx)(q,{children:(0,Z.jsxs)(`div`,{className:`flex flex-col`,children:[(0,Z.jsxs)(F,{to:`/clientes/${e.client.id}`,className:`font-medium hover:underline text-primary flex items-center gap-1`,children:[e.client.name||`Cliente`,` `,e.client.surname||``,` `,(0,Z.jsx)(be,{className:`size-3`})]}),e.client.expand?.preferred_barber_id?.name&&(0,Z.jsxs)(`span`,{className:`text-xs text-muted-foreground mt-0.5`,children:[`Profissional: `,e.client.expand.preferred_barber_id.name]})]})}),(0,Z.jsx)(q,{className:`text-right`,children:new Intl.NumberFormat(`pt-BR`,{style:`currency`,currency:`BRL`}).format(e.totalSpent)}),(0,Z.jsx)(q,{className:`text-center`,children:e.totalVisits}),(0,Z.jsx)(q,{className:`text-center`,children:(0,Z.jsxs)(`div`,{className:`flex justify-center gap-2`,children:[e.totalSpent>=b*.7&&e.totalSpent>0&&(0,Z.jsxs)(Y,{className:`bg-amber-500 hover:bg-amber-600 gap-1 text-white`,children:[(0,Z.jsx)(xe,{className:`size-3`}),` VIP`]}),e.totalVisits>=x*.7&&e.totalVisits>0&&e.totalSpent<b*.7&&(0,Z.jsxs)(Y,{variant:`secondary`,className:`gap-1`,children:[(0,Z.jsx)(Se,{className:`size-3`}),` Frequente`]}),e.noShows>2&&(0,Z.jsx)(Y,{variant:`destructive`,children:`Risco de Fuga`})]})})]},e.client.id))})]})})})]}),(0,Z.jsxs)(z,{value:`items`,className:`space-y-4 mt-0`,children:[(0,Z.jsx)(`div`,{className:`flex justify-end`,children:(0,Z.jsxs)(l,{type:`single`,value:p,onValueChange:e=>{e&&m(e)},className:`bg-muted p-1 rounded-md border`,children:[(0,Z.jsx)(s,{value:`Qtd`,className:`px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm`,children:`Qtd`}),(0,Z.jsx)(s,{value:`Vlr`,className:`px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm`,children:`Vlr`})]})}),(0,Z.jsx)(H,{children:(0,Z.jsx)(V,{className:`p-0 overflow-x-auto`,children:(0,Z.jsxs)(J,{className:`min-w-[600px]`,children:[(0,Z.jsx)(U,{children:(0,Z.jsxs)(K,{children:[(0,Z.jsx)(W,{children:`Item`}),(0,Z.jsx)(W,{className:`text-center`,children:`Tipo`}),(0,Z.jsx)(W,{className:`text-center`,children:`Quantidade`}),(0,Z.jsx)(W,{className:`text-right`,children:`Valor Total`})]})}),(0,Z.jsx)(G,{children:o?(0,Z.jsx)(K,{children:(0,Z.jsx)(q,{colSpan:4,className:`text-center py-8`,children:`Carregando...`})}):te.length===0?(0,Z.jsx)(K,{children:(0,Z.jsx)(q,{colSpan:4,className:`text-center py-8 text-muted-foreground`,children:`Nenhum dado encontrado para o período.`})}):te.map(e=>(0,Z.jsxs)(K,{children:[(0,Z.jsx)(q,{className:`font-medium text-primary`,children:e.name}),(0,Z.jsx)(q,{className:`text-center`,children:(0,Z.jsx)(Y,{variant:`outline`,className:e.type===`Serviço`?`bg-blue-50 text-blue-700 border-blue-200`:`bg-purple-50 text-purple-700 border-purple-200`,children:e.type})}),(0,Z.jsx)(q,{className:`text-center font-bold`,children:e.qtd}),(0,Z.jsx)(q,{className:`text-right`,children:new Intl.NumberFormat(`pt-BR`,{style:`currency`,currency:`BRL`}).format(e.vlr)})]},e.id))})]})})})]}),(0,Z.jsx)(z,{value:`noshow`,className:`space-y-4 mt-0`,children:(0,Z.jsx)(H,{children:(0,Z.jsx)(V,{className:`p-0 overflow-x-auto`,children:(0,Z.jsxs)(J,{className:`min-w-[600px]`,children:[(0,Z.jsx)(U,{children:(0,Z.jsxs)(K,{children:[(0,Z.jsx)(W,{children:`Cliente`}),(0,Z.jsx)(W,{className:`text-center`,children:`Faltas`}),(0,Z.jsx)(W,{className:`text-center`,children:`Visitas Realizadas`}),(0,Z.jsx)(W,{className:`text-center`,children:`Status`})]})}),(0,Z.jsx)(G,{children:o?(0,Z.jsx)(K,{children:(0,Z.jsx)(q,{colSpan:4,className:`text-center py-8`,children:`Carregando...`})}):ee.length===0?(0,Z.jsx)(K,{children:(0,Z.jsx)(q,{colSpan:4,className:`text-center py-8 text-muted-foreground`,children:`Nenhum no-show registrado no período.`})}):ee.slice(0,7).map(e=>(0,Z.jsxs)(K,{children:[(0,Z.jsx)(q,{children:(0,Z.jsxs)(`div`,{className:`flex flex-col`,children:[(0,Z.jsxs)(F,{to:`/clientes/${e.client.id}`,className:`font-medium hover:underline text-primary flex items-center gap-1`,children:[e.client.name||`Cliente`,` `,e.client.surname||``,` `,(0,Z.jsx)(be,{className:`size-3`})]}),e.client.expand?.preferred_barber_id?.name&&(0,Z.jsxs)(`span`,{className:`text-xs text-muted-foreground mt-0.5`,children:[`Profissional: `,e.client.expand.preferred_barber_id.name]})]})}),(0,Z.jsx)(q,{className:`text-center font-bold text-destructive`,children:e.noShows}),(0,Z.jsx)(q,{className:`text-center`,children:e.totalVisits}),(0,Z.jsx)(q,{className:`text-center`,children:e.noShows>=2?(0,Z.jsxs)(Y,{variant:`destructive`,className:`gap-1`,children:[(0,Z.jsx)(c,{className:`size-3`}),` Atenção`]}):(0,Z.jsx)(Y,{variant:`outline`,children:`Monitorar`})})]},e.client.id))})]})})})})]})})}var Qe={name:``,surname:``,phone:``,phone_secondary:``,email:``,birthday:``,location_type:`nearby`,is_active:!0,preferred_barber_id:``};function $e(){let{user:e}=ae(),{hasAccess:t}=oe(),[n,s]=(0,X.useState)([]),[c,l]=(0,X.useState)([]),[u,d]=(0,X.useState)(!1),[f,h]=(0,X.useState)(Qe),[v,x]=(0,X.useState)(null),[re,S]=(0,X.useState)(!1),{toast:C}=te(),w=async t=>{let n=0,r=0,i=[],a=new Map(c.map(e=>[e.name.toLowerCase().trim(),e.id]));for(let o=0;o<t.length;o++){let s=t[o];try{let t=(e,t)=>{for(let n of Object.keys(e))if(t.includes(n.toLowerCase().trim()))return typeof e[n]==`string`?e[n].trim():String(e[n]||``);return``},r=t(s,[`nome`]),i=t(s,[`sobrenome`]),o=t(s,[`celular`,`telefone`]),c=t(s,[`celular 2`,`fone secundario`,`telefone 2`]),l=t(s,[`nascimento`,`data de nascimento`,`aniversario`]),u=t(s,[`profissional`,`barbeiro`,`atendente`]),d=t(s,[`localização`,`localizacao`,`local`]);if(!r)throw Error(`O campo [Nome] é obrigatório.`);let f=e=>e?e.replace(/\D/g,``).slice(0,11):``,p=``;if(l){let e=l.trim(),t=e.split(`/`);if(t.length===3){let e=parseInt(t[0],10),n=parseInt(t[1],10),r=parseInt(t[2],10);if(!isNaN(e)&&!isNaN(n)&&!isNaN(r)&&e>0&&e<=31&&n>0&&n<=12&&r>1900&&r<=new Date().getFullYear()+1)p=`${r}-${String(n).padStart(2,`0`)}-${String(e).padStart(2,`0`)}T12:00:00.000Z`;else throw Error(`O campo [Nascimento] possui um formato inválido.`)}else{let t=e.match(/^(\d{4})-(\d{2})-(\d{2})/);if(t)p=`${t[1]}-${t[2]}-${t[3]}T12:00:00.000Z`;else throw Error(`O campo [Nascimento] possui um formato inválido.`)}}let m=``;if(u){let e=a.get(u.toLowerCase().trim());if(e)m=e;else throw Error(`Profissional "${u}" não encontrado.`)}let h=`nearby`,g=d.toLowerCase().trim();g===`de passagem`||g===`passage`?h=`passage`:g===`mora perto`||g===`nearby`?h=`nearby`:g===`mora cidade`||g===`mora_cidade`?h=`mora_cidade`:(g===`outra cidade`||g===`other_city`)&&(h=`other_city`);let _={name:r,surname:i,phone:f(o),phone_secondary:f(c),location_type:h,is_active:!0,organization_id:e?.organization_id||e?.expand?.organization_id?.id};p&&(_.birthday=p),m&&(_.preferred_barber_id=m),E&&(_.created_by_id=E.id),await y.collection(`clients`).create(_),n++}catch(e){r++,i.push(`Erro na linha ${o+2}: ${e.message}`)}}return n>0&&T(),{success:n,errors:r,errorsList:i}},T=async()=>{s(await _e()),l(await pe())};(0,X.useEffect)(()=>{T()},[]),D(`clients`,T);let E=c.find(t=>t.user_id===e?.id||t.name===e?.name),k=e=>{h({...e,is_active:e.is_active??!0,phone_secondary:e.phone_secondary||``,preferred_barber_id:e.preferred_barber_id||``}),x(e.id),d(!0)},M=()=>{h(Qe),x(null),d(!0)},se=async e=>{e.preventDefault();try{let e={...f};!v&&E&&(e.created_by_id=E.id),(!e.preferred_barber_id||e.preferred_barber_id===`none`)&&(e.preferred_barber_id=``),v?await ve(v,e):await he(e),C({title:v?`Cliente atualizado!`:`Cliente cadastrado com sucesso!`}),d(!1)}catch{C({title:`Erro ao salvar`,variant:`destructive`})}},ue=async(e,t)=>{await ve(e,{is_active:!t})},[I,L]=(0,X.useState)(``),[B,me]=(0,X.useState)(`all`),ge=n.filter(e=>{let t=!I||`${e.name} ${e.surname||``}`.toLowerCase().includes(I.toLowerCase())||e.phone&&e.phone.includes(I),n=B===`all`||e.preferred_barber_id===B;return t&&n});return(0,Z.jsxs)(`div`,{className:`space-y-6 max-w-5xl mx-auto pb-20 md:pb-6`,children:[(0,Z.jsxs)(`div`,{className:`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`,children:[(0,Z.jsxs)(`div`,{children:[(0,Z.jsx)(`h2`,{className:`text-2xl font-bold tracking-tight`,children:`Clientes (CRM)`}),(0,Z.jsx)(`p`,{className:`text-muted-foreground`,children:`Gerencie seus clientes e acompanhe histórico.`})]}),t(`action_delete`)&&(0,Z.jsxs)(`div`,{className:`flex gap-2`,children:[(0,Z.jsxs)(g,{variant:`outline`,onClick:()=>S(!0),className:`gap-2`,children:[(0,Z.jsx)(i,{className:`size-4`}),` Importar`]}),(0,Z.jsxs)(g,{onClick:M,className:`gap-2`,children:[(0,Z.jsx)(Ce,{className:`size-4`}),` Novo Cliente`]})]})]}),(0,Z.jsx)(a,{open:re,onOpenChange:S,title:`Importar Clientes`,onImport:w}),(0,Z.jsxs)(fe,{defaultValue:`lista`,children:[(0,Z.jsxs)(de,{className:`mb-4`,children:[(0,Z.jsx)(R,{value:`lista`,children:`Lista de Clientes`}),(e?.access_level===`Admin`||e?.access_level===`Socio`)&&(0,Z.jsx)(R,{value:`ranking`,children:`Fidelidade e Rankings`})]}),(0,Z.jsxs)(z,{value:`lista`,className:`space-y-4 mt-0`,children:[(0,Z.jsxs)(`div`,{className:`flex flex-col sm:flex-row items-center gap-4 mb-4`,children:[(0,Z.jsx)(m,{placeholder:`Buscar por nome ou telefone...`,value:I,onChange:e=>L(e.target.value),className:`w-full sm:max-w-sm`}),(0,Z.jsxs)(j,{value:B,onValueChange:me,children:[(0,Z.jsx)(ie,{className:`w-full sm:max-w-[250px]`,children:(0,Z.jsx)(O,{placeholder:`Todos os profissionais`})}),(0,Z.jsxs)(ne,{children:[(0,Z.jsx)(P,{value:`all`,children:`Todos os profissionais`}),c.map(e=>(0,Z.jsx)(P,{value:e.id,children:e.name},e.id))]})]})]}),(0,Z.jsx)(ee,{open:u,onOpenChange:d,children:(0,Z.jsxs)(ce,{className:`max-w-2xl`,children:[(0,Z.jsx)(le,{children:(0,Z.jsx)(_,{children:v?`Editar Cliente`:`Cadastrar Cliente`})}),(0,Z.jsxs)(`form`,{onSubmit:se,className:`space-y-4`,children:[(0,Z.jsxs)(`div`,{className:`grid grid-cols-1 md:grid-cols-2 gap-4`,children:[(0,Z.jsxs)(`div`,{className:`space-y-2`,children:[(0,Z.jsx)(N,{children:`Nome`}),(0,Z.jsx)(m,{required:!0,className:`min-h-[44px]`,value:f.name,onChange:e=>h({...f,name:e.target.value})})]}),(0,Z.jsxs)(`div`,{className:`space-y-2`,children:[(0,Z.jsx)(N,{children:`Sobrenome`}),(0,Z.jsx)(m,{className:`min-h-[44px]`,value:f.surname,onChange:e=>h({...f,surname:e.target.value})})]})]}),(0,Z.jsxs)(`div`,{className:`grid grid-cols-1 md:grid-cols-2 gap-4`,children:[(0,Z.jsxs)(`div`,{className:`space-y-2`,children:[(0,Z.jsx)(N,{children:`Celular Principal`}),(0,Z.jsx)(m,{required:!0,className:`min-h-[44px]`,value:f.phone,onChange:e=>h({...f,phone:A(e.target.value)}),placeholder:`(00) 00000-0000`})]}),(0,Z.jsxs)(`div`,{className:`space-y-2`,children:[(0,Z.jsx)(N,{children:`Celular Secundário`}),(0,Z.jsx)(m,{className:`min-h-[44px]`,value:f.phone_secondary,onChange:e=>h({...f,phone_secondary:A(e.target.value)}),placeholder:`(00) 00000-0000`})]})]}),(0,Z.jsxs)(`div`,{className:`grid grid-cols-1 md:grid-cols-2 gap-4`,children:[(0,Z.jsxs)(`div`,{className:`space-y-2`,children:[(0,Z.jsx)(N,{children:`Nascimento`}),(0,Z.jsx)(m,{type:`date`,className:`min-h-[44px]`,value:f.birthday?f.birthday.split(`T`)[0]:``,onChange:e=>{let t=e.target.value;h({...f,birthday:t?`${t}T12:00:00.000Z`:``})}})]}),(0,Z.jsxs)(`div`,{className:`space-y-2`,children:[(0,Z.jsx)(N,{children:`Profissional Preferido`}),(0,Z.jsxs)(j,{value:f.preferred_barber_id||`none`,onValueChange:e=>h({...f,preferred_barber_id:e}),children:[(0,Z.jsx)(ie,{className:`min-h-[44px]`,children:(0,Z.jsx)(O,{placeholder:`Nenhum`})}),(0,Z.jsxs)(ne,{children:[(0,Z.jsx)(P,{value:`none`,children:`Nenhum`}),c.map(e=>(0,Z.jsx)(P,{value:e.id,children:e.name},e.id))]})]})]})]}),(0,Z.jsxs)(`div`,{className:`space-y-2`,children:[(0,Z.jsx)(N,{children:`Localização`}),(0,Z.jsxs)(Xe,{value:f.location_type,onValueChange:e=>h({...f,location_type:e}),className:`flex flex-wrap gap-4 mt-2`,children:[(0,Z.jsxs)(`div`,{className:`flex items-center space-x-2`,children:[(0,Z.jsx)($,{value:`passage`,id:`r1`}),(0,Z.jsx)(N,{htmlFor:`r1`,children:`De Passagem`})]}),(0,Z.jsxs)(`div`,{className:`flex items-center space-x-2`,children:[(0,Z.jsx)($,{value:`nearby`,id:`r2`}),(0,Z.jsx)(N,{htmlFor:`r2`,children:`Mora Perto`})]}),(0,Z.jsxs)(`div`,{className:`flex items-center space-x-2`,children:[(0,Z.jsx)($,{value:`mora_cidade`,id:`r4`}),(0,Z.jsx)(N,{htmlFor:`r4`,children:`Mora Cidade`})]}),(0,Z.jsxs)(`div`,{className:`flex items-center space-x-2`,children:[(0,Z.jsx)($,{value:`other_city`,id:`r3`}),(0,Z.jsx)(N,{htmlFor:`r3`,children:`Outra Cidade`})]})]})]}),(0,Z.jsx)(b,{children:(0,Z.jsx)(g,{type:`submit`,className:`w-full mt-4`,children:`Salvar`})})]})]})}),(0,Z.jsx)(H,{children:(0,Z.jsx)(V,{className:`p-0 overflow-x-auto`,children:(0,Z.jsxs)(J,{className:`min-w-[600px]`,children:[(0,Z.jsx)(U,{children:(0,Z.jsxs)(K,{children:[(0,Z.jsx)(W,{children:`Cliente`}),(0,Z.jsx)(W,{children:`Contatos`}),(0,Z.jsx)(W,{className:`text-center`,children:`Ativo`}),(0,Z.jsx)(W,{className:`text-right`,children:`Ações`})]})}),(0,Z.jsxs)(G,{children:[ge.map(e=>(0,Z.jsxs)(K,{className:e.is_active===!1?`opacity-50`:``,children:[(0,Z.jsxs)(q,{children:[(0,Z.jsxs)(`div`,{className:`font-medium text-base`,children:[e.name||`Cliente sem nome`,` `,e.surname||``]}),(0,Z.jsxs)(`div`,{className:`text-xs text-muted-foreground mt-1 space-y-0.5`,children:[e.expand?.created_by_id&&(0,Z.jsxs)(`div`,{className:`flex items-center gap-1.5 mt-1`,children:[(0,Z.jsx)(`span`,{className:`text-xs text-muted-foreground`,children:`Cadastrado por:`}),(0,Z.jsx)(`span`,{className:`font-medium text-xs text-muted-foreground`,children:e.expand.created_by_id.name})]}),e.expand?.preferred_barber_id&&(0,Z.jsxs)(`div`,{className:`flex items-center gap-1.5 mt-1`,children:[(0,Z.jsx)(`span`,{className:`text-xs text-muted-foreground`,children:`Atendido por:`}),(0,Z.jsx)(`span`,{className:`text-[10px] font-bold px-2 py-0.5 rounded-full`,style:{backgroundColor:e.expand.preferred_barber_id.color||`hsl(var(--primary))`,color:p(e.expand.preferred_barber_id.color||`hsl(var(--primary))`)},children:e.expand.preferred_barber_id.name})]})]})]}),(0,Z.jsx)(q,{children:(0,Z.jsxs)(`div`,{className:`space-y-1`,children:[(0,Z.jsx)(`div`,{children:A(e.phone)}),e.phone_secondary&&(0,Z.jsxs)(`div`,{className:`text-sm text-muted-foreground`,children:[A(e.phone_secondary),` (Sec)`]})]})}),(0,Z.jsx)(q,{className:`text-center`,children:(0,Z.jsx)(ye,{checked:e.is_active!==!1,onCheckedChange:()=>ue(e.id,e.is_active!==!1),disabled:!t(`action_delete`)})}),(0,Z.jsxs)(q,{className:`text-right space-x-2`,children:[t(`action_delete`)&&(0,Z.jsx)(g,{variant:`ghost`,size:`icon`,onClick:()=>k(e),children:(0,Z.jsx)(o,{className:`size-4`})}),(0,Z.jsx)(g,{variant:`ghost`,size:`icon`,asChild:!0,children:(0,Z.jsx)(F,{to:`/clientes/${e.id}`,children:(0,Z.jsx)(r,{className:`size-4`})})})]})]},e.id)),ge.length===0&&(0,Z.jsx)(K,{children:(0,Z.jsx)(q,{colSpan:4,className:`text-center py-6 text-muted-foreground`,children:`Nenhum cliente encontrado.`})})]})]})})})]}),(e?.access_level===`Admin`||e?.access_level===`Socio`)&&(0,Z.jsx)(z,{value:`ranking`,className:`mt-0`,children:(0,Z.jsx)(Ze,{})})]})]})}export{$e as default};
+import { a as e, n as t, t as n } from './jsx-runtime-m7G7yzlP.js'
+import { t as r } from './eye-D9fW5TjU.js'
+import { n as i, t as a } from './ImportDialog-B_V_6ez4.js'
+import { t as o } from './square-pen-Co30ePO_.js'
+import { n as s, r as c, t as l } from './toggle-group-CgKlvgUY.js'
+import {
+  A as u,
+  B as d,
+  D as f,
+  G as p,
+  L as m,
+  O as h,
+  R as g,
+  S as _,
+  U as v,
+  _ as ee,
+  _t as te,
+  a as y,
+  b,
+  c as ne,
+  dt as x,
+  et as re,
+  f as ie,
+  ft as S,
+  gt as C,
+  ht as w,
+  i as ae,
+  k as T,
+  m as E,
+  n as D,
+  p as O,
+  pt as k,
+  q as A,
+  r as oe,
+  s as j,
+  st as M,
+  t as N,
+  u as P,
+  ut as se,
+  v as ce,
+  vt as F,
+  x as le,
+} from './index-CHmnQ-gm.js'
+import { t as ue } from './format-BUAFcs3P.js'
+import { t as I } from './startOfMonth-Dtw_Bedr.js'
+import { t as L } from './subDays-BvwDtwKl.js'
+import { i as R, n as z, r as de, t as fe } from './tabs-D0cNoDYu.js'
+import { a as pe, c as B, m as me, n as he, r as ge, u as _e, y as ve } from './api-Zu_OBWUL.js'
+import { n as V, t as H } from './card-DHbyifQZ.js'
+import { a as U, i as W, n as G, o as K, r as q, t as J } from './table-C_vNdqXn.js'
+import { t as Y } from './badge-C1-D0eUj.js'
+import { t as ye } from './switch-CgEkKv2C.js'
+var be = M(`arrow-up-right`, [
+    [`path`, { d: `M7 7h10v10`, key: `1tivn9` }],
+    [`path`, { d: `M7 17 17 7`, key: `1vkiza` }],
+  ]),
+  xe = M(`medal`, [
+    [
+      `path`,
+      {
+        d: `M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15`,
+        key: `143lza`,
+      },
+    ],
+    [`path`, { d: `M11 12 5.12 2.2`, key: `qhuxz6` }],
+    [`path`, { d: `m13 12 5.88-9.8`, key: `hbye0f` }],
+    [`path`, { d: `M8 7h8`, key: `i86dvs` }],
+    [`circle`, { cx: `12`, cy: `17`, r: `5`, key: `qbz8iq` }],
+    [`path`, { d: `M12 18v-2h-.5`, key: `fawc4q` }],
+  ]),
+  Se = M(`star`, [
+    [
+      `path`,
+      {
+        d: `M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z`,
+        key: `r04s7s`,
+      },
+    ],
+  ]),
+  Ce = M(`user-plus`, [
+    [`path`, { d: `M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2`, key: `1yyitq` }],
+    [`circle`, { cx: `9`, cy: `7`, r: `4`, key: `nufk8` }],
+    [`line`, { x1: `19`, x2: `19`, y1: `8`, y2: `14`, key: `1bvyxn` }],
+    [`line`, { x1: `22`, x2: `16`, y1: `11`, y2: `11`, key: `1shjgl` }],
+  ]),
+  X = e(t(), 1),
+  Z = n(),
+  we = `Radio`,
+  [Te, Ee] = k(we),
+  [De, Oe] = Te(we),
+  ke = X.forwardRef((e, t) => {
+    let {
+        __scopeRadio: n,
+        name: r,
+        checked: i = !1,
+        required: a,
+        disabled: o,
+        value: s = `on`,
+        onCheck: c,
+        form: l,
+        ...u
+      } = e,
+      [d, f] = X.useState(null),
+      p = w(t, (e) => f(e)),
+      m = X.useRef(!1),
+      h = d ? l || !!d.closest(`form`) : !0
+    return (0, Z.jsxs)(De, {
+      scope: n,
+      checked: i,
+      disabled: o,
+      children: [
+        (0, Z.jsx)(S.button, {
+          type: `button`,
+          role: `radio`,
+          'aria-checked': i,
+          'data-state': Pe(i),
+          'data-disabled': o ? `` : void 0,
+          disabled: o,
+          value: s,
+          ...u,
+          ref: p,
+          onClick: C(e.onClick, (e) => {
+            ;(i || c?.(),
+              h && ((m.current = e.isPropagationStopped()), m.current || e.stopPropagation()))
+          }),
+        }),
+        h &&
+          (0, Z.jsx)(Ne, {
+            control: d,
+            bubbles: !m.current,
+            name: r,
+            value: s,
+            checked: i,
+            required: a,
+            disabled: o,
+            form: l,
+            style: { transform: `translateX(-100%)` },
+          }),
+      ],
+    })
+  })
+ke.displayName = we
+var Ae = `RadioIndicator`,
+  je = X.forwardRef((e, t) => {
+    let { __scopeRadio: n, forceMount: r, ...i } = e,
+      a = Oe(Ae, n)
+    return (0, Z.jsx)(x, {
+      present: r || a.checked,
+      children: (0, Z.jsx)(S.span, {
+        'data-state': Pe(a.checked),
+        'data-disabled': a.disabled ? `` : void 0,
+        ...i,
+        ref: t,
+      }),
+    })
+  })
+je.displayName = Ae
+var Me = `RadioBubbleInput`,
+  Ne = X.forwardRef(({ __scopeRadio: e, control: t, checked: n, bubbles: r = !0, ...i }, a) => {
+    let o = X.useRef(null),
+      s = w(o, a),
+      c = E(n),
+      l = d(t)
+    return (
+      X.useEffect(() => {
+        let e = o.current
+        if (!e) return
+        let t = window.HTMLInputElement.prototype,
+          i = Object.getOwnPropertyDescriptor(t, `checked`).set
+        if (c !== n && i) {
+          let t = new Event(`click`, { bubbles: r })
+          ;(i.call(e, n), e.dispatchEvent(t))
+        }
+      }, [c, n, r]),
+      (0, Z.jsx)(S.input, {
+        type: `radio`,
+        'aria-hidden': !0,
+        defaultChecked: n,
+        ...i,
+        tabIndex: -1,
+        ref: s,
+        style: {
+          ...i.style,
+          ...l,
+          position: `absolute`,
+          pointerEvents: `none`,
+          opacity: 0,
+          margin: 0,
+        },
+      })
+    )
+  })
+Ne.displayName = Me
+function Pe(e) {
+  return e ? `checked` : `unchecked`
+}
+var Fe = [`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`],
+  Q = `RadioGroup`,
+  [Ie, Le] = k(Q, [T, Ee]),
+  Re = T(),
+  ze = Ee(),
+  [Be, Ve] = Ie(Q),
+  He = X.forwardRef((e, t) => {
+    let {
+        __scopeRadioGroup: n,
+        name: r,
+        defaultValue: i,
+        value: a,
+        required: o = !1,
+        disabled: s = !1,
+        orientation: c,
+        dir: l,
+        loop: d = !0,
+        onValueChange: f,
+        ...p
+      } = e,
+      m = Re(n),
+      g = u(l),
+      [_, v] = se({ prop: a, defaultProp: i ?? null, onChange: f, caller: Q })
+    return (0, Z.jsx)(Be, {
+      scope: n,
+      name: r,
+      required: o,
+      disabled: s,
+      value: _,
+      onValueChange: v,
+      children: (0, Z.jsx)(h, {
+        asChild: !0,
+        ...m,
+        orientation: c,
+        dir: g,
+        loop: d,
+        children: (0, Z.jsx)(S.div, {
+          role: `radiogroup`,
+          'aria-required': o,
+          'aria-orientation': c,
+          'data-disabled': s ? `` : void 0,
+          dir: g,
+          ...p,
+          ref: t,
+        }),
+      }),
+    })
+  })
+He.displayName = Q
+var Ue = `RadioGroupItem`,
+  We = X.forwardRef((e, t) => {
+    let { __scopeRadioGroup: n, disabled: r, ...i } = e,
+      a = Ve(Ue, n),
+      o = a.disabled || r,
+      s = Re(n),
+      c = ze(n),
+      l = X.useRef(null),
+      u = w(t, l),
+      d = a.value === i.value,
+      p = X.useRef(!1)
+    return (
+      X.useEffect(() => {
+        let e = (e) => {
+            Fe.includes(e.key) && (p.current = !0)
+          },
+          t = () => (p.current = !1)
+        return (
+          document.addEventListener(`keydown`, e),
+          document.addEventListener(`keyup`, t),
+          () => {
+            ;(document.removeEventListener(`keydown`, e), document.removeEventListener(`keyup`, t))
+          }
+        )
+      }, []),
+      (0, Z.jsx)(f, {
+        asChild: !0,
+        ...s,
+        focusable: !o,
+        active: d,
+        children: (0, Z.jsx)(ke, {
+          disabled: o,
+          required: a.required,
+          checked: d,
+          ...c,
+          ...i,
+          name: a.name,
+          ref: u,
+          onCheck: () => a.onValueChange(i.value),
+          onKeyDown: C((e) => {
+            e.key === `Enter` && e.preventDefault()
+          }),
+          onFocus: C(i.onFocus, () => {
+            p.current && l.current?.click()
+          }),
+        }),
+      })
+    )
+  })
+We.displayName = Ue
+var Ge = `RadioGroupIndicator`,
+  Ke = X.forwardRef((e, t) => {
+    let { __scopeRadioGroup: n, ...r } = e
+    return (0, Z.jsx)(je, { ...ze(n), ...r, ref: t })
+  })
+Ke.displayName = Ge
+var qe = He,
+  Je = We,
+  Ye = Ke,
+  Xe = X.forwardRef(({ className: e, ...t }, n) =>
+    (0, Z.jsx)(qe, { className: v(`grid gap-2`, e), ...t, ref: n }),
+  )
+Xe.displayName = qe.displayName
+var $ = X.forwardRef(({ className: e, ...t }, n) =>
+  (0, Z.jsx)(Je, {
+    ref: n,
+    className: v(
+      `aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`,
+      e,
+    ),
+    ...t,
+    children: (0, Z.jsx)(Ye, {
+      className: `flex items-center justify-center`,
+      children: (0, Z.jsx)(re, { className: `h-2.5 w-2.5 fill-current text-current` }),
+    }),
+  }),
+)
+$.displayName = Je.displayName
+function Ze() {
+  let [e, t] = (0, X.useState)(`current_month`),
+    [n, r] = (0, X.useState)([]),
+    [i, a] = (0, X.useState)([]),
+    [o, u] = (0, X.useState)(!1),
+    [d, f] = (0, X.useState)(`revenue`),
+    [p, m] = (0, X.useState)(`Qtd`),
+    [h, g] = (0, X.useState)(0),
+    _ = () => g((e) => e + 1)
+  ;(D(`appointments`, _),
+    D(`product_purchases`, _),
+    D(`client_logs`, _),
+    (0, X.useEffect)(() => {
+      async function t() {
+        u(!0)
+        try {
+          let t = new Date(),
+            n = I(t)
+          ;(e === `last_3_months` && (n = L(t, 90)), e === `last_6_months` && (n = L(t, 180)))
+          let i = `created >= '${ue(n, `yyyy-MM-dd`) + ` 00:00:00.000Z`}'`,
+            [o, s, c, l, u, d] = await Promise.all([
+              _e(),
+              ge(i),
+              me(i),
+              B(`event_type = 'no_show' && ${i}`),
+              y.collection(`services`).getFullList(),
+              y.collection(`products`).getFullList(),
+            ]),
+            f = {},
+            p = {}
+          ;(o.forEach((e) => {
+            f[e.id] = { client: e, totalSpent: 0, totalVisits: 0, noShows: 0 }
+          }),
+            s.forEach((e) => {
+              if (
+                e.status === `Concluído` &&
+                (e.client_id &&
+                  f[e.client_id] &&
+                  ((f[e.client_id].totalSpent += e.price || e.expand?.service_id?.price || 0),
+                  (f[e.client_id].totalVisits += 1)),
+                e.service_id)
+              ) {
+                if (!p[e.service_id]) {
+                  let t = u.find((t) => t.id === e.service_id)
+                  p[e.service_id] = {
+                    id: e.service_id,
+                    name: t?.name || `Serviço`,
+                    type: `Serviço`,
+                    qtd: 0,
+                    vlr: 0,
+                  }
+                }
+                ;((p[e.service_id].qtd += 1),
+                  (p[e.service_id].vlr += e.price || e.expand?.service_id?.price || 0))
+              }
+            }),
+            c.forEach((e) => {
+              if (
+                (e.client_id &&
+                  f[e.client_id] &&
+                  (f[e.client_id].totalSpent += e.price_at_sale || 0),
+                e.product_id)
+              ) {
+                if (!p[e.product_id]) {
+                  let t = d.find((t) => t.id === e.product_id)
+                  p[e.product_id] = {
+                    id: e.product_id,
+                    name: t?.name || `Produto`,
+                    type: `Produto`,
+                    qtd: 0,
+                    vlr: 0,
+                  }
+                }
+                ;((p[e.product_id].qtd += 1), (p[e.product_id].vlr += e.price_at_sale || 0))
+              }
+            }),
+            l.forEach((e) => {
+              f[e.client_id] && (f[e.client_id].noShows += 1)
+            }),
+            r(Object.values(f)),
+            a(Object.values(p)))
+        } catch (e) {
+          console.error(e)
+        } finally {
+          u(!1)
+        }
+      }
+      t()
+    }, [e, h]))
+  let v = (0, X.useMemo)(() => {
+      let e = n.filter((e) => e.totalVisits > 0 || e.totalSpent > 0)
+      return d === `revenue`
+        ? e.sort((e, t) => t.totalSpent - e.totalSpent)
+        : e.sort((e, t) => t.totalVisits - e.totalVisits)
+    }, [n, d]),
+    ee = (0, X.useMemo)(
+      () => n.filter((e) => e.noShows > 0).sort((e, t) => t.noShows - e.noShows),
+      [n],
+    ),
+    te = (0, X.useMemo)(() => {
+      let e = [...i]
+      return p === `Vlr`
+        ? e.sort((e, t) => t.vlr - e.vlr).slice(0, 10)
+        : e.sort((e, t) => t.qtd - e.qtd).slice(0, 10)
+    }, [i, p]),
+    b = Math.max(...n.map((e) => e.totalSpent), 1),
+    x = Math.max(...n.map((e) => e.totalVisits), 1)
+  return (0, Z.jsx)(`div`, {
+    className: `space-y-4`,
+    children: (0, Z.jsxs)(fe, {
+      defaultValue: `top`,
+      className: `w-full`,
+      children: [
+        (0, Z.jsxs)(`div`, {
+          className: `flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4`,
+          children: [
+            (0, Z.jsxs)(de, {
+              children: [
+                (0, Z.jsx)(R, { value: `top`, children: `Top Clientes` }),
+                (0, Z.jsx)(R, { value: `items`, children: `Itens mais vendidos` }),
+                (0, Z.jsx)(R, { value: `noshow`, children: `Análise de Faltas` }),
+              ],
+            }),
+            (0, Z.jsxs)(j, {
+              value: e,
+              onValueChange: t,
+              children: [
+                (0, Z.jsx)(ie, {
+                  className: `w-[180px]`,
+                  children: (0, Z.jsx)(O, { placeholder: `Período` }),
+                }),
+                (0, Z.jsxs)(ne, {
+                  children: [
+                    (0, Z.jsx)(P, { value: `current_month`, children: `Mês Atual` }),
+                    (0, Z.jsx)(P, { value: `last_3_months`, children: `Últimos 3 Meses` }),
+                    (0, Z.jsx)(P, { value: `last_6_months`, children: `Últimos 6 Meses` }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+        (0, Z.jsxs)(z, {
+          value: `top`,
+          className: `space-y-4 mt-0`,
+          children: [
+            (0, Z.jsx)(`div`, {
+              className: `flex justify-end`,
+              children: (0, Z.jsxs)(l, {
+                type: `single`,
+                value: d,
+                onValueChange: (e) => {
+                  e && f(e)
+                },
+                className: `bg-muted p-1 rounded-md border`,
+                children: [
+                  (0, Z.jsx)(s, {
+                    value: `revenue`,
+                    className: `px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm`,
+                    children: `Faturamento`,
+                  }),
+                  (0, Z.jsx)(s, {
+                    value: `frequency`,
+                    className: `px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm`,
+                    children: `Atendimento`,
+                  }),
+                ],
+              }),
+            }),
+            (0, Z.jsx)(H, {
+              children: (0, Z.jsx)(V, {
+                className: `p-0 overflow-x-auto`,
+                children: (0, Z.jsxs)(J, {
+                  className: `min-w-[600px]`,
+                  children: [
+                    (0, Z.jsx)(U, {
+                      children: (0, Z.jsxs)(K, {
+                        children: [
+                          (0, Z.jsx)(W, { children: `Cliente` }),
+                          (0, Z.jsx)(W, { className: `text-right`, children: `Total Gasto` }),
+                          (0, Z.jsx)(W, { className: `text-center`, children: `Visitas` }),
+                          (0, Z.jsx)(W, { className: `text-center`, children: `Status` }),
+                        ],
+                      }),
+                    }),
+                    (0, Z.jsx)(G, {
+                      children: o
+                        ? (0, Z.jsx)(K, {
+                            children: (0, Z.jsx)(q, {
+                              colSpan: 4,
+                              className: `text-center py-8`,
+                              children: `Carregando...`,
+                            }),
+                          })
+                        : v.length === 0
+                          ? (0, Z.jsx)(K, {
+                              children: (0, Z.jsx)(q, {
+                                colSpan: 4,
+                                className: `text-center py-8 text-muted-foreground`,
+                                children: `Nenhum dado encontrado para o período.`,
+                              }),
+                            })
+                          : v
+                              .slice(0, 7)
+                              .map((e) =>
+                                (0, Z.jsxs)(
+                                  K,
+                                  {
+                                    children: [
+                                      (0, Z.jsx)(q, {
+                                        children: (0, Z.jsxs)(`div`, {
+                                          className: `flex flex-col`,
+                                          children: [
+                                            (0, Z.jsxs)(F, {
+                                              to: `/clientes/${e.client.id}`,
+                                              className: `font-medium hover:underline text-primary flex items-center gap-1`,
+                                              children: [
+                                                e.client.name || `Cliente`,
+                                                ` `,
+                                                e.client.surname || ``,
+                                                ` `,
+                                                (0, Z.jsx)(be, { className: `size-3` }),
+                                              ],
+                                            }),
+                                            e.client.expand?.preferred_barber_id?.name &&
+                                              (0, Z.jsxs)(`span`, {
+                                                className: `text-xs text-muted-foreground mt-0.5`,
+                                                children: [
+                                                  `Profissional: `,
+                                                  e.client.expand.preferred_barber_id.name,
+                                                ],
+                                              }),
+                                          ],
+                                        }),
+                                      }),
+                                      (0, Z.jsx)(q, {
+                                        className: `text-right`,
+                                        children: new Intl.NumberFormat(`pt-BR`, {
+                                          style: `currency`,
+                                          currency: `BRL`,
+                                        }).format(e.totalSpent),
+                                      }),
+                                      (0, Z.jsx)(q, {
+                                        className: `text-center`,
+                                        children: e.totalVisits,
+                                      }),
+                                      (0, Z.jsx)(q, {
+                                        className: `text-center`,
+                                        children: (0, Z.jsxs)(`div`, {
+                                          className: `flex justify-center gap-2`,
+                                          children: [
+                                            e.totalSpent >= b * 0.7 &&
+                                              e.totalSpent > 0 &&
+                                              (0, Z.jsxs)(Y, {
+                                                className: `bg-amber-500 hover:bg-amber-600 gap-1 text-white`,
+                                                children: [
+                                                  (0, Z.jsx)(xe, { className: `size-3` }),
+                                                  ` VIP`,
+                                                ],
+                                              }),
+                                            e.totalVisits >= x * 0.7 &&
+                                              e.totalVisits > 0 &&
+                                              e.totalSpent < b * 0.7 &&
+                                              (0, Z.jsxs)(Y, {
+                                                variant: `secondary`,
+                                                className: `gap-1`,
+                                                children: [
+                                                  (0, Z.jsx)(Se, { className: `size-3` }),
+                                                  ` Frequente`,
+                                                ],
+                                              }),
+                                            e.noShows > 2 &&
+                                              (0, Z.jsx)(Y, {
+                                                variant: `destructive`,
+                                                children: `Risco de Fuga`,
+                                              }),
+                                          ],
+                                        }),
+                                      }),
+                                    ],
+                                  },
+                                  e.client.id,
+                                ),
+                              ),
+                    }),
+                  ],
+                }),
+              }),
+            }),
+          ],
+        }),
+        (0, Z.jsxs)(z, {
+          value: `items`,
+          className: `space-y-4 mt-0`,
+          children: [
+            (0, Z.jsx)(`div`, {
+              className: `flex justify-end`,
+              children: (0, Z.jsxs)(l, {
+                type: `single`,
+                value: p,
+                onValueChange: (e) => {
+                  e && m(e)
+                },
+                className: `bg-muted p-1 rounded-md border`,
+                children: [
+                  (0, Z.jsx)(s, {
+                    value: `Qtd`,
+                    className: `px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm`,
+                    children: `Qtd`,
+                  }),
+                  (0, Z.jsx)(s, {
+                    value: `Vlr`,
+                    className: `px-4 font-medium text-muted-foreground data-[state=on]:text-foreground data-[state=on]:bg-background data-[state=on]:shadow-sm`,
+                    children: `Vlr`,
+                  }),
+                ],
+              }),
+            }),
+            (0, Z.jsx)(H, {
+              children: (0, Z.jsx)(V, {
+                className: `p-0 overflow-x-auto`,
+                children: (0, Z.jsxs)(J, {
+                  className: `min-w-[600px]`,
+                  children: [
+                    (0, Z.jsx)(U, {
+                      children: (0, Z.jsxs)(K, {
+                        children: [
+                          (0, Z.jsx)(W, { children: `Item` }),
+                          (0, Z.jsx)(W, { className: `text-center`, children: `Tipo` }),
+                          (0, Z.jsx)(W, { className: `text-center`, children: `Quantidade` }),
+                          (0, Z.jsx)(W, { className: `text-right`, children: `Valor Total` }),
+                        ],
+                      }),
+                    }),
+                    (0, Z.jsx)(G, {
+                      children: o
+                        ? (0, Z.jsx)(K, {
+                            children: (0, Z.jsx)(q, {
+                              colSpan: 4,
+                              className: `text-center py-8`,
+                              children: `Carregando...`,
+                            }),
+                          })
+                        : te.length === 0
+                          ? (0, Z.jsx)(K, {
+                              children: (0, Z.jsx)(q, {
+                                colSpan: 4,
+                                className: `text-center py-8 text-muted-foreground`,
+                                children: `Nenhum dado encontrado para o período.`,
+                              }),
+                            })
+                          : te.map((e) =>
+                              (0, Z.jsxs)(
+                                K,
+                                {
+                                  children: [
+                                    (0, Z.jsx)(q, {
+                                      className: `font-medium text-primary`,
+                                      children: e.name,
+                                    }),
+                                    (0, Z.jsx)(q, {
+                                      className: `text-center`,
+                                      children: (0, Z.jsx)(Y, {
+                                        variant: `outline`,
+                                        className:
+                                          e.type === `Serviço`
+                                            ? `bg-blue-50 text-blue-700 border-blue-200`
+                                            : `bg-purple-50 text-purple-700 border-purple-200`,
+                                        children: e.type,
+                                      }),
+                                    }),
+                                    (0, Z.jsx)(q, {
+                                      className: `text-center font-bold`,
+                                      children: e.qtd,
+                                    }),
+                                    (0, Z.jsx)(q, {
+                                      className: `text-right`,
+                                      children: new Intl.NumberFormat(`pt-BR`, {
+                                        style: `currency`,
+                                        currency: `BRL`,
+                                      }).format(e.vlr),
+                                    }),
+                                  ],
+                                },
+                                e.id,
+                              ),
+                            ),
+                    }),
+                  ],
+                }),
+              }),
+            }),
+          ],
+        }),
+        (0, Z.jsx)(z, {
+          value: `noshow`,
+          className: `space-y-4 mt-0`,
+          children: (0, Z.jsx)(H, {
+            children: (0, Z.jsx)(V, {
+              className: `p-0 overflow-x-auto`,
+              children: (0, Z.jsxs)(J, {
+                className: `min-w-[600px]`,
+                children: [
+                  (0, Z.jsx)(U, {
+                    children: (0, Z.jsxs)(K, {
+                      children: [
+                        (0, Z.jsx)(W, { children: `Cliente` }),
+                        (0, Z.jsx)(W, { className: `text-center`, children: `Faltas` }),
+                        (0, Z.jsx)(W, { className: `text-center`, children: `Visitas Realizadas` }),
+                        (0, Z.jsx)(W, { className: `text-center`, children: `Status` }),
+                      ],
+                    }),
+                  }),
+                  (0, Z.jsx)(G, {
+                    children: o
+                      ? (0, Z.jsx)(K, {
+                          children: (0, Z.jsx)(q, {
+                            colSpan: 4,
+                            className: `text-center py-8`,
+                            children: `Carregando...`,
+                          }),
+                        })
+                      : ee.length === 0
+                        ? (0, Z.jsx)(K, {
+                            children: (0, Z.jsx)(q, {
+                              colSpan: 4,
+                              className: `text-center py-8 text-muted-foreground`,
+                              children: `Nenhum no-show registrado no período.`,
+                            }),
+                          })
+                        : ee
+                            .slice(0, 7)
+                            .map((e) =>
+                              (0, Z.jsxs)(
+                                K,
+                                {
+                                  children: [
+                                    (0, Z.jsx)(q, {
+                                      children: (0, Z.jsxs)(`div`, {
+                                        className: `flex flex-col`,
+                                        children: [
+                                          (0, Z.jsxs)(F, {
+                                            to: `/clientes/${e.client.id}`,
+                                            className: `font-medium hover:underline text-primary flex items-center gap-1`,
+                                            children: [
+                                              e.client.name || `Cliente`,
+                                              ` `,
+                                              e.client.surname || ``,
+                                              ` `,
+                                              (0, Z.jsx)(be, { className: `size-3` }),
+                                            ],
+                                          }),
+                                          e.client.expand?.preferred_barber_id?.name &&
+                                            (0, Z.jsxs)(`span`, {
+                                              className: `text-xs text-muted-foreground mt-0.5`,
+                                              children: [
+                                                `Profissional: `,
+                                                e.client.expand.preferred_barber_id.name,
+                                              ],
+                                            }),
+                                        ],
+                                      }),
+                                    }),
+                                    (0, Z.jsx)(q, {
+                                      className: `text-center font-bold text-destructive`,
+                                      children: e.noShows,
+                                    }),
+                                    (0, Z.jsx)(q, {
+                                      className: `text-center`,
+                                      children: e.totalVisits,
+                                    }),
+                                    (0, Z.jsx)(q, {
+                                      className: `text-center`,
+                                      children:
+                                        e.noShows >= 2
+                                          ? (0, Z.jsxs)(Y, {
+                                              variant: `destructive`,
+                                              className: `gap-1`,
+                                              children: [
+                                                (0, Z.jsx)(c, { className: `size-3` }),
+                                                ` Atenção`,
+                                              ],
+                                            })
+                                          : (0, Z.jsx)(Y, {
+                                              variant: `outline`,
+                                              children: `Monitorar`,
+                                            }),
+                                    }),
+                                  ],
+                                },
+                                e.client.id,
+                              ),
+                            ),
+                  }),
+                ],
+              }),
+            }),
+          }),
+        }),
+      ],
+    }),
+  })
+}
+var Qe = {
+  name: ``,
+  surname: ``,
+  phone: ``,
+  phone_secondary: ``,
+  email: ``,
+  birthday: ``,
+  location_type: `nearby`,
+  is_active: !0,
+  preferred_barber_id: ``,
+}
+function $e() {
+  let { user: e } = ae(),
+    { hasAccess: t } = oe(),
+    [n, s] = (0, X.useState)([]),
+    [c, l] = (0, X.useState)([]),
+    [u, d] = (0, X.useState)(!1),
+    [f, h] = (0, X.useState)(Qe),
+    [v, x] = (0, X.useState)(null),
+    [re, S] = (0, X.useState)(!1),
+    { toast: C } = te(),
+    w = async (t) => {
+      let n = 0,
+        r = 0,
+        i = [],
+        a = new Map(c.map((e) => [e.name.toLowerCase().trim(), e.id]))
+      for (let o = 0; o < t.length; o++) {
+        let s = t[o]
+        try {
+          let t = (e, t) => {
+              for (let n of Object.keys(e))
+                if (t.includes(n.toLowerCase().trim()))
+                  return typeof e[n] == `string` ? e[n].trim() : String(e[n] || ``)
+              return ``
+            },
+            r = t(s, [`nome`]),
+            i = t(s, [`sobrenome`]),
+            o = t(s, [`celular`, `telefone`]),
+            c = t(s, [`celular 2`, `fone secundario`, `telefone 2`]),
+            l = t(s, [`nascimento`, `data de nascimento`, `aniversario`]),
+            u = t(s, [`profissional`, `barbeiro`, `atendente`]),
+            d = t(s, [`localização`, `localizacao`, `local`])
+          if (!r) throw Error(`O campo [Nome] é obrigatório.`)
+          let f = (e) => (e ? e.replace(/\D/g, ``).slice(0, 11) : ``),
+            p = ``
+          if (l) {
+            let e = l.trim(),
+              t = e.split(`/`)
+            if (t.length === 3) {
+              let e = parseInt(t[0], 10),
+                n = parseInt(t[1], 10),
+                r = parseInt(t[2], 10)
+              if (
+                !isNaN(e) &&
+                !isNaN(n) &&
+                !isNaN(r) &&
+                e > 0 &&
+                e <= 31 &&
+                n > 0 &&
+                n <= 12 &&
+                r > 1900 &&
+                r <= new Date().getFullYear() + 1
+              )
+                p = `${r}-${String(n).padStart(2, `0`)}-${String(e).padStart(2, `0`)}T12:00:00.000Z`
+              else throw Error(`O campo [Nascimento] possui um formato inválido.`)
+            } else {
+              let t = e.match(/^(\d{4})-(\d{2})-(\d{2})/)
+              if (t) p = `${t[1]}-${t[2]}-${t[3]}T12:00:00.000Z`
+              else throw Error(`O campo [Nascimento] possui um formato inválido.`)
+            }
+          }
+          let m = ``
+          if (u) {
+            let e = a.get(u.toLowerCase().trim())
+            if (e) m = e
+            else throw Error(`Profissional "${u}" não encontrado.`)
+          }
+          let h = `nearby`,
+            g = d.toLowerCase().trim()
+          g === `de passagem` || g === `passage`
+            ? (h = `passage`)
+            : g === `mora perto` || g === `nearby`
+              ? (h = `nearby`)
+              : g === `mora cidade` || g === `mora_cidade`
+                ? (h = `mora_cidade`)
+                : (g === `outra cidade` || g === `other_city`) && (h = `other_city`)
+          let _ = {
+            name: r,
+            surname: i,
+            phone: f(o),
+            phone_secondary: f(c),
+            location_type: h,
+            is_active: !0,
+            organization_id: e?.organization_id || e?.expand?.organization_id?.id,
+          }
+          ;(p && (_.birthday = p),
+            m && (_.preferred_barber_id = m),
+            E && (_.created_by_id = E.id),
+            await y.collection(`clients`).create(_),
+            n++)
+        } catch (e) {
+          ;(r++, i.push(`Erro na linha ${o + 2}: ${e.message}`))
+        }
+      }
+      return (n > 0 && T(), { success: n, errors: r, errorsList: i })
+    },
+    T = async () => {
+      ;(s(await _e()), l(await pe()))
+    }
+  ;((0, X.useEffect)(() => {
+    T()
+  }, []),
+    D(`clients`, T))
+  let E = c.find((t) => t.user_id === e?.id || t.name === e?.name),
+    k = (e) => {
+      ;(h({
+        ...e,
+        is_active: e.is_active ?? !0,
+        phone_secondary: e.phone_secondary || ``,
+        preferred_barber_id: e.preferred_barber_id || ``,
+      }),
+        x(e.id),
+        d(!0))
+    },
+    M = () => {
+      ;(h(Qe), x(null), d(!0))
+    },
+    se = async (e) => {
+      e.preventDefault()
+      try {
+        let e = { ...f }
+        ;(!v && E && (e.created_by_id = E.id),
+          (!e.preferred_barber_id || e.preferred_barber_id === `none`) &&
+            (e.preferred_barber_id = ``),
+          v ? await ve(v, e) : await he(e),
+          C({ title: v ? `Cliente atualizado!` : `Cliente cadastrado com sucesso!` }),
+          d(!1))
+      } catch {
+        C({ title: `Erro ao salvar`, variant: `destructive` })
+      }
+    },
+    ue = async (e, t) => {
+      await ve(e, { is_active: !t })
+    },
+    [I, L] = (0, X.useState)(``),
+    [B, me] = (0, X.useState)(`all`),
+    ge = n.filter((e) => {
+      let t =
+          !I ||
+          `${e.name} ${e.surname || ``}`.toLowerCase().includes(I.toLowerCase()) ||
+          (e.phone && e.phone.includes(I)),
+        n = B === `all` || e.preferred_barber_id === B
+      return t && n
+    })
+  return (0, Z.jsxs)(`div`, {
+    className: `space-y-6 max-w-5xl mx-auto pb-20 md:pb-6`,
+    children: [
+      (0, Z.jsxs)(`div`, {
+        className: `flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4`,
+        children: [
+          (0, Z.jsxs)(`div`, {
+            children: [
+              (0, Z.jsx)(`h2`, {
+                className: `text-2xl font-bold tracking-tight`,
+                children: `Clientes (CRM)`,
+              }),
+              (0, Z.jsx)(`p`, {
+                className: `text-muted-foreground`,
+                children: `Gerencie seus clientes e acompanhe histórico.`,
+              }),
+            ],
+          }),
+          t(`action_delete`) &&
+            (0, Z.jsxs)(`div`, {
+              className: `flex gap-2`,
+              children: [
+                (0, Z.jsxs)(g, {
+                  variant: `outline`,
+                  onClick: () => S(!0),
+                  className: `gap-2`,
+                  children: [(0, Z.jsx)(i, { className: `size-4` }), ` Importar`],
+                }),
+                (0, Z.jsxs)(g, {
+                  onClick: M,
+                  className: `gap-2`,
+                  children: [(0, Z.jsx)(Ce, { className: `size-4` }), ` Novo Cliente`],
+                }),
+              ],
+            }),
+        ],
+      }),
+      (0, Z.jsx)(a, { open: re, onOpenChange: S, title: `Importar Clientes`, onImport: w }),
+      (0, Z.jsxs)(fe, {
+        defaultValue: `lista`,
+        children: [
+          (0, Z.jsxs)(de, {
+            className: `mb-4`,
+            children: [
+              (0, Z.jsx)(R, { value: `lista`, children: `Lista de Clientes` }),
+              (e?.access_level === `Admin` || e?.access_level === `Socio`) &&
+                (0, Z.jsx)(R, { value: `ranking`, children: `Fidelidade e Rankings` }),
+            ],
+          }),
+          (0, Z.jsxs)(z, {
+            value: `lista`,
+            className: `space-y-4 mt-0`,
+            children: [
+              (0, Z.jsxs)(`div`, {
+                className: `flex flex-col sm:flex-row items-center gap-4 mb-4`,
+                children: [
+                  (0, Z.jsx)(m, {
+                    placeholder: `Buscar por nome ou telefone...`,
+                    value: I,
+                    onChange: (e) => L(e.target.value),
+                    className: `w-full sm:max-w-sm`,
+                  }),
+                  (0, Z.jsxs)(j, {
+                    value: B,
+                    onValueChange: me,
+                    children: [
+                      (0, Z.jsx)(ie, {
+                        className: `w-full sm:max-w-[250px]`,
+                        children: (0, Z.jsx)(O, { placeholder: `Todos os profissionais` }),
+                      }),
+                      (0, Z.jsxs)(ne, {
+                        children: [
+                          (0, Z.jsx)(P, { value: `all`, children: `Todos os profissionais` }),
+                          c.map((e) => (0, Z.jsx)(P, { value: e.id, children: e.name }, e.id)),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              (0, Z.jsx)(ee, {
+                open: u,
+                onOpenChange: d,
+                children: (0, Z.jsxs)(ce, {
+                  className: `max-w-2xl`,
+                  children: [
+                    (0, Z.jsx)(le, {
+                      children: (0, Z.jsx)(_, {
+                        children: v ? `Editar Cliente` : `Cadastrar Cliente`,
+                      }),
+                    }),
+                    (0, Z.jsxs)(`form`, {
+                      onSubmit: se,
+                      className: `space-y-4`,
+                      children: [
+                        (0, Z.jsxs)(`div`, {
+                          className: `grid grid-cols-1 md:grid-cols-2 gap-4`,
+                          children: [
+                            (0, Z.jsxs)(`div`, {
+                              className: `space-y-2`,
+                              children: [
+                                (0, Z.jsx)(N, { children: `Nome` }),
+                                (0, Z.jsx)(m, {
+                                  required: !0,
+                                  className: `min-h-[44px]`,
+                                  value: f.name,
+                                  onChange: (e) => h({ ...f, name: e.target.value }),
+                                }),
+                              ],
+                            }),
+                            (0, Z.jsxs)(`div`, {
+                              className: `space-y-2`,
+                              children: [
+                                (0, Z.jsx)(N, { children: `Sobrenome` }),
+                                (0, Z.jsx)(m, {
+                                  className: `min-h-[44px]`,
+                                  value: f.surname,
+                                  onChange: (e) => h({ ...f, surname: e.target.value }),
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        (0, Z.jsxs)(`div`, {
+                          className: `grid grid-cols-1 md:grid-cols-2 gap-4`,
+                          children: [
+                            (0, Z.jsxs)(`div`, {
+                              className: `space-y-2`,
+                              children: [
+                                (0, Z.jsx)(N, { children: `Celular Principal` }),
+                                (0, Z.jsx)(m, {
+                                  required: !0,
+                                  className: `min-h-[44px]`,
+                                  value: f.phone,
+                                  onChange: (e) => h({ ...f, phone: A(e.target.value) }),
+                                  placeholder: `(00) 00000-0000`,
+                                }),
+                              ],
+                            }),
+                            (0, Z.jsxs)(`div`, {
+                              className: `space-y-2`,
+                              children: [
+                                (0, Z.jsx)(N, { children: `Celular Secundário` }),
+                                (0, Z.jsx)(m, {
+                                  className: `min-h-[44px]`,
+                                  value: f.phone_secondary,
+                                  onChange: (e) => h({ ...f, phone_secondary: A(e.target.value) }),
+                                  placeholder: `(00) 00000-0000`,
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        (0, Z.jsxs)(`div`, {
+                          className: `grid grid-cols-1 md:grid-cols-2 gap-4`,
+                          children: [
+                            (0, Z.jsxs)(`div`, {
+                              className: `space-y-2`,
+                              children: [
+                                (0, Z.jsx)(N, { children: `Nascimento` }),
+                                (0, Z.jsx)(m, {
+                                  type: `date`,
+                                  className: `min-h-[44px]`,
+                                  value: f.birthday ? f.birthday.split(`T`)[0] : ``,
+                                  onChange: (e) => {
+                                    let t = e.target.value
+                                    h({ ...f, birthday: t ? `${t}T12:00:00.000Z` : `` })
+                                  },
+                                }),
+                              ],
+                            }),
+                            (0, Z.jsxs)(`div`, {
+                              className: `space-y-2`,
+                              children: [
+                                (0, Z.jsx)(N, { children: `Profissional Preferido` }),
+                                (0, Z.jsxs)(j, {
+                                  value: f.preferred_barber_id || `none`,
+                                  onValueChange: (e) => h({ ...f, preferred_barber_id: e }),
+                                  children: [
+                                    (0, Z.jsx)(ie, {
+                                      className: `min-h-[44px]`,
+                                      children: (0, Z.jsx)(O, { placeholder: `Nenhum` }),
+                                    }),
+                                    (0, Z.jsxs)(ne, {
+                                      children: [
+                                        (0, Z.jsx)(P, { value: `none`, children: `Nenhum` }),
+                                        c.map((e) =>
+                                          (0, Z.jsx)(P, { value: e.id, children: e.name }, e.id),
+                                        ),
+                                      ],
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        (0, Z.jsxs)(`div`, {
+                          className: `space-y-2`,
+                          children: [
+                            (0, Z.jsx)(N, { children: `Localização` }),
+                            (0, Z.jsxs)(Xe, {
+                              value: f.location_type,
+                              onValueChange: (e) => h({ ...f, location_type: e }),
+                              className: `flex flex-wrap gap-4 mt-2`,
+                              children: [
+                                (0, Z.jsxs)(`div`, {
+                                  className: `flex items-center space-x-2`,
+                                  children: [
+                                    (0, Z.jsx)($, { value: `passage`, id: `r1` }),
+                                    (0, Z.jsx)(N, { htmlFor: `r1`, children: `De Passagem` }),
+                                  ],
+                                }),
+                                (0, Z.jsxs)(`div`, {
+                                  className: `flex items-center space-x-2`,
+                                  children: [
+                                    (0, Z.jsx)($, { value: `nearby`, id: `r2` }),
+                                    (0, Z.jsx)(N, { htmlFor: `r2`, children: `Mora Perto` }),
+                                  ],
+                                }),
+                                (0, Z.jsxs)(`div`, {
+                                  className: `flex items-center space-x-2`,
+                                  children: [
+                                    (0, Z.jsx)($, { value: `mora_cidade`, id: `r4` }),
+                                    (0, Z.jsx)(N, { htmlFor: `r4`, children: `Mora Cidade` }),
+                                  ],
+                                }),
+                                (0, Z.jsxs)(`div`, {
+                                  className: `flex items-center space-x-2`,
+                                  children: [
+                                    (0, Z.jsx)($, { value: `other_city`, id: `r3` }),
+                                    (0, Z.jsx)(N, { htmlFor: `r3`, children: `Outra Cidade` }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        (0, Z.jsx)(b, {
+                          children: (0, Z.jsx)(g, {
+                            type: `submit`,
+                            className: `w-full mt-4`,
+                            children: `Salvar`,
+                          }),
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              }),
+              (0, Z.jsx)(H, {
+                children: (0, Z.jsx)(V, {
+                  className: `p-0 overflow-x-auto`,
+                  children: (0, Z.jsxs)(J, {
+                    className: `min-w-[600px]`,
+                    children: [
+                      (0, Z.jsx)(U, {
+                        children: (0, Z.jsxs)(K, {
+                          children: [
+                            (0, Z.jsx)(W, { children: `Cliente` }),
+                            (0, Z.jsx)(W, { children: `Contatos` }),
+                            (0, Z.jsx)(W, { className: `text-center`, children: `Ativo` }),
+                            (0, Z.jsx)(W, { className: `text-right`, children: `Ações` }),
+                          ],
+                        }),
+                      }),
+                      (0, Z.jsxs)(G, {
+                        children: [
+                          ge.map((e) =>
+                            (0, Z.jsxs)(
+                              K,
+                              {
+                                className: e.is_active === !1 ? `opacity-50` : ``,
+                                children: [
+                                  (0, Z.jsxs)(q, {
+                                    children: [
+                                      (0, Z.jsxs)(`div`, {
+                                        className: `font-medium text-base`,
+                                        children: [
+                                          e.name || `Cliente sem nome`,
+                                          ` `,
+                                          e.surname || ``,
+                                        ],
+                                      }),
+                                      (0, Z.jsxs)(`div`, {
+                                        className: `text-xs text-muted-foreground mt-1 space-y-0.5`,
+                                        children: [
+                                          e.expand?.created_by_id &&
+                                            (0, Z.jsxs)(`div`, {
+                                              className: `flex items-center gap-1.5 mt-1`,
+                                              children: [
+                                                (0, Z.jsx)(`span`, {
+                                                  className: `text-xs text-muted-foreground`,
+                                                  children: `Cadastrado por:`,
+                                                }),
+                                                (0, Z.jsx)(`span`, {
+                                                  className: `font-medium text-xs text-muted-foreground`,
+                                                  children: e.expand.created_by_id.name,
+                                                }),
+                                              ],
+                                            }),
+                                          e.expand?.preferred_barber_id &&
+                                            (0, Z.jsxs)(`div`, {
+                                              className: `flex items-center gap-1.5 mt-1`,
+                                              children: [
+                                                (0, Z.jsx)(`span`, {
+                                                  className: `text-xs text-muted-foreground`,
+                                                  children: `Atendido por:`,
+                                                }),
+                                                (0, Z.jsx)(`span`, {
+                                                  className: `text-[10px] font-bold px-2 py-0.5 rounded-full`,
+                                                  style: {
+                                                    backgroundColor:
+                                                      e.expand.preferred_barber_id.color ||
+                                                      `hsl(var(--primary))`,
+                                                    color: p(
+                                                      e.expand.preferred_barber_id.color ||
+                                                        `hsl(var(--primary))`,
+                                                    ),
+                                                  },
+                                                  children: e.expand.preferred_barber_id.name,
+                                                }),
+                                              ],
+                                            }),
+                                        ],
+                                      }),
+                                    ],
+                                  }),
+                                  (0, Z.jsx)(q, {
+                                    children: (0, Z.jsxs)(`div`, {
+                                      className: `space-y-1`,
+                                      children: [
+                                        (0, Z.jsx)(`div`, { children: A(e.phone) }),
+                                        e.phone_secondary &&
+                                          (0, Z.jsxs)(`div`, {
+                                            className: `text-sm text-muted-foreground`,
+                                            children: [A(e.phone_secondary), ` (Sec)`],
+                                          }),
+                                      ],
+                                    }),
+                                  }),
+                                  (0, Z.jsx)(q, {
+                                    className: `text-center`,
+                                    children: (0, Z.jsx)(ye, {
+                                      checked: e.is_active !== !1,
+                                      onCheckedChange: () => ue(e.id, e.is_active !== !1),
+                                      disabled: !t(`action_delete`),
+                                    }),
+                                  }),
+                                  (0, Z.jsxs)(q, {
+                                    className: `text-right space-x-2`,
+                                    children: [
+                                      t(`action_delete`) &&
+                                        (0, Z.jsx)(g, {
+                                          variant: `ghost`,
+                                          size: `icon`,
+                                          onClick: () => k(e),
+                                          children: (0, Z.jsx)(o, { className: `size-4` }),
+                                        }),
+                                      (0, Z.jsx)(g, {
+                                        variant: `ghost`,
+                                        size: `icon`,
+                                        asChild: !0,
+                                        children: (0, Z.jsx)(F, {
+                                          to: `/clientes/${e.id}`,
+                                          children: (0, Z.jsx)(r, { className: `size-4` }),
+                                        }),
+                                      }),
+                                    ],
+                                  }),
+                                ],
+                              },
+                              e.id,
+                            ),
+                          ),
+                          ge.length === 0 &&
+                            (0, Z.jsx)(K, {
+                              children: (0, Z.jsx)(q, {
+                                colSpan: 4,
+                                className: `text-center py-6 text-muted-foreground`,
+                                children: `Nenhum cliente encontrado.`,
+                              }),
+                            }),
+                        ],
+                      }),
+                    ],
+                  }),
+                }),
+              }),
+            ],
+          }),
+          (e?.access_level === `Admin` || e?.access_level === `Socio`) &&
+            (0, Z.jsx)(z, { value: `ranking`, className: `mt-0`, children: (0, Z.jsx)(Ze, {}) }),
+        ],
+      }),
+    ],
+  })
+}
+export { $e as default }
