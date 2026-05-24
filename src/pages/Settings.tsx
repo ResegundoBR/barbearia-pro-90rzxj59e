@@ -1,1254 +1,399 @@
-import React, { useState, useEffect } from 'react'
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
+import { useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Plus, Trash2, Edit, Download, Upload, Users, Package, Truck } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
-import { ImportDialog } from '@/components/ImportDialog'
-import { TIER_LIMITS } from '@/lib/tiers'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { useAuth } from '@/hooks/use-auth'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
-import { Badge } from '@/components/ui/badge'
-import { CategoriasTab } from '@/pages/produtos-categorias/CategoriasTab'
-import { Switch } from '@/components/ui/switch'
-import { usePermissions } from '@/hooks/use-permissions'
-import { getRowVal, parseImportDate } from '@/lib/utils'
+import { Download, Upload, Clock, ShieldCheck, Database, Building2 } from 'lucide-react'
+
+// Custom CSV Parser to safely handle commas inside quoted strings
+function parseCSV(text: string) {
+  const lines = text.split(/\r?\n/)
+  if (lines.length === 0) return []
+
+  const parseLine = (line: string) => {
+    const result = []
+    let current = ''
+    let inQuotes = false
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      if (char === '"') {
+        inQuotes = !inQuotes
+      } else if (char === ',' && !inQuotes) {
+        result.push(current)
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    result.push(current)
+    return result
+  }
+
+  const headers = parseLine(lines[0]).map((h) => h.trim())
+  const data = []
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue
+    const values = parseLine(lines[i]).map((v) => v.trim())
+    const obj: Record<string, string> = {}
+    headers.forEach((h, idx) => {
+      obj[h] = values[idx] || ''
+    })
+    data.push(obj)
+  }
+
+  return data
+}
+
+// Emulated Google Sheets templates using generated CSV data URIs
+const CLIENT_TEMPLATE_URL =
+  'data:text/csv;charset=utf-8,' +
+  encodeURIComponent('Nome,Sobrenome,Celular,Fone Secundário,Nascimento,Profissional,Localização\n')
+const PRODUCT_TEMPLATE_URL =
+  'data:text/csv;charset=utf-8,' +
+  encodeURIComponent('Produto,Categoria,Preço de Venda,Preço de Custo,Estoque Atual\n')
+const SUPPLIER_TEMPLATE_URL =
+  'data:text/csv;charset=utf-8,' +
+  encodeURIComponent('Nome,CPF/CNPJ,Endereço,Pessoa de Contato,WhatsApp/Fone,Categoria\n')
 
 export default function Settings() {
-  const { user } = useAuth()
-  const { isAdmin } = usePermissions()
-  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
 
-  const [logoConfigId, setLogoConfigId] = useState<string>('')
-  const [logoPreview, setLogoPreview] = useState<string>('')
-  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null)
-
-  const [finConfigId, setFinConfigId] = useState<string>('')
-  const [finForm, setFinForm] = useState({
-    inventory_owner_id: '',
-    default_product_commission: 10,
-    enable_third_party_commission: true,
-    enable_professional_consumption: true,
-  })
-  const [barbers, setBarbers] = useState<any[]>([])
-
-  const [isNotifOpen, setIsNotifOpen] = useState(false)
-  const [editingNotifId, setEditingNotifId] = useState<string | null>(null)
-  const [notifForm, setNotifForm] = useState({
-    event_type: 'new_appointment',
-    recipients: [] as string[],
-    channel: 'internal',
-    timing_unit: 'hours_minutes',
-    timing_hours: 0,
-    timing_minutes: 0,
-    timing_days: 0,
-    is_active: true,
-  })
-
-  const loadData = async () => {
-    try {
-      const sett = await pb.collection('settings').getFullList()
-      const logoSett = sett.find((s) => s.key === 'logo')
-      if (logoSett) {
-        setLogoConfigId(logoSett.id)
-        if (logoSett.logo) {
-          setLogoPreview(pb.files.getURL(logoSett, logoSett.logo))
-        }
-      }
-
-      const finSett = sett.find((s) => s.key === 'financial_config')
-      if (finSett) {
-        setFinConfigId(finSett.id)
-        setFinForm(
-          finSett.value || {
-            inventory_owner_id: '',
-            default_product_commission: 10,
-            enable_third_party_commission: true,
-          },
-        )
-      }
-
-      const permSett = sett.find((s) => s.key === 'role_permissions')
-      if (permSett) {
-        setPermConfigId(permSett.id)
-        setPermForm(permSett.value || { Admin: ['*'], Socio: [], Autonomo: [] })
-      } else {
-        setPermForm({
-          Admin: ['*'],
-          Socio: [
-            'agenda',
-            'clientes',
-            'checkout',
-            'staff',
-            'dash_tab_overview',
-            'dash_block_revenue',
-            'dash_block_clients',
-            'dash_block_new_clients',
-            'dash_block_ticket_serv',
-            'dash_block_ticket_prod',
-            'dash_block_peak',
-            'dash_block_history',
-            'dash_block_top_sellers',
-            'dash_block_forecast',
-            'dash_block_alerts',
-          ],
-          Autonomo: [
-            'agenda',
-            'dash_tab_overview',
-            'dash_block_revenue',
-            'dash_block_history',
-            'dash_block_peak',
-            'dash_block_forecast',
-          ],
-        })
-      }
-
-      const bList = await pb.collection('barbers').getFullList({ sort: 'name' })
-      setBarbers(bList)
-
-      const bhList = await pb.collection('business_hours').getFullList({ sort: 'day_of_week' })
-
-      const defaultDays = [
-        { day_of_week: '0', is_active: false, open_time: '09:00', close_time: '18:00' },
-        { day_of_week: '1', is_active: true, open_time: '09:00', close_time: '18:00' },
-        { day_of_week: '2', is_active: true, open_time: '09:00', close_time: '18:00' },
-        { day_of_week: '3', is_active: true, open_time: '09:00', close_time: '18:00' },
-        { day_of_week: '4', is_active: true, open_time: '09:00', close_time: '18:00' },
-        { day_of_week: '5', is_active: true, open_time: '09:00', close_time: '18:00' },
-        { day_of_week: '6', is_active: true, open_time: '09:00', close_time: '18:00' },
-      ]
-
-      const mergedBh = defaultDays.map((def) => {
-        const existing = bhList.find((b) => b.day_of_week === def.day_of_week)
-        return existing || def
-      })
-
-      setBusinessHours(mergedBh)
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  useEffect(() => {
-    if (isAdmin) {
-      loadData()
-      loadNotificationRules()
-    }
-  }, [user, isAdmin])
-
-  const [permConfigId, setPermConfigId] = useState<string>('')
-  const [permForm, setPermForm] = useState<any>({ Admin: ['*'], Socio: [], Autonomo: [] })
-
-  const [notifRules, setNotifRules] = useState<any[]>([])
-
-  const [businessHours, setBusinessHours] = useState<any[]>([])
-  const [importType, setImportType] = useState<string | null>(null)
-
-  const handleSaveBusinessHours = async () => {
-    try {
-      for (const bh of businessHours) {
-        if (bh.id) {
-          await pb.collection('business_hours').update(bh.id, bh)
-        } else {
-          await pb.collection('business_hours').create(bh)
-        }
-      }
-      toast({ title: 'Horários atualizados com sucesso!' })
-    } catch (err) {
-      toast({ title: 'Erro ao salvar horários', variant: 'destructive' })
-    }
-  }
-
-  const updateBusinessHour = (index: number, field: string, value: any) => {
-    const newBh = [...businessHours]
-    newBh[index] = { ...newBh[index], [field]: value }
-    setBusinessHours(newBh)
-  }
-
-  const loadNotificationRules = async () => {
-    try {
-      const rules = await pb.collection('notification_rules').getFullList()
-      setNotifRules(rules)
-    } catch {
-      /* intentionally ignored */
-    }
-  }
-
-  const toggleNotifRule = async (id: string, current: boolean) => {
-    try {
-      await pb.collection('notification_rules').update(id, { is_active: !current })
-      loadNotificationRules()
-    } catch {
-      /* intentionally ignored */
-    }
-  }
-
-  const toggleRecipient = async (rule: any, role: string) => {
-    try {
-      let recipients = rule.recipients || []
-      if (recipients.includes(role)) {
-        recipients = recipients.filter((r: string) => r !== role)
-      } else {
-        recipients = [...recipients, role]
-      }
-      await pb.collection('notification_rules').update(rule.id, { recipients })
-      loadNotificationRules()
-    } catch {
-      /* intentionally ignored */
-    }
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="p-8 text-center text-muted-foreground">
-        Acesso Restrito. Apenas administradores podem acessar esta página.
-      </div>
-    )
-  }
-
-  const handleLogoFile = (e: any) => {
+  const handleImport = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: 'clientes' | 'produtos' | 'fornecedores',
+  ) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setSelectedLogoFile(file)
-      setLogoPreview(URL.createObjectURL(file))
-    }
-  }
+    if (!file) return
 
-  const handleSaveLogo = async () => {
-    if (!selectedLogoFile) return
-    const formData = new FormData()
-    formData.append('logo', selectedLogoFile)
-    formData.append('key', 'logo')
-    formData.append('value', JSON.stringify({}))
+    const reader = new FileReader()
+    reader.onload = async (event) => {
+      const text = event.target?.result as string
+      const data = parseCSV(text)
 
-    try {
-      if (logoConfigId) {
-        await pb.collection('settings').update(logoConfigId, formData)
-      } else {
-        const r = await pb.collection('settings').create(formData)
-        setLogoConfigId(r.id)
-      }
-      toast({
-        title: 'Logo atualizado com sucesso!',
-        description: 'O logotipo foi salvo e já está ativo.',
-      })
-      setSelectedLogoFile(null)
-      window.dispatchEvent(new Event('logo-updated'))
-    } catch (err) {
-      console.error('Save logo error:', err)
-      toast({
-        title: 'Erro ao salvar logo',
-        description: 'Verifique se o arquivo é um PNG/JPG válido e tente novamente.',
-        variant: 'destructive',
-      })
-    }
-  }
+      setLoading(true)
+      let successCount = 0
+      let errorCount = 0
 
-  const handleSavePermissions = async () => {
-    const payload = {
-      key: 'role_permissions',
-      value: permForm,
-    }
-    try {
-      if (permConfigId) {
-        await pb.collection('settings').update(permConfigId, payload)
-      } else {
-        const r = await pb.collection('settings').create(payload)
-        setPermConfigId(r.id)
-      }
-      toast({ title: 'Permissões atualizadas com sucesso! Recarregue a página para aplicar.' })
-    } catch (err) {
-      toast({ title: 'Erro ao salvar permissões', variant: 'destructive' })
-    }
-  }
-
-  const togglePermission = (role: string, permId: string) => {
-    setPermForm((prev: any) => {
-      const rolePerms = prev[role] || []
-      const newPerms = rolePerms.includes(permId)
-        ? rolePerms.filter((p: string) => p !== permId)
-        : [...rolePerms, permId]
-      return { ...prev, [role]: newPerms }
-    })
-  }
-
-  const ALL_PERMISSIONS = [
-    { id: 'agenda', label: 'Agenda', category: 'Módulos do Menu' },
-    { id: 'clientes', label: 'Clientes', category: 'Módulos do Menu' },
-    { id: 'checkout', label: 'Checkout (POS)', category: 'Módulos do Menu' },
-    { id: 'financeiro', label: 'Financeiro', category: 'Módulos do Menu' },
-    { id: 'estoque', label: 'Serviços & Pacotes', category: 'Módulos do Menu' },
-    { id: 'produtos', label: 'Produtos', category: 'Módulos do Menu' },
-    { id: 'fornecedores', label: 'Compras / Fornecedores', category: 'Módulos do Menu' },
-    { id: 'staff', label: 'Equipe & Comissões', category: 'Módulos do Menu' },
-    { id: 'settings', label: 'Configurações', category: 'Módulos do Menu' },
-    { id: 'users', label: 'Usuários e Acessos', category: 'Módulos do Menu' },
-
-    { id: 'dash_tab_overview', label: 'Aba: Visão Geral', category: 'Dashboard' },
-    { id: 'dash_tab_financial', label: 'Aba: Financeiro', category: 'Dashboard' },
-    { id: 'dash_tab_packages', label: 'Aba: Pacotes Ativos', category: 'Dashboard' },
-
-    { id: 'dash_block_revenue', label: 'Bloco: Faturamento', category: 'Dashboard (Visão Geral)' },
-    {
-      id: 'dash_block_clients',
-      label: 'Bloco: Clientes Atendidos',
-      category: 'Dashboard (Visão Geral)',
-    },
-    {
-      id: 'dash_block_new_clients',
-      label: 'Bloco: Novos Clientes',
-      category: 'Dashboard (Visão Geral)',
-    },
-    {
-      id: 'dash_block_ticket_serv',
-      label: 'Bloco: Ticket Médio Serv.',
-      category: 'Dashboard (Visão Geral)',
-    },
-    {
-      id: 'dash_block_ticket_prod',
-      label: 'Bloco: Ticket Médio Prod.',
-      category: 'Dashboard (Visão Geral)',
-    },
-    {
-      id: 'dash_block_peak',
-      label: 'Bloco: Horários de Pico',
-      category: 'Dashboard (Visão Geral)',
-    },
-    {
-      id: 'dash_block_top_sellers',
-      label: 'Bloco: Top Vendas / Mix',
-      category: 'Dashboard (Visão Geral)',
-    },
-    {
-      id: 'dash_block_forecast',
-      label: 'Bloco: Previsão de Recebimento',
-      category: 'Dashboard (Visão Geral)',
-    },
-    { id: 'dash_block_alerts', label: 'Bloco: Alertas', category: 'Dashboard (Visão Geral)' },
-    {
-      id: 'dash_block_history',
-      label: 'Bloco: Histórico/Gráficos',
-      category: 'Dashboard (Visão Geral)',
-    },
-  ]
-
-  const categoriesSet = Array.from(new Set(ALL_PERMISSIONS.map((p) => p.category)))
-
-  const handleSaveFinConfig = async () => {
-    if (!finForm.inventory_owner_id) {
-      toast({ title: 'Selecione o Gestor de Estoque.', variant: 'destructive' })
-      return
-    }
-    const payload = {
-      key: 'financial_config',
-      value: finForm,
-    }
-    try {
-      if (finConfigId) {
-        await pb.collection('settings').update(finConfigId, payload)
-      } else {
-        const r = await pb.collection('settings').create(payload)
-        setFinConfigId(r.id)
-      }
-      toast({ title: 'Regras Financeiras atualizadas com sucesso!' })
-    } catch (err) {
-      toast({ title: 'Erro ao salvar regras financeiras', variant: 'destructive' })
-    }
-  }
-
-  const handleOpenNotif = (r?: any) => {
-    if (r) {
-      const unit = r.timing_unit || 'hours_minutes'
-      let h = 0,
-        m = 0,
-        d = 0
-      if (unit === 'days') {
-        d = r.timing_offset || 0
-      } else {
-        const totalMin = r.timing_offset || 0
-        h = Math.floor(totalMin / 60)
-        m = totalMin % 60
-      }
-      setNotifForm({
-        event_type: r.event_type,
-        recipients: r.recipients || [],
-        channel: r.channel || 'internal',
-        timing_unit: unit,
-        timing_hours: h,
-        timing_minutes: m,
-        timing_days: d,
-        is_active: r.is_active,
-      })
-      setEditingNotifId(r.id)
-    } else {
-      setNotifForm({
-        event_type: 'new_appointment',
-        recipients: [],
-        channel: 'internal',
-        timing_unit: 'hours_minutes',
-        timing_hours: 0,
-        timing_minutes: 0,
-        timing_days: 0,
-        is_active: true,
-      })
-      setEditingNotifId(null)
-    }
-    setIsNotifOpen(true)
-  }
-
-  const handleSaveNotif = async () => {
-    try {
-      let offset = 0
-      if (notifForm.timing_unit === 'days') {
-        offset = Number(notifForm.timing_days) || 0
-      } else {
-        offset =
-          (Number(notifForm.timing_hours) || 0) * 60 + (Number(notifForm.timing_minutes) || 0)
-      }
-
-      const payload = {
-        event_type: notifForm.event_type,
-        recipients: notifForm.recipients,
-        channel: notifForm.channel,
-        timing_unit: notifForm.timing_unit,
-        timing_offset: offset,
-        is_active: notifForm.is_active,
-      }
-
-      if (editingNotifId) {
-        await pb.collection('notification_rules').update(editingNotifId, payload)
-        toast({ title: 'Regra atualizada!' })
-      } else {
-        await pb.collection('notification_rules').create(payload)
-        toast({ title: 'Regra criada!' })
-      }
-      setIsNotifOpen(false)
-      loadNotificationRules()
-    } catch (err) {
-      toast({ title: 'Erro ao salvar regra', variant: 'destructive' })
-    }
-  }
-
-  const handleDeleteNotif = async (id: string) => {
-    if (confirm('Tem certeza que deseja remover esta regra?')) {
       try {
-        await pb.collection('notification_rules').delete(id)
-        toast({ title: 'Regra removida' })
-        loadNotificationRules()
-      } catch (err) {
-        toast({ title: 'Erro ao remover regra', variant: 'destructive' })
-      }
-    }
-  }
+        if (type === 'clientes') {
+          for (const row of data) {
+            try {
+              let birthDate = ''
+              // Safely treat "Nascimento" as string to avoid Sheets/Excel date conversion issues
+              if (row['Nascimento']) {
+                const parts = row['Nascimento'].split('/')
+                if (parts.length === 3) {
+                  // Map DD/MM/AAAA to YYYY-MM-DD for DB
+                  birthDate = `${parts[2]}-${parts[1]}-${parts[0]} 12:00:00.000Z`
+                }
+              }
 
-  const toggleFormRecipient = (role: string) => {
-    setNotifForm((prev) => ({
-      ...prev,
-      recipients: prev.recipients.includes(role)
-        ? prev.recipients.filter((r) => r !== role)
-        : [...prev.recipients, role],
-    }))
-  }
-
-  const handleDownloadTemplate = (type: string) => {
-    let url = ''
-    if (type === 'clientes') {
-      url =
-        'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy'
-    } else if (type === 'produtos') {
-      url =
-        'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy'
-    } else if (type === 'fornecedores') {
-      url =
-        'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy'
-    }
-
-    if (url) {
-      window.open(url, '_blank')
-    }
-  }
-
-  const handleImportData = async (data: any[]) => {
-    if (importType === 'clientes') {
-      try {
-        const u = await pb.collection('users').getOne(user.id, { expand: 'organization_id' })
-        const plan = u.expand?.organization_id?.plan || user.plan || 'Free'
-        const limit = TIER_LIMITS[plan as 'Free' | 'Basic' | 'Pro' | 'Platinum']?.clients
-        if (limit && limit !== Infinity) {
-          const currentClients = await pb.collection('clients').getList(1, 1)
-          if (currentClients.totalItems + data.length > limit) {
-            throw new Error(`Limite do plano (${plan}) excedido. O limite é de ${limit} clientes.`)
-          }
-        }
-      } catch (e: any) {
-        return {
-          success: 0,
-          errors: data.length,
-          errorsList: [e.message || 'Erro ao validar limites do plano.'],
-        }
-      }
-
-      const allBarbers = await pb.collection('barbers').getFullList()
-      let success = 0,
-        errors = 0
-      const errorsList: string[] = []
-
-      for (let i = 0; i < data.length; i++) {
-        const row = data[i]
-        try {
-          const name = getRowVal(row, ['nome'])
-          const surname = getRowVal(row, ['sobrenome'])
-          const phone = getRowVal(row, ['celular', 'telefone'])
-          const phoneSec = getRowVal(row, ['fone secundario', 'celular 2', 'telefone 2'])
-          const birth = getRowVal(row, ['nascimento', 'data de nascimento', 'aniversario'])
-          const locVal = getRowVal(row, ['localizacao', 'local', 'localização'])
-          const profVal = getRowVal(row, ['profissional', 'barbeiro', 'atendente'])
-
-          if (!name) throw new Error('Nome é obrigatório')
-
-          const payload: any = {
-            name: name.trim(),
-            surname: surname.trim(),
-            phone: phone.replace(/\D/g, ''),
-            phone_secondary: phoneSec.replace(/\D/g, ''),
-            organization_id: user?.organization_id || user?.expand?.organization_id?.id,
-          }
-
-          if (birth) {
-            const bDate = parseImportDate(birth)
-            if (bDate) payload.birthday = bDate
-          }
-
-          if (locVal) {
-            const loc = locVal.toLowerCase()
-            if (loc.includes('passagem')) payload.location_type = 'passage'
-            else if (loc.includes('perto')) payload.location_type = 'nearby'
-            else if (loc.includes('mora cidade')) payload.location_type = 'mora_cidade'
-            else if (loc.includes('outra cidade')) payload.location_type = 'other_city'
-          }
-
-          if (profVal) {
-            const b = allBarbers.find(
-              (b: any) => b.name.toLowerCase() === profVal.toLowerCase().trim(),
-            )
-            if (b) payload.preferred_barber_id = b.id
-          }
-
-          await pb.collection('clients').create(payload)
-          success++
-        } catch (e: any) {
-          errors++
-          errorsList.push(
-            `Linha ${i + 2} (${getRowVal(row, ['nome']) || 'Sem Nome'}): ${e.message}`,
-          )
-        }
-      }
-      return { success, errors, errorsList }
-    } else if (importType === 'produtos') {
-      const cats = await pb.collection('categories').getFullList()
-      let success = 0,
-        errors = 0
-      const errorsList: string[] = []
-
-      for (let i = 0; i < data.length; i++) {
-        const row = data[i]
-        try {
-          const name = getRowVal(row, ['nome'])
-          const priceStr = getRowVal(row, ['preco', 'valor', 'preço'])
-          const costStr = getRowVal(row, ['preco de custo', 'custo', 'preço de custo'])
-          const catStr = getRowVal(row, ['categoria'])
-          const stockStr = getRowVal(row, ['estoque', 'quantidade'])
-
-          if (!name) throw new Error('Nome é obrigatório')
-
-          let catId = undefined
-          if (catStr) {
-            const cName = catStr.trim()
-            let c = cats.find((c: any) => c.name.toLowerCase() === cName.toLowerCase())
-            if (!c) {
-              c = await pb.collection('categories').create({
-                name: cName,
-                type: 'product',
-                organization_id: user?.organization_id || user?.expand?.organization_id?.id,
+              await pb.collection('clients').create({
+                name: row['Nome'],
+                surname: row['Sobrenome'],
+                phone: row['Celular'],
+                phone_secondary: row['Fone Secundário'],
+                birthday: birthDate || undefined,
+                location_type:
+                  row['Localização']?.toLowerCase() === 'passagem' ? 'passage' : 'nearby',
+                is_active: true,
               })
-              cats.push(c)
+              successCount++
+            } catch (err) {
+              console.error(err)
+              errorCount++
             }
-            catId = c.id
           }
-          const payload = {
-            name: name.trim(),
-            price: parseFloat(priceStr.replace(',', '.') || '0'),
-            cost_price: parseFloat(costStr.replace(',', '.') || '0'),
-            category_id: catId,
-            stock_quantity: parseInt(stockStr || '0', 10),
-            is_active: true,
-            organization_id: user?.organization_id || user?.expand?.organization_id?.id,
+        } else if (type === 'produtos') {
+          for (const row of data) {
+            try {
+              await pb.collection('products').create({
+                name: row['Produto'],
+                category: row['Categoria'],
+                price: parseFloat(row['Preço de Venda']?.replace(',', '.') || '0'),
+                cost_price: parseFloat(row['Preço de Custo']?.replace(',', '.') || '0'),
+                stock_quantity: parseInt(row['Estoque Atual'] || '0', 10),
+                is_active: true,
+              })
+              successCount++
+            } catch (err) {
+              console.error(err)
+              errorCount++
+            }
           }
-          await pb.collection('products').create(payload)
-          success++
-        } catch (e: any) {
-          errors++
-          errorsList.push(
-            `Linha ${i + 2} (${getRowVal(row, ['nome']) || 'Sem Nome'}): ${e.message}`,
-          )
+        } else if (type === 'fornecedores') {
+          for (const row of data) {
+            try {
+              await pb.collection('suppliers').create({
+                name: row['Nome'],
+                document: row['CPF/CNPJ'],
+                address: row['Endereço'],
+                contact_person: row['Pessoa de Contato'] || row['Pesso de Contato'],
+                whatsapp: row['WhatsApp/Fone'],
+              })
+              successCount++
+            } catch (err) {
+              console.error(err)
+              errorCount++
+            }
+          }
         }
+        toast.success(`Importação concluída. Sucesso: ${successCount}. Erros: ${errorCount}.`)
+      } catch (error) {
+        toast.error('Erro ao processar arquivo.')
+      } finally {
+        setLoading(false)
+        e.target.value = ''
       }
-      return { success, errors, errorsList }
-    } else if (importType === 'fornecedores') {
-      let success = 0,
-        errors = 0
-      const errorsList: string[] = []
-
-      for (let i = 0; i < data.length; i++) {
-        const row = data[i]
-        try {
-          const name = getRowVal(row, ['nome', 'razao social'])
-          const doc = getRowVal(row, ['documento', 'cpf/cnpj', 'cnpj', 'cpf'])
-          const phone = getRowVal(row, ['telefone', 'fone'])
-          const whatsapp = getRowVal(row, ['whatsapp', 'wpp'])
-          const address = getRowVal(row, ['endereco', 'endereço'])
-          const contact = getRowVal(row, ['contato', 'pessoa de contato'])
-
-          if (!name) throw new Error('Nome é obrigatório')
-
-          const payload: any = {
-            name: name.trim(),
-            document: doc.replace(/\D/g, ''),
-            phone: phone.replace(/\D/g, ''),
-            whatsapp: whatsapp.replace(/\D/g, ''),
-            address: address.trim(),
-            contact_person: contact.trim(),
-            organization_id: user?.organization_id || user?.expand?.organization_id?.id,
-          }
-
-          await pb.collection('suppliers').create(payload)
-          success++
-        } catch (e: any) {
-          errors++
-          errorsList.push(
-            `Linha ${i + 2} (${getRowVal(row, ['nome']) || 'Sem Nome'}): ${e.message}`,
-          )
-        }
-      }
-      return { success, errors, errorsList }
     }
-    return { success: 0, errors: 0, errorsList: [] }
+    reader.readAsText(file)
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-10 animate-fade-in">
+    <div className="container mx-auto py-8 max-w-5xl space-y-6 px-4 md:px-0">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Configurações do Sistema</h2>
-        <p className="text-muted-foreground">
-          Gerencie a identidade visual e as categorias de serviços e produtos.
+        <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
+        <p className="text-muted-foreground mt-2">
+          Gerencie as preferências da sua barbearia e importe dados.
         </p>
       </div>
 
       <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="mb-6 flex-wrap h-auto">
-          <TabsTrigger value="geral">Geral (Marca)</TabsTrigger>
-          <TabsTrigger value="business_hours">Horário de Funcionamento</TabsTrigger>
-          <TabsTrigger value="permissions">Permissões de Acesso</TabsTrigger>
-          <TabsTrigger value="categories">Configurações de Categorias</TabsTrigger>
-          <TabsTrigger value="financial">Regras Financeiras</TabsTrigger>
-          <TabsTrigger value="notifications">Gerenciamento de Notificações</TabsTrigger>
-          <TabsTrigger value="imports">Modelos de Importação</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="business_hours" className="space-y-4">
-          <Card className="border-border shadow-sm max-w-3xl">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Horário de Funcionamento</CardTitle>
-                <CardDescription>
-                  Defina os dias e horários de funcionamento da barbearia.
-                </CardDescription>
-              </div>
-              <Button onClick={handleSaveBusinessHours}>Salvar Horários</Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {businessHours.map((bh, i) => {
-                  const days = [
-                    'Domingo',
-                    'Segunda',
-                    'Terça',
-                    'Quarta',
-                    'Quinta',
-                    'Sexta',
-                    'Sábado',
-                  ]
-                  const dayName = days[parseInt(bh.day_of_week)]
-                  return (
-                    <div
-                      key={bh.day_of_week}
-                      className="flex items-center justify-between p-3 border rounded-md"
-                    >
-                      <div className="flex items-center gap-4 w-1/3">
-                        <Switch
-                          checked={bh.is_active}
-                          onCheckedChange={(v) => updateBusinessHour(i, 'is_active', v)}
-                        />
-                        <Label className="font-semibold">{dayName}</Label>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-1 justify-end">
-                        {bh.is_active ? (
-                          <>
-                            <Input
-                              type="time"
-                              value={bh.open_time}
-                              onChange={(e) => updateBusinessHour(i, 'open_time', e.target.value)}
-                              className="w-32"
-                            />
-                            <span className="text-muted-foreground">até</span>
-                            <Input
-                              type="time"
-                              value={bh.close_time}
-                              onChange={(e) => updateBusinessHour(i, 'close_time', e.target.value)}
-                              className="w-32"
-                            />
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground text-sm italic mr-12">
-                            Fechado
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="permissions" className="space-y-4">
-          <Card className="border-border shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Controle de Acesso (RBAC)</CardTitle>
-                <CardDescription>Defina o que cada perfil pode acessar no sistema.</CardDescription>
-              </div>
-              <Button onClick={handleSavePermissions}>Salvar Permissões</Button>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Permissão</TableHead>
-                    <TableHead className="text-center w-[120px]">Sócio</TableHead>
-                    <TableHead className="text-center w-[120px]">Autônomo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {categoriesSet.map((cat) => (
-                    <React.Fragment key={cat}>
-                      <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableCell colSpan={3} className="font-bold text-primary py-2">
-                          {cat}
-                        </TableCell>
-                      </TableRow>
-                      {ALL_PERMISSIONS.filter((p) => p.category === cat).map((perm) => (
-                        <TableRow key={perm.id}>
-                          <TableCell className="font-medium text-sm pl-6">{perm.label}</TableCell>
-                          <TableCell className="text-center">
-                            <Switch
-                              checked={(permForm.Socio || []).includes(perm.id)}
-                              onCheckedChange={() => togglePermission('Socio', perm.id)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Switch
-                              checked={(permForm.Autonomo || []).includes(perm.id)}
-                              onCheckedChange={() => togglePermission('Autonomo', perm.id)}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* Responsive Mobile Navigation */}
+        <ScrollArea className="w-full border-b mb-6">
+          <TabsList className="inline-flex h-12 items-center justify-start rounded-none bg-transparent p-0 w-max min-w-full">
+            <TabsTrigger
+              value="geral"
+              className="inline-flex items-center justify-center whitespace-nowrap px-4 py-3 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground rounded-none shadow-none data-[state=active]:bg-transparent"
+            >
+              <Building2 className="w-4 h-4 mr-2" />
+              Geral
+            </TabsTrigger>
+            <TabsTrigger
+              value="horario"
+              className="inline-flex items-center justify-center whitespace-nowrap px-4 py-3 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground rounded-none shadow-none data-[state=active]:bg-transparent"
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              Horário
+            </TabsTrigger>
+            <TabsTrigger
+              value="permissoes"
+              className="inline-flex items-center justify-center whitespace-nowrap px-4 py-3 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground rounded-none shadow-none data-[state=active]:bg-transparent"
+            >
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Permissões
+            </TabsTrigger>
+            <TabsTrigger
+              value="importacao"
+              className="inline-flex items-center justify-center whitespace-nowrap px-4 py-3 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground rounded-none shadow-none data-[state=active]:bg-transparent"
+            >
+              <Database className="w-4 h-4 mr-2" />
+              Central de Importação
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" className="invisible sm:visible" />
+        </ScrollArea>
 
         <TabsContent value="geral" className="space-y-4">
-          <Card className="max-w-2xl border-border shadow-sm">
+          <Card>
             <CardHeader>
-              <CardTitle>Identidade Visual</CardTitle>
-              <CardDescription>
-                Faça upload do logotipo da barbearia (PNG recomendado).
-              </CardDescription>
+              <CardTitle>Detalhes da Barbearia</CardTitle>
+              <CardDescription>Informações básicas do seu negócio.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-6">
-                <div className="w-32 h-32 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-card overflow-hidden shrink-0">
-                  {logoPreview ? (
-                    <img
-                      src={logoPreview}
-                      alt="Logo"
-                      className="w-full h-full object-contain p-2"
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground text-center px-4">Sem Logo</span>
-                  )}
-                </div>
-                <div className="space-y-2 flex-1">
-                  <Label>Arquivo de Logo</Label>
-                  <Input
-                    type="file"
-                    accept="image/png, image/jpeg, image/svg+xml"
-                    onChange={handleLogoFile}
-                  />
-                  <Button
-                    onClick={handleSaveLogo}
-                    disabled={!selectedLogoFile}
-                    className="mt-2 w-full sm:w-auto"
-                  >
-                    Atualizar Logo
-                  </Button>
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="name">Nome da Barbearia</Label>
+                <Input id="name" defaultValue="La Barberiá" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="address">Endereço</Label>
+                <Input id="address" defaultValue="Rua Principal, 123" />
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="categories">
-          <Card className="border-border shadow-sm">
+        <TabsContent value="horario" className="space-y-4">
+          <Card>
             <CardHeader>
-              <CardTitle>Categorias do Sistema</CardTitle>
-              <CardDescription>
-                Gerencie as classificações de serviços e produtos e suas comissões padrão.
-              </CardDescription>
+              <CardTitle>Horário de Funcionamento</CardTitle>
+              <CardDescription>Defina os horários em que a barbearia está aberta.</CardDescription>
             </CardHeader>
             <CardContent>
-              <CategoriasTab />
+              <p className="text-sm text-muted-foreground">
+                Em breve: gerenciamento detalhado de horários por dia da semana.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="financial" className="space-y-4">
-          <Card className="border-border shadow-sm max-w-2xl">
+        <TabsContent value="permissoes" className="space-y-4">
+          <Card>
             <CardHeader>
-              <CardTitle>Regras Financeiras</CardTitle>
-              <CardDescription>
-                Configure as regras globais de financeiro, comissões e gestão de estoque.
-              </CardDescription>
+              <CardTitle>Controle de Acesso</CardTitle>
+              <CardDescription>Gerencie o que cada perfil pode acessar no sistema.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2 border-b pb-4">
-                <Label>Gestor Global de Estoque</Label>
-                <Select
-                  value={finForm.inventory_owner_id}
-                  onValueChange={(v) => setFinForm({ ...finForm, inventory_owner_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o gestor de estoque..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {barbers.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  O gestor de estoque recebe o lucro das vendas de produtos não-comissionadas.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border p-4 bg-card/50">
-                <div className="space-y-1 mr-4">
-                  <Label className="text-base">Comissão de Venda de Terceiros</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Ativa o repasse de comissão para barbeiros quando venderem produtos do gestor de
-                    estoque. Se desativado, toda a venda vai para o gestor.
-                  </p>
-                </div>
-                <Switch
-                  checked={finForm.enable_third_party_commission}
-                  onCheckedChange={(v) =>
-                    setFinForm({ ...finForm, enable_third_party_commission: v })
-                  }
-                />
-              </div>
-
-              {finForm.enable_third_party_commission && (
-                <div className="space-y-2 bg-muted/30 p-4 rounded-md border border-dashed">
-                  <Label>Comissão Padrão de Produtos (%)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={finForm.default_product_commission}
-                    onChange={(e) =>
-                      setFinForm({ ...finForm, default_product_commission: Number(e.target.value) })
-                    }
-                    className="max-w-[200px]"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Aplicada se o produto não possuir uma regra de categoria específica.
-                  </p>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between rounded-lg border p-4 bg-card/50">
-                <div className="space-y-1 mr-4">
-                  <Label className="text-base">Consumo Profissional</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Permite registrar produtos consumidos internamente pelos profissionais,
-                    deduzindo o preço de custo de suas comissões automaticamente.
-                  </p>
-                </div>
-                <Switch
-                  checked={finForm.enable_professional_consumption ?? true}
-                  onCheckedChange={(v) =>
-                    setFinForm({ ...finForm, enable_professional_consumption: v })
-                  }
-                />
-              </div>
-
-              <Button onClick={handleSaveFinConfig} className="mt-4">
-                Salvar Regras Financeiras
-              </Button>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Configuração de permissões para administradores, sócios e autônomos.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Regras de Notificação</h3>
-            <Button onClick={() => handleOpenNotif()}>
-              <Plus className="size-4 mr-2" /> Nova Regra
-            </Button>
-          </div>
-
-          <Card className="border-border shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Evento</TableHead>
-                  <TableHead>Destinatários</TableHead>
-                  <TableHead>Canal</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {notifRules.map((r) => (
-                  <TableRow key={r.id} className={!r.is_active ? 'opacity-50' : ''}>
-                    <TableCell className="font-medium">
-                      {r.event_type === 'new_appointment' && 'Novo Agendamento'}
-                      {r.event_type === 'cancellation' && 'Cancelamento de Agendamento'}
-                      {r.event_type === 'no_show' && 'Não Comparecimento (No-Show)'}
-                      {r.event_type === 'retention' && 'Alerta de Retenção Geral'}
-                      {r.event_type === 'recorrencia_barba' && 'Alerta de Retenção (Barba)'}
-                      {r.event_type === 'recorrencia_cabelo' && 'Alerta de Retenção (Cabelo)'}
-                      {r.event_type === 'no_show_3dias' && 'No-show após 3 dias'}
-                      {r.event_type === 'other' && 'Outros'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {r.recipients?.map((role: string) => (
-                          <Badge key={role} variant="outline">
-                            {role}
-                          </Badge>
-                        ))}
-                        {(!r.recipients || r.recipients.length === 0) && (
-                          <span className="text-muted-foreground text-xs">Nenhum</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="capitalize text-muted-foreground">
-                      {r.channel === 'internal' ? 'Sistema Interno' : r.channel}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenNotif(r)}>
-                        <Edit className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteNotif(r.id)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {notifRules.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                      Nenhuma regra encontrada.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="imports" className="space-y-4">
-          <Card className="border-border shadow-sm max-w-4xl">
+        <TabsContent value="importacao" className="space-y-4">
+          <Card>
             <CardHeader>
               <CardTitle>Central de Importação</CardTitle>
               <CardDescription>
-                Baixe os modelos e importe seus dados em massa para o sistema.
+                Importe seus dados em massa a partir de planilhas CSV para popular o sistema
+                rapidamente.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="border rounded-xl p-4 flex flex-col items-center text-center space-y-4 bg-muted/10">
-                <div className="p-3 bg-primary/10 text-primary rounded-full">
-                  <Users className="size-6" />
+            <CardContent>
+              {/* Fixed Grid Layout ensuring buttons don't overflow */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Block Clientes */}
+                <div className="flex flex-col border rounded-xl p-5 bg-card text-card-foreground shadow-sm h-full">
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-lg">Clientes</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Importe sua base de clientes com contato e data de nascimento.
+                    </p>
+                  </div>
+                  <div className="mt-auto flex flex-col gap-3">
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full flex items-center justify-center gap-2"
+                    >
+                      <a href={CLIENT_TEMPLATE_URL} download="template_clientes.csv">
+                        <Download className="w-4 h-4" />
+                        Baixar Template
+                      </a>
+                    </Button>
+                    <div className="relative w-full">
+                      <Input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => handleImport(e, 'clientes')}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        disabled={loading}
+                      />
+                      <Button
+                        className="w-full flex items-center justify-center gap-2"
+                        disabled={loading}
+                      >
+                        <Upload className="w-4 h-4" />
+                        Importar Planilha
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <h4 className="font-bold">Clientes</h4>
-                <p className="text-sm text-muted-foreground">
-                  Importe sua base de clientes com datas de nascimento e preferências.
-                </p>
-                <div className="flex w-full gap-2 mt-auto">
-                  <Button
-                    variant="outline"
-                    className="flex-1 text-[10px]"
-                    onClick={() => handleDownloadTemplate('clientes')}
-                  >
-                    <Download className="size-4 mr-1" /> Modelo (Sheets)
-                  </Button>
-                  <Button className="flex-1 text-xs" onClick={() => setImportType('clientes')}>
-                    <Upload className="size-4 mr-1" /> Importar CSV
-                  </Button>
+
+                {/* Block Produtos */}
+                <div className="flex flex-col border rounded-xl p-5 bg-card text-card-foreground shadow-sm h-full">
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-lg">Produtos</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Atualize seu estoque com produtos, categorias e preços.
+                    </p>
+                  </div>
+                  <div className="mt-auto flex flex-col gap-3">
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full flex items-center justify-center gap-2"
+                    >
+                      <a href={PRODUCT_TEMPLATE_URL} download="template_produtos.csv">
+                        <Download className="w-4 h-4" />
+                        Baixar Template
+                      </a>
+                    </Button>
+                    <div className="relative w-full">
+                      <Input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => handleImport(e, 'produtos')}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        disabled={loading}
+                      />
+                      <Button
+                        className="w-full flex items-center justify-center gap-2"
+                        disabled={loading}
+                      >
+                        <Upload className="w-4 h-4" />
+                        Importar Planilha
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Block Fornecedores */}
+                <div className="flex flex-col border rounded-xl p-5 bg-card text-card-foreground shadow-sm h-full">
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-lg">Fornecedores</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Adicione a lista de fornecedores com seus respectivos contatos.
+                    </p>
+                  </div>
+                  <div className="mt-auto flex flex-col gap-3">
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full flex items-center justify-center gap-2"
+                    >
+                      <a href={SUPPLIER_TEMPLATE_URL} download="template_fornecedores.csv">
+                        <Download className="w-4 h-4" />
+                        Baixar Template
+                      </a>
+                    </Button>
+                    <div className="relative w-full">
+                      <Input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => handleImport(e, 'fornecedores')}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        disabled={loading}
+                      />
+                      <Button
+                        className="w-full flex items-center justify-center gap-2"
+                        disabled={loading}
+                      >
+                        <Upload className="w-4 h-4" />
+                        Importar Planilha
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="border rounded-xl p-4 flex flex-col items-center text-center space-y-4 bg-muted/10">
-                <div className="p-3 bg-primary/10 text-primary rounded-full">
-                  <Package className="size-6" />
-                </div>
-                <h4 className="font-bold">Produtos</h4>
-                <p className="text-sm text-muted-foreground">
-                  Importe o inventário com preços e crie categorias automaticamente.
+              <div className="mt-6 p-4 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">
+                  Dicas para importação (Google Sheets/Excel):
                 </p>
-                <div className="flex w-full gap-2 mt-auto">
-                  <Button
-                    variant="outline"
-                    className="flex-1 text-[10px]"
-                    onClick={() => handleDownloadTemplate('produtos')}
-                  >
-                    <Download className="size-4 mr-1" /> Modelo (Sheets)
-                  </Button>
-                  <Button className="flex-1 text-xs" onClick={() => setImportType('produtos')}>
-                    <Upload className="size-4 mr-1" /> Importar CSV
-                  </Button>
-                </div>
-              </div>
-              <div className="border rounded-xl p-4 flex flex-col items-center text-center space-y-4 bg-muted/10">
-                <div className="p-3 bg-primary/10 text-primary rounded-full">
-                  <Truck className="size-6" />
-                </div>
-                <h4 className="font-bold">Fornecedores</h4>
-                <p className="text-sm text-muted-foreground">
-                  Importe dados de contato e documentos dos fornecedores.
-                </p>
-                <div className="flex w-full gap-2 mt-auto">
-                  <Button
-                    variant="outline"
-                    className="flex-1 text-[10px]"
-                    onClick={() => handleDownloadTemplate('fornecedores')}
-                  >
-                    <Download className="size-4 mr-1" /> Modelo (Sheets)
-                  </Button>
-                  <Button className="flex-1 text-xs" onClick={() => setImportType('fornecedores')}>
-                    <Upload className="size-4 mr-1" /> Importar CSV
-                  </Button>
-                </div>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Baixe o template acima e abra no Google Sheets ou Excel.</li>
+                  <li>Preencha os dados seguindo o cabeçalho (não altere os nomes das colunas).</li>
+                  <li>
+                    A coluna <strong>Nascimento</strong> deve ser inserida no formato{' '}
+                    <code className="bg-muted px-1 py-0.5 rounded text-foreground">DD/MM/AAAA</code>{' '}
+                    (ex: 15/04/1990).
+                  </li>
+                  <li>
+                    Após preencher, exporte o arquivo como <strong>.csv</strong> (Valores Separados
+                    por Vírgula) e importe usando o botão correspondente.
+                  </li>
+                </ul>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      <ImportDialog
-        open={!!importType}
-        onOpenChange={(v) => {
-          if (!v) setImportType(null)
-        }}
-        title={`Importar ${importType === 'clientes' ? 'Clientes' : importType === 'produtos' ? 'Produtos' : 'Fornecedores'}`}
-        onImport={handleImportData}
-      />
-
-      <Dialog open={isNotifOpen} onOpenChange={setIsNotifOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingNotifId ? 'Editar Regra de Notificação' : 'Nova Regra de Notificação'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Tipo de Evento</Label>
-              <Select
-                value={notifForm.event_type}
-                onValueChange={(v) => setNotifForm({ ...notifForm, event_type: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="new_appointment">Novo Agendamento</SelectItem>
-                  <SelectItem value="cancellation">Cancelamento de Agendamento</SelectItem>
-                  <SelectItem value="no_show">Não Comparecimento (No-Show)</SelectItem>
-                  <SelectItem value="retention">Alerta de Retenção Geral</SelectItem>
-                  <SelectItem value="recorrencia_barba">Alerta de Retenção (Barba)</SelectItem>
-                  <SelectItem value="recorrencia_cabelo">Alerta de Retenção (Cabelo)</SelectItem>
-                  <SelectItem value="no_show_3dias">No-show após 3 dias</SelectItem>
-                  <SelectItem value="other">Outros</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Destinatários (Perfis)</Label>
-              <div className="flex gap-2 border p-3 rounded-md">
-                {['Admin', 'Socio', 'Autonomo'].map((role) => (
-                  <Badge
-                    key={role}
-                    variant={notifForm.recipients.includes(role) ? 'default' : 'outline'}
-                    className="cursor-pointer"
-                    onClick={() => toggleFormRecipient(role)}
-                  >
-                    {role}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Canal de Envio</Label>
-                <Select
-                  value={notifForm.channel}
-                  onValueChange={(v) => setNotifForm({ ...notifForm, channel: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="internal">Sistema Interno</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-3">
-                <Label>Tempo de Disparo (Offset)</Label>
-                <div className="flex gap-4 mb-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="timing_unit"
-                      checked={notifForm.timing_unit === 'hours_minutes'}
-                      onChange={() => setNotifForm({ ...notifForm, timing_unit: 'hours_minutes' })}
-                    />
-                    <span className="text-sm">Horas/Minutos</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="timing_unit"
-                      checked={notifForm.timing_unit === 'days'}
-                      onChange={() => setNotifForm({ ...notifForm, timing_unit: 'days' })}
-                    />
-                    <span className="text-sm">Dias</span>
-                  </label>
-                </div>
-
-                {notifForm.timing_unit === 'hours_minutes' ? (
-                  <div className="flex gap-2">
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs">Horas</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={notifForm.timing_hours}
-                        onChange={(e) =>
-                          setNotifForm({ ...notifForm, timing_hours: Number(e.target.value) })
-                        }
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs">Minutos</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={notifForm.timing_minutes}
-                        onChange={(e) =>
-                          setNotifForm({ ...notifForm, timing_minutes: Number(e.target.value) })
-                        }
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Dias</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={notifForm.timing_days}
-                      onChange={(e) =>
-                        setNotifForm({ ...notifForm, timing_days: Number(e.target.value) })
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2 pt-2">
-              <input
-                type="checkbox"
-                id="is_active"
-                checked={notifForm.is_active}
-                onChange={(e) => setNotifForm({ ...notifForm, is_active: e.target.checked })}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <Label htmlFor="is_active" className="cursor-pointer">
-                Regra Ativa
-              </Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSaveNotif} className="w-full sm:w-auto">
-              Salvar Regra
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
