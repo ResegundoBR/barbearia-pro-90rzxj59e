@@ -224,8 +224,8 @@ function adjustToSystemTZ(date) {
   const offset = baseOffset > 0 ? Math.floor(baseOffset) : Math.ceil(baseOffset)
   const prevHour = /* @__PURE__ */ new Date(+date)
   prevHour.setUTCHours(prevHour.getUTCHours() - 1)
-  const systemOffset = -/* @__PURE__ */ new Date(+date).getTimezoneOffset()
-  const systemDSTChange = systemOffset - -/* @__PURE__ */ new Date(+prevHour).getTimezoneOffset()
+  const systemOffset = -(/* @__PURE__ */ new Date(+date).getTimezoneOffset())
+  const systemDSTChange = systemOffset - -(/* @__PURE__ */ new Date(+prevHour).getTimezoneOffset())
   const dstShift = Date.prototype.getHours.apply(date) !== date.internal.getUTCHours()
   if (systemDSTChange && dstShift)
     date.internal.setUTCMinutes(date.internal.getUTCMinutes() + systemDSTChange)
@@ -246,7 +246,7 @@ function adjustToSystemTZ(date) {
   }
   const postBaseOffset = tzOffset(date.timeZone, date)
   const postOffset = postBaseOffset > 0 ? Math.floor(postBaseOffset) : Math.ceil(postBaseOffset)
-  const postOffsetDiff = -/* @__PURE__ */ new Date(+date).getTimezoneOffset() - postOffset
+  const postOffsetDiff = -(/* @__PURE__ */ new Date(+date).getTimezoneOffset()) - postOffset
   const offsetChanged = postOffset !== offset
   const postDiff = postOffsetDiff - offsetDiff
   if (offsetChanged && postDiff) {

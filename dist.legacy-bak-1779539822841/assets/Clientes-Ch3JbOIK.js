@@ -521,88 +521,86 @@ function Ye() {
                                 children: `Nenhum dado encontrado para o período.`,
                               }),
                             })
-                          : v
-                              .slice(0, 7)
-                              .map((e) =>
-                                (0, Y.jsxs)(
-                                  W,
-                                  {
-                                    children: [
-                                      (0, Y.jsx)(G, {
-                                        children: (0, Y.jsxs)(`div`, {
-                                          className: `flex flex-col`,
-                                          children: [
-                                            (0, Y.jsxs)(x, {
-                                              to: `/clientes/${e.client.id}`,
-                                              className: `font-medium hover:underline text-primary flex items-center gap-1`,
+                          : v.slice(0, 7).map((e) =>
+                              (0, Y.jsxs)(
+                                W,
+                                {
+                                  children: [
+                                    (0, Y.jsx)(G, {
+                                      children: (0, Y.jsxs)(`div`, {
+                                        className: `flex flex-col`,
+                                        children: [
+                                          (0, Y.jsxs)(x, {
+                                            to: `/clientes/${e.client.id}`,
+                                            className: `font-medium hover:underline text-primary flex items-center gap-1`,
+                                            children: [
+                                              e.client.name || `Cliente`,
+                                              ` `,
+                                              e.client.surname || ``,
+                                              ` `,
+                                              (0, Y.jsx)(ye, { className: `size-3` }),
+                                            ],
+                                          }),
+                                          e.client.expand?.preferred_barber_id?.name &&
+                                            (0, Y.jsxs)(`span`, {
+                                              className: `text-xs text-muted-foreground mt-0.5`,
                                               children: [
-                                                e.client.name || `Cliente`,
-                                                ` `,
-                                                e.client.surname || ``,
-                                                ` `,
-                                                (0, Y.jsx)(ye, { className: `size-3` }),
+                                                `Profissional: `,
+                                                e.client.expand.preferred_barber_id.name,
                                               ],
                                             }),
-                                            e.client.expand?.preferred_barber_id?.name &&
-                                              (0, Y.jsxs)(`span`, {
-                                                className: `text-xs text-muted-foreground mt-0.5`,
-                                                children: [
-                                                  `Profissional: `,
-                                                  e.client.expand.preferred_barber_id.name,
-                                                ],
-                                              }),
-                                          ],
-                                        }),
+                                        ],
                                       }),
-                                      (0, Y.jsx)(G, {
-                                        className: `text-right`,
-                                        children: new Intl.NumberFormat(`pt-BR`, {
-                                          style: `currency`,
-                                          currency: `BRL`,
-                                        }).format(e.totalSpent),
+                                    }),
+                                    (0, Y.jsx)(G, {
+                                      className: `text-right`,
+                                      children: new Intl.NumberFormat(`pt-BR`, {
+                                        style: `currency`,
+                                        currency: `BRL`,
+                                      }).format(e.totalSpent),
+                                    }),
+                                    (0, Y.jsx)(G, {
+                                      className: `text-center`,
+                                      children: e.totalVisits,
+                                    }),
+                                    (0, Y.jsx)(G, {
+                                      className: `text-center`,
+                                      children: (0, Y.jsxs)(`div`, {
+                                        className: `flex justify-center gap-2`,
+                                        children: [
+                                          e.totalSpent >= w * 0.7 &&
+                                            e.totalSpent > 0 &&
+                                            (0, Y.jsxs)(q, {
+                                              className: `bg-amber-500 hover:bg-amber-600 gap-1 text-white`,
+                                              children: [
+                                                (0, Y.jsx)(be, { className: `size-3` }),
+                                                ` VIP`,
+                                              ],
+                                            }),
+                                          e.totalVisits >= E * 0.7 &&
+                                            e.totalVisits > 0 &&
+                                            e.totalSpent < w * 0.7 &&
+                                            (0, Y.jsxs)(q, {
+                                              variant: `secondary`,
+                                              className: `gap-1`,
+                                              children: [
+                                                (0, Y.jsx)(xe, { className: `size-3` }),
+                                                ` Frequente`,
+                                              ],
+                                            }),
+                                          e.noShows > 2 &&
+                                            (0, Y.jsx)(q, {
+                                              variant: `destructive`,
+                                              children: `Risco de Fuga`,
+                                            }),
+                                        ],
                                       }),
-                                      (0, Y.jsx)(G, {
-                                        className: `text-center`,
-                                        children: e.totalVisits,
-                                      }),
-                                      (0, Y.jsx)(G, {
-                                        className: `text-center`,
-                                        children: (0, Y.jsxs)(`div`, {
-                                          className: `flex justify-center gap-2`,
-                                          children: [
-                                            e.totalSpent >= w * 0.7 &&
-                                              e.totalSpent > 0 &&
-                                              (0, Y.jsxs)(q, {
-                                                className: `bg-amber-500 hover:bg-amber-600 gap-1 text-white`,
-                                                children: [
-                                                  (0, Y.jsx)(be, { className: `size-3` }),
-                                                  ` VIP`,
-                                                ],
-                                              }),
-                                            e.totalVisits >= E * 0.7 &&
-                                              e.totalVisits > 0 &&
-                                              e.totalSpent < w * 0.7 &&
-                                              (0, Y.jsxs)(q, {
-                                                variant: `secondary`,
-                                                className: `gap-1`,
-                                                children: [
-                                                  (0, Y.jsx)(xe, { className: `size-3` }),
-                                                  ` Frequente`,
-                                                ],
-                                              }),
-                                            e.noShows > 2 &&
-                                              (0, Y.jsx)(q, {
-                                                variant: `destructive`,
-                                                children: `Risco de Fuga`,
-                                              }),
-                                          ],
-                                        }),
-                                      }),
-                                    ],
-                                  },
-                                  e.client.id,
-                                ),
+                                    }),
+                                  ],
+                                },
+                                e.client.id,
                               ),
+                            ),
                     }),
                   ],
                 }),
@@ -749,69 +747,67 @@ function Ye() {
                               children: `Nenhum no-show registrado no período.`,
                             }),
                           })
-                        : b
-                            .slice(0, 7)
-                            .map((e) =>
-                              (0, Y.jsxs)(
-                                W,
-                                {
-                                  children: [
-                                    (0, Y.jsx)(G, {
-                                      children: (0, Y.jsxs)(`div`, {
-                                        className: `flex flex-col`,
-                                        children: [
-                                          (0, Y.jsxs)(x, {
-                                            to: `/clientes/${e.client.id}`,
-                                            className: `font-medium hover:underline text-primary flex items-center gap-1`,
+                        : b.slice(0, 7).map((e) =>
+                            (0, Y.jsxs)(
+                              W,
+                              {
+                                children: [
+                                  (0, Y.jsx)(G, {
+                                    children: (0, Y.jsxs)(`div`, {
+                                      className: `flex flex-col`,
+                                      children: [
+                                        (0, Y.jsxs)(x, {
+                                          to: `/clientes/${e.client.id}`,
+                                          className: `font-medium hover:underline text-primary flex items-center gap-1`,
+                                          children: [
+                                            e.client.name || `Cliente`,
+                                            ` `,
+                                            e.client.surname || ``,
+                                            ` `,
+                                            (0, Y.jsx)(ye, { className: `size-3` }),
+                                          ],
+                                        }),
+                                        e.client.expand?.preferred_barber_id?.name &&
+                                          (0, Y.jsxs)(`span`, {
+                                            className: `text-xs text-muted-foreground mt-0.5`,
                                             children: [
-                                              e.client.name || `Cliente`,
-                                              ` `,
-                                              e.client.surname || ``,
-                                              ` `,
-                                              (0, Y.jsx)(ye, { className: `size-3` }),
+                                              `Profissional: `,
+                                              e.client.expand.preferred_barber_id.name,
                                             ],
                                           }),
-                                          e.client.expand?.preferred_barber_id?.name &&
-                                            (0, Y.jsxs)(`span`, {
-                                              className: `text-xs text-muted-foreground mt-0.5`,
-                                              children: [
-                                                `Profissional: `,
-                                                e.client.expand.preferred_barber_id.name,
-                                              ],
-                                            }),
-                                        ],
-                                      }),
+                                      ],
                                     }),
-                                    (0, Y.jsx)(G, {
-                                      className: `text-center font-bold text-destructive`,
-                                      children: e.noShows,
-                                    }),
-                                    (0, Y.jsx)(G, {
-                                      className: `text-center`,
-                                      children: e.totalVisits,
-                                    }),
-                                    (0, Y.jsx)(G, {
-                                      className: `text-center`,
-                                      children:
-                                        e.noShows >= 2
-                                          ? (0, Y.jsxs)(q, {
-                                              variant: `destructive`,
-                                              className: `gap-1`,
-                                              children: [
-                                                (0, Y.jsx)(o, { className: `size-3` }),
-                                                ` Atenção`,
-                                              ],
-                                            })
-                                          : (0, Y.jsx)(q, {
-                                              variant: `outline`,
-                                              children: `Monitorar`,
-                                            }),
-                                    }),
-                                  ],
-                                },
-                                e.client.id,
-                              ),
+                                  }),
+                                  (0, Y.jsx)(G, {
+                                    className: `text-center font-bold text-destructive`,
+                                    children: e.noShows,
+                                  }),
+                                  (0, Y.jsx)(G, {
+                                    className: `text-center`,
+                                    children: e.totalVisits,
+                                  }),
+                                  (0, Y.jsx)(G, {
+                                    className: `text-center`,
+                                    children:
+                                      e.noShows >= 2
+                                        ? (0, Y.jsxs)(q, {
+                                            variant: `destructive`,
+                                            className: `gap-1`,
+                                            children: [
+                                              (0, Y.jsx)(o, { className: `size-3` }),
+                                              ` Atenção`,
+                                            ],
+                                          })
+                                        : (0, Y.jsx)(q, {
+                                            variant: `outline`,
+                                            children: `Monitorar`,
+                                          }),
+                                  }),
+                                ],
+                              },
+                              e.client.id,
                             ),
+                          ),
                   }),
                 ],
               }),

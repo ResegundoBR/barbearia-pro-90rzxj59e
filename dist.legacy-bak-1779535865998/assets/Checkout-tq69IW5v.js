@@ -91,13 +91,11 @@ function De() {
             : `checkout_number = ${a}`),
           t(
             (
-              await f
-                .collection(`checkouts`)
-                .getList(1, 50, {
-                  filter: e,
-                  sort: `-checkout_number`,
-                  expand: `client_id,barber_id`,
-                })
+              await f.collection(`checkouts`).getList(1, 50, {
+                filter: e,
+                sort: `-checkout_number`,
+                expand: `client_id,barber_id`,
+              })
             ).items,
           ))
       } catch (e) {

@@ -90,13 +90,11 @@ function N() {
         try {
           ;(n(await u.collection(`suppliers`).getOne(e, { expand: `category_id` })),
             N(
-              await u
-                .collection(`inventory_purchases`)
-                .getFullList({
-                  filter: `supplier_id="${e}"`,
-                  sort: `-purchase_date`,
-                  expand: `product_id`,
-                }),
+              await u.collection(`inventory_purchases`).getFullList({
+                filter: `supplier_id="${e}"`,
+                sort: `-purchase_date`,
+                expand: `product_id`,
+              }),
             ),
             F(await u.collection(`products`).getFullList()))
         } catch (e) {
@@ -126,18 +124,16 @@ function N() {
           let e = new Date(R.purchase_date)
           isNaN(e.getTime()) || (t = new Date(R.purchase_date + `T12:00:00.000Z`).toISOString())
         }
-        ;(await u
-          .collection(`inventory_purchases`)
-          .create({
-            supplier_id: e,
-            product_id: R.product_id,
-            quantity: Number(R.quantity) || 1,
-            unit_price: Number(R.unit_price) || 0,
-            price_paid: Number(R.price_paid) || 0,
-            purchase_date: t,
-            status: R.status,
-            received_at: R.status === `received` ? new Date().toISOString() : null,
-          }),
+        ;(await u.collection(`inventory_purchases`).create({
+          supplier_id: e,
+          product_id: R.product_id,
+          quantity: Number(R.quantity) || 1,
+          unit_price: Number(R.unit_price) || 0,
+          price_paid: Number(R.price_paid) || 0,
+          purchase_date: t,
+          status: R.status,
+          received_at: R.status === `received` ? new Date().toISOString() : null,
+        }),
           W({ title: `Compra registrada com sucesso` }),
           L(!1),
           z({

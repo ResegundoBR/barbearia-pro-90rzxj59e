@@ -13,13 +13,11 @@ var t = (t) =>
   o = () => e.collection(`barbers`).getFullList({ sort: `-created`, expand: `user_id` }),
   s = () => e.collection(`categories`).getFullList({ sort: `-created` }),
   c = (t) =>
-    e
-      .collection(`appointments`)
-      .getFullList({
-        expand: `service_id.category_id,barber_id,client_id,client_package_id.package_id`,
-        sort: `-date`,
-        filter: t,
-      }),
+    e.collection(`appointments`).getFullList({
+      expand: `service_id.category_id,barber_id,client_id,client_package_id.package_id`,
+      sort: `-date`,
+      filter: t,
+    }),
   l = (t) =>
     e
       .collection(`appointments`)

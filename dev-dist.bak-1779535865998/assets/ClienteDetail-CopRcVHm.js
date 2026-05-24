@@ -659,15 +659,13 @@ function H() {
                       onClick: async () => {
                         if (!(!e || !Y.details))
                           try {
-                            ;(await d
-                              .collection(`client_logs`)
-                              .create({
-                                client_id: e,
-                                event_type: `manual_entry`,
-                                details: Y.details,
-                                sentiment: Y.sentiment === `neutral` ? `` : Y.sentiment,
-                                barber_id: Y.barber_id || null,
-                              }),
+                            ;(await d.collection(`client_logs`).create({
+                              client_id: e,
+                              event_type: `manual_entry`,
+                              details: Y.details,
+                              sentiment: Y.sentiment === `neutral` ? `` : Y.sentiment,
+                              barber_id: Y.barber_id || null,
+                            }),
                               K(!1),
                               X({ details: ``, sentiment: `neutral`, barber_id: `` }),
                               Z())
