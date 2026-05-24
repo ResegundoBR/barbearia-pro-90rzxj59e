@@ -1,1 +1,574 @@
-import{a as e,n as t,t as n}from"./jsx-runtime-m7G7yzlP.js";import{t as r}from"./arrow-left-G6dHEtp2.js";import{t as i}from"./calendar-DpVmG1BK.js";import{Ct as a,H as o,S as s,U as c,_ as l,a as u,at as d,b as f,bt as p,c as m,ct as h,f as g,n as _,p as v,s as y,t as b,u as x,v as S,x as C,yt as w}from"./index-CXmOAr77.js";import{t as T}from"./format-BUAFcs3P.js";import{a as E,n as D,o as O,t as k}from"./card-B5puzR9W.js";var A=h(`shopping-cart`,[[`circle`,{cx:`8`,cy:`21`,r:`1`,key:`jimo8o`}],[`circle`,{cx:`19`,cy:`21`,r:`1`,key:`13723u`}],[`path`,{d:`M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12`,key:`9zh506`}]]),j=e(t(),1),M=n();function N(){let{id:e}=a(),[t,n]=(0,j.useState)(null),[h,N]=(0,j.useState)([]),[P,F]=(0,j.useState)([]),[I,L]=(0,j.useState)(!1),[R,z]=(0,j.useState)({product_id:``,quantity:`1`,unit_price:``,price_paid:``,purchase_date:new Date().toISOString().split(`T`)[0],status:`pending`}),[B,V]=(0,j.useState)({}),[H,U]=(0,j.useState)(null),{toast:W}=w();(0,j.useEffect)(()=>{R.product_id?u.collection(`inventory_purchases`).getFirstListItem(`product_id="${R.product_id}"`,{sort:`-purchase_date`,expand:`supplier_id`}).then(e=>U(e)).catch(()=>U(null)):U(null)},[R.product_id]);let G=e=>{z(t=>{let n=Number(t.unit_price)||0,r=Number(e)||0;return{...t,quantity:e,price_paid:r>0&&n>0?(r*n).toFixed(2):t.price_paid}})},K=e=>{z(t=>{let n=Number(t.quantity)||0,r=Number(e)||0;return{...t,unit_price:e,price_paid:n>0&&r>0?(n*r).toFixed(2):t.price_paid}})},q=async()=>{if(e)try{n(await u.collection(`suppliers`).getOne(e,{expand:`category_id`})),N(await u.collection(`inventory_purchases`).getFullList({filter:`supplier_id="${e}"`,sort:`-purchase_date`,expand:`product_id`})),F(await u.collection(`products`).getFullList())}catch(e){console.error(e)}};(0,j.useEffect)(()=>{q()},[e]),_(`suppliers`,q),_(`inventory_purchases`,q);let J=async()=>{let t={};if(R.product_id||(t.product_id=`Selecione um produto`),R.price_paid||(t.price_paid=`Informe o total da compra`),R.purchase_date||(t.purchase_date=`Informe a data`),Object.keys(t).length>0){V(t),W({title:`Verifique os campos obrigatórios`,variant:`destructive`});return}V({});try{let t=new Date().toISOString();if(R.purchase_date){let e=new Date(R.purchase_date);isNaN(e.getTime())||(t=new Date(R.purchase_date+`T12:00:00.000Z`).toISOString())}await u.collection(`inventory_purchases`).create({supplier_id:e,product_id:R.product_id,quantity:Number(R.quantity)||1,unit_price:Number(R.unit_price)||0,price_paid:Number(R.price_paid)||0,purchase_date:t,status:R.status,received_at:R.status===`received`?new Date().toISOString():null}),W({title:`Compra registrada com sucesso`}),L(!1),z({...R,price_paid:``,unit_price:``,product_id:``,quantity:`1`,status:`pending`}),q()}catch(e){W({title:`Erro ao registrar`,description:e.message,variant:`destructive`})}},Y=async e=>{try{await u.collection(`inventory_purchases`).update(e,{status:`received`,received_at:new Date().toISOString()}),W({title:`Recebimento confirmado com sucesso`}),q()}catch(e){W({title:`Erro ao confirmar`,description:e.message,variant:`destructive`})}};return t?(0,M.jsxs)(`div`,{className:`space-y-6 max-w-5xl mx-auto`,children:[(0,M.jsxs)(`div`,{className:`flex items-center gap-4`,children:[(0,M.jsx)(c,{variant:`outline`,size:`icon`,asChild:!0,children:(0,M.jsx)(p,{to:`/fornecedores`,children:(0,M.jsx)(r,{className:`size-4`})})}),(0,M.jsxs)(`div`,{children:[(0,M.jsx)(`h2`,{className:`text-2xl font-bold tracking-tight`,children:t.name}),(0,M.jsxs)(`p`,{className:`text-muted-foreground text-sm`,children:[t.document&&`Documento: ${t.document} | `,`Contato: `,t.contact_person||`N/A`,` `,t.whatsapp&&`(${t.whatsapp})`]})]})]}),(0,M.jsxs)(`div`,{className:`grid grid-cols-1 md:grid-cols-3 gap-6`,children:[(0,M.jsxs)(k,{className:`md:col-span-1 h-min`,children:[(0,M.jsx)(E,{children:(0,M.jsx)(O,{children:`Detalhes do Fornecedor`})}),(0,M.jsxs)(D,{className:`space-y-4`,children:[(0,M.jsxs)(`div`,{children:[(0,M.jsx)(`p`,{className:`text-sm font-semibold`,children:`Endereço`}),(0,M.jsx)(`p`,{className:`text-sm text-muted-foreground`,children:t.address||`Não informado`})]}),(0,M.jsxs)(`div`,{children:[(0,M.jsx)(`p`,{className:`text-sm font-semibold`,children:`Telefone`}),(0,M.jsx)(`p`,{className:`text-sm text-muted-foreground`,children:t.phone||`Não informado`})]}),(0,M.jsxs)(`div`,{children:[(0,M.jsx)(`p`,{className:`text-sm font-semibold`,children:`Categorias Fornecidas`}),(0,M.jsxs)(`div`,{className:`flex flex-wrap gap-1 mt-1`,children:[t.expand?.category_id?.map(e=>(0,M.jsx)(`span`,{className:`text-xs bg-secondary px-2 py-1 rounded-full`,children:e.name},e.id)),!t.expand?.category_id&&(0,M.jsx)(`span`,{className:`text-sm text-muted-foreground`,children:`Nenhuma categoria`})]})]})]})]}),(0,M.jsxs)(k,{className:`md:col-span-2`,children:[(0,M.jsxs)(E,{className:`flex flex-row items-center justify-between pb-2`,children:[(0,M.jsx)(O,{children:`Histórico de Compras`}),(0,M.jsxs)(c,{size:`sm`,onClick:()=>L(!0),children:[(0,M.jsx)(A,{className:`size-4 mr-2`}),` Registrar Compra`]})]}),(0,M.jsx)(D,{children:h.length===0?(0,M.jsx)(`p`,{className:`text-muted-foreground py-4 text-center`,children:`Nenhuma compra registrada com este fornecedor.`}):(0,M.jsx)(`div`,{className:`space-y-3 mt-4 max-h-[500px] overflow-y-auto pr-2`,children:h.map(e=>{let t=e.status||`pending`;return(0,M.jsxs)(`div`,{className:`flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg hover:bg-muted/10 gap-3`,children:[(0,M.jsxs)(`div`,{className:`flex items-start sm:items-center gap-3`,children:[(0,M.jsx)(`div`,{className:`bg-primary/10 p-2 rounded-full mt-1 sm:mt-0 shrink-0`,children:(0,M.jsx)(i,{className:`size-4 text-primary`})}),(0,M.jsxs)(`div`,{children:[(0,M.jsxs)(`div`,{className:`flex flex-wrap items-center gap-2`,children:[(0,M.jsx)(`p`,{className:`font-semibold text-sm`,children:e.expand?.product_id?.name||`Produto Excluído`}),t===`pending`?(0,M.jsx)(`span`,{className:`bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-[10px] font-medium px-2 py-0.5 rounded-full`,children:`Pendente`}):(0,M.jsx)(`span`,{className:`bg-green-500/10 text-green-500 border border-green-500/20 text-[10px] font-medium px-2 py-0.5 rounded-full`,children:`Recebido`})]}),(0,M.jsxs)(`p`,{className:`text-xs text-muted-foreground mt-1`,children:[`Data: `,T(new Date(e.purchase_date),`dd/MM/yyyy`),` | Qtd:`,` `,e.quantity]}),t===`received`&&e.received_at&&(0,M.jsxs)(`p`,{className:`text-xs text-muted-foreground mt-0.5`,children:[`Recebido em: `,T(new Date(e.received_at),`dd/MM/yyyy HH:mm`)]})]})]}),(0,M.jsxs)(`div`,{className:`flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 border-t sm:border-t-0 pt-2 sm:pt-0`,children:[(0,M.jsxs)(`div`,{className:`text-left sm:text-right`,children:[(0,M.jsxs)(`p`,{className:`font-bold text-sm`,children:[`R$ `,e.price_paid?.toFixed(2)]}),e.unit_price&&(0,M.jsxs)(`p`,{className:`text-xs text-muted-foreground`,children:[`Unit: R$ `,e.unit_price.toFixed(2)]})]}),t===`pending`&&(0,M.jsxs)(c,{size:`sm`,variant:`secondary`,onClick:()=>Y(e.id),children:[(0,M.jsx)(d,{className:`size-4 mr-1`}),`Confirmar`]})]})]},e.id)})})})]})]}),(0,M.jsx)(l,{open:I,onOpenChange:L,children:(0,M.jsxs)(S,{children:[(0,M.jsx)(C,{children:(0,M.jsx)(s,{children:`Registrar Nova Compra`})}),(0,M.jsxs)(`div`,{className:`grid gap-4 py-4`,children:[(0,M.jsxs)(`div`,{className:`space-y-2`,children:[(0,M.jsx)(b,{children:`Produto *`}),(0,M.jsxs)(y,{value:R.product_id,onValueChange:e=>{z({...R,product_id:e}),V(e=>({...e,product_id:``}))},children:[(0,M.jsx)(g,{className:B.product_id?`border-red-500`:``,children:(0,M.jsx)(v,{placeholder:`Selecione o produto...`})}),(0,M.jsx)(m,{children:P.map(e=>(0,M.jsx)(x,{value:e.id,children:e.name},e.id))})]}),B.product_id&&(0,M.jsx)(`p`,{className:`text-xs text-red-500`,children:B.product_id})]}),H&&(0,M.jsxs)(`div`,{className:`bg-muted/50 p-3 rounded-md text-sm`,children:[(0,M.jsx)(`p`,{className:`font-semibold text-muted-foreground mb-1`,children:`Última Compra do Produto:`}),(0,M.jsxs)(`p`,{children:[`Fornecedor: `,H.expand?.supplier_id?.name||`Desconhecido`]}),(0,M.jsxs)(`p`,{children:[`Preço Unitário: R$`,` `,H.unit_price?H.unit_price.toFixed(2):(H.price_paid/H.quantity).toFixed(2)]}),(0,M.jsxs)(`p`,{children:[`Data: `,T(new Date(H.purchase_date),`dd/MM/yyyy`)]})]}),(0,M.jsxs)(`div`,{className:`grid grid-cols-2 md:grid-cols-3 gap-4`,children:[(0,M.jsxs)(`div`,{className:`space-y-2`,children:[(0,M.jsx)(b,{children:`Qtd`}),(0,M.jsx)(o,{type:`number`,value:R.quantity,onChange:e=>G(e.target.value)})]}),(0,M.jsxs)(`div`,{className:`space-y-2`,children:[(0,M.jsx)(b,{children:`Preço Unit.`}),(0,M.jsx)(o,{type:`number`,step:`0.01`,value:R.unit_price,onChange:e=>K(e.target.value)})]}),(0,M.jsxs)(`div`,{className:`space-y-2`,children:[(0,M.jsx)(b,{children:`Total Compra *`}),(0,M.jsx)(o,{type:`number`,step:`0.01`,className:B.price_paid?`border-red-500`:``,value:R.price_paid,onChange:e=>{z({...R,price_paid:e.target.value}),V(e=>({...e,price_paid:``}))}}),B.price_paid&&(0,M.jsx)(`p`,{className:`text-xs text-red-500`,children:B.price_paid})]}),(0,M.jsxs)(`div`,{className:`space-y-2`,children:[(0,M.jsx)(b,{children:`Data *`}),(0,M.jsx)(o,{type:`date`,className:B.purchase_date?`border-red-500`:``,value:R.purchase_date,onChange:e=>{z({...R,purchase_date:e.target.value}),V(e=>({...e,purchase_date:``}))}}),B.purchase_date&&(0,M.jsx)(`p`,{className:`text-xs text-red-500`,children:B.purchase_date})]}),(0,M.jsxs)(`div`,{className:`space-y-2`,children:[(0,M.jsx)(b,{children:`Status *`}),(0,M.jsxs)(y,{value:R.status,onValueChange:e=>z({...R,status:e}),children:[(0,M.jsx)(g,{children:(0,M.jsx)(v,{placeholder:`Selecione...`})}),(0,M.jsxs)(m,{children:[(0,M.jsx)(x,{value:`pending`,children:`Pendente`}),(0,M.jsx)(x,{value:`received`,children:`Recebido`})]})]})]})]})]}),(0,M.jsxs)(f,{children:[(0,M.jsx)(c,{variant:`outline`,onClick:()=>{L(!1),V({})},children:`Cancelar`}),(0,M.jsx)(c,{onClick:J,children:`Salvar Compra`})]})]})})]}):(0,M.jsx)(`div`,{className:`p-8`,children:`Carregando...`})}export{N as default};
+import { a as e, n as t, t as n } from './jsx-runtime-m7G7yzlP.js'
+import { t as r } from './arrow-left-G6dHEtp2.js'
+import { t as i } from './calendar-DpVmG1BK.js'
+import {
+  Ct as a,
+  H as o,
+  S as s,
+  U as c,
+  _ as l,
+  a as u,
+  at as d,
+  b as f,
+  bt as p,
+  c as m,
+  ct as h,
+  f as g,
+  n as _,
+  p as v,
+  s as y,
+  t as b,
+  u as x,
+  v as S,
+  x as C,
+  yt as w,
+} from './index-CXmOAr77.js'
+import { t as T } from './format-BUAFcs3P.js'
+import { a as E, n as D, o as O, t as k } from './card-B5puzR9W.js'
+var A = h(`shopping-cart`, [
+    [`circle`, { cx: `8`, cy: `21`, r: `1`, key: `jimo8o` }],
+    [`circle`, { cx: `19`, cy: `21`, r: `1`, key: `13723u` }],
+    [
+      `path`,
+      {
+        d: `M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12`,
+        key: `9zh506`,
+      },
+    ],
+  ]),
+  j = e(t(), 1),
+  M = n()
+function N() {
+  let { id: e } = a(),
+    [t, n] = (0, j.useState)(null),
+    [h, N] = (0, j.useState)([]),
+    [P, F] = (0, j.useState)([]),
+    [I, L] = (0, j.useState)(!1),
+    [R, z] = (0, j.useState)({
+      product_id: ``,
+      quantity: `1`,
+      unit_price: ``,
+      price_paid: ``,
+      purchase_date: new Date().toISOString().split(`T`)[0],
+      status: `pending`,
+    }),
+    [B, V] = (0, j.useState)({}),
+    [H, U] = (0, j.useState)(null),
+    { toast: W } = w()
+  ;(0, j.useEffect)(() => {
+    R.product_id
+      ? u
+          .collection(`inventory_purchases`)
+          .getFirstListItem(`product_id="${R.product_id}"`, {
+            sort: `-purchase_date`,
+            expand: `supplier_id`,
+          })
+          .then((e) => U(e))
+          .catch(() => U(null))
+      : U(null)
+  }, [R.product_id])
+  let G = (e) => {
+      z((t) => {
+        let n = Number(t.unit_price) || 0,
+          r = Number(e) || 0
+        return { ...t, quantity: e, price_paid: r > 0 && n > 0 ? (r * n).toFixed(2) : t.price_paid }
+      })
+    },
+    K = (e) => {
+      z((t) => {
+        let n = Number(t.quantity) || 0,
+          r = Number(e) || 0
+        return {
+          ...t,
+          unit_price: e,
+          price_paid: n > 0 && r > 0 ? (n * r).toFixed(2) : t.price_paid,
+        }
+      })
+    },
+    q = async () => {
+      if (e)
+        try {
+          ;(n(await u.collection(`suppliers`).getOne(e, { expand: `category_id` })),
+            N(
+              await u
+                .collection(`inventory_purchases`)
+                .getFullList({
+                  filter: `supplier_id="${e}"`,
+                  sort: `-purchase_date`,
+                  expand: `product_id`,
+                }),
+            ),
+            F(await u.collection(`products`).getFullList()))
+        } catch (e) {
+          console.error(e)
+        }
+    }
+  ;((0, j.useEffect)(() => {
+    q()
+  }, [e]),
+    _(`suppliers`, q),
+    _(`inventory_purchases`, q))
+  let J = async () => {
+      let t = {}
+      if (
+        (R.product_id || (t.product_id = `Selecione um produto`),
+        R.price_paid || (t.price_paid = `Informe o total da compra`),
+        R.purchase_date || (t.purchase_date = `Informe a data`),
+        Object.keys(t).length > 0)
+      ) {
+        ;(V(t), W({ title: `Verifique os campos obrigatórios`, variant: `destructive` }))
+        return
+      }
+      V({})
+      try {
+        let t = new Date().toISOString()
+        if (R.purchase_date) {
+          let e = new Date(R.purchase_date)
+          isNaN(e.getTime()) || (t = new Date(R.purchase_date + `T12:00:00.000Z`).toISOString())
+        }
+        ;(await u
+          .collection(`inventory_purchases`)
+          .create({
+            supplier_id: e,
+            product_id: R.product_id,
+            quantity: Number(R.quantity) || 1,
+            unit_price: Number(R.unit_price) || 0,
+            price_paid: Number(R.price_paid) || 0,
+            purchase_date: t,
+            status: R.status,
+            received_at: R.status === `received` ? new Date().toISOString() : null,
+          }),
+          W({ title: `Compra registrada com sucesso` }),
+          L(!1),
+          z({
+            ...R,
+            price_paid: ``,
+            unit_price: ``,
+            product_id: ``,
+            quantity: `1`,
+            status: `pending`,
+          }),
+          q())
+      } catch (e) {
+        W({ title: `Erro ao registrar`, description: e.message, variant: `destructive` })
+      }
+    },
+    Y = async (e) => {
+      try {
+        ;(await u
+          .collection(`inventory_purchases`)
+          .update(e, { status: `received`, received_at: new Date().toISOString() }),
+          W({ title: `Recebimento confirmado com sucesso` }),
+          q())
+      } catch (e) {
+        W({ title: `Erro ao confirmar`, description: e.message, variant: `destructive` })
+      }
+    }
+  return t
+    ? (0, M.jsxs)(`div`, {
+        className: `space-y-6 max-w-5xl mx-auto`,
+        children: [
+          (0, M.jsxs)(`div`, {
+            className: `flex items-center gap-4`,
+            children: [
+              (0, M.jsx)(c, {
+                variant: `outline`,
+                size: `icon`,
+                asChild: !0,
+                children: (0, M.jsx)(p, {
+                  to: `/fornecedores`,
+                  children: (0, M.jsx)(r, { className: `size-4` }),
+                }),
+              }),
+              (0, M.jsxs)(`div`, {
+                children: [
+                  (0, M.jsx)(`h2`, {
+                    className: `text-2xl font-bold tracking-tight`,
+                    children: t.name,
+                  }),
+                  (0, M.jsxs)(`p`, {
+                    className: `text-muted-foreground text-sm`,
+                    children: [
+                      t.document && `Documento: ${t.document} | `,
+                      `Contato: `,
+                      t.contact_person || `N/A`,
+                      ` `,
+                      t.whatsapp && `(${t.whatsapp})`,
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+          (0, M.jsxs)(`div`, {
+            className: `grid grid-cols-1 md:grid-cols-3 gap-6`,
+            children: [
+              (0, M.jsxs)(k, {
+                className: `md:col-span-1 h-min`,
+                children: [
+                  (0, M.jsx)(E, {
+                    children: (0, M.jsx)(O, { children: `Detalhes do Fornecedor` }),
+                  }),
+                  (0, M.jsxs)(D, {
+                    className: `space-y-4`,
+                    children: [
+                      (0, M.jsxs)(`div`, {
+                        children: [
+                          (0, M.jsx)(`p`, {
+                            className: `text-sm font-semibold`,
+                            children: `Endereço`,
+                          }),
+                          (0, M.jsx)(`p`, {
+                            className: `text-sm text-muted-foreground`,
+                            children: t.address || `Não informado`,
+                          }),
+                        ],
+                      }),
+                      (0, M.jsxs)(`div`, {
+                        children: [
+                          (0, M.jsx)(`p`, {
+                            className: `text-sm font-semibold`,
+                            children: `Telefone`,
+                          }),
+                          (0, M.jsx)(`p`, {
+                            className: `text-sm text-muted-foreground`,
+                            children: t.phone || `Não informado`,
+                          }),
+                        ],
+                      }),
+                      (0, M.jsxs)(`div`, {
+                        children: [
+                          (0, M.jsx)(`p`, {
+                            className: `text-sm font-semibold`,
+                            children: `Categorias Fornecidas`,
+                          }),
+                          (0, M.jsxs)(`div`, {
+                            className: `flex flex-wrap gap-1 mt-1`,
+                            children: [
+                              t.expand?.category_id?.map((e) =>
+                                (0, M.jsx)(
+                                  `span`,
+                                  {
+                                    className: `text-xs bg-secondary px-2 py-1 rounded-full`,
+                                    children: e.name,
+                                  },
+                                  e.id,
+                                ),
+                              ),
+                              !t.expand?.category_id &&
+                                (0, M.jsx)(`span`, {
+                                  className: `text-sm text-muted-foreground`,
+                                  children: `Nenhuma categoria`,
+                                }),
+                            ],
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              (0, M.jsxs)(k, {
+                className: `md:col-span-2`,
+                children: [
+                  (0, M.jsxs)(E, {
+                    className: `flex flex-row items-center justify-between pb-2`,
+                    children: [
+                      (0, M.jsx)(O, { children: `Histórico de Compras` }),
+                      (0, M.jsxs)(c, {
+                        size: `sm`,
+                        onClick: () => L(!0),
+                        children: [
+                          (0, M.jsx)(A, { className: `size-4 mr-2` }),
+                          ` Registrar Compra`,
+                        ],
+                      }),
+                    ],
+                  }),
+                  (0, M.jsx)(D, {
+                    children:
+                      h.length === 0
+                        ? (0, M.jsx)(`p`, {
+                            className: `text-muted-foreground py-4 text-center`,
+                            children: `Nenhuma compra registrada com este fornecedor.`,
+                          })
+                        : (0, M.jsx)(`div`, {
+                            className: `space-y-3 mt-4 max-h-[500px] overflow-y-auto pr-2`,
+                            children: h.map((e) => {
+                              let t = e.status || `pending`
+                              return (0, M.jsxs)(
+                                `div`,
+                                {
+                                  className: `flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg hover:bg-muted/10 gap-3`,
+                                  children: [
+                                    (0, M.jsxs)(`div`, {
+                                      className: `flex items-start sm:items-center gap-3`,
+                                      children: [
+                                        (0, M.jsx)(`div`, {
+                                          className: `bg-primary/10 p-2 rounded-full mt-1 sm:mt-0 shrink-0`,
+                                          children: (0, M.jsx)(i, {
+                                            className: `size-4 text-primary`,
+                                          }),
+                                        }),
+                                        (0, M.jsxs)(`div`, {
+                                          children: [
+                                            (0, M.jsxs)(`div`, {
+                                              className: `flex flex-wrap items-center gap-2`,
+                                              children: [
+                                                (0, M.jsx)(`p`, {
+                                                  className: `font-semibold text-sm`,
+                                                  children:
+                                                    e.expand?.product_id?.name ||
+                                                    `Produto Excluído`,
+                                                }),
+                                                t === `pending`
+                                                  ? (0, M.jsx)(`span`, {
+                                                      className: `bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-[10px] font-medium px-2 py-0.5 rounded-full`,
+                                                      children: `Pendente`,
+                                                    })
+                                                  : (0, M.jsx)(`span`, {
+                                                      className: `bg-green-500/10 text-green-500 border border-green-500/20 text-[10px] font-medium px-2 py-0.5 rounded-full`,
+                                                      children: `Recebido`,
+                                                    }),
+                                              ],
+                                            }),
+                                            (0, M.jsxs)(`p`, {
+                                              className: `text-xs text-muted-foreground mt-1`,
+                                              children: [
+                                                `Data: `,
+                                                T(new Date(e.purchase_date), `dd/MM/yyyy`),
+                                                ` | Qtd:`,
+                                                ` `,
+                                                e.quantity,
+                                              ],
+                                            }),
+                                            t === `received` &&
+                                              e.received_at &&
+                                              (0, M.jsxs)(`p`, {
+                                                className: `text-xs text-muted-foreground mt-0.5`,
+                                                children: [
+                                                  `Recebido em: `,
+                                                  T(new Date(e.received_at), `dd/MM/yyyy HH:mm`),
+                                                ],
+                                              }),
+                                          ],
+                                        }),
+                                      ],
+                                    }),
+                                    (0, M.jsxs)(`div`, {
+                                      className: `flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 border-t sm:border-t-0 pt-2 sm:pt-0`,
+                                      children: [
+                                        (0, M.jsxs)(`div`, {
+                                          className: `text-left sm:text-right`,
+                                          children: [
+                                            (0, M.jsxs)(`p`, {
+                                              className: `font-bold text-sm`,
+                                              children: [`R$ `, e.price_paid?.toFixed(2)],
+                                            }),
+                                            e.unit_price &&
+                                              (0, M.jsxs)(`p`, {
+                                                className: `text-xs text-muted-foreground`,
+                                                children: [`Unit: R$ `, e.unit_price.toFixed(2)],
+                                              }),
+                                          ],
+                                        }),
+                                        t === `pending` &&
+                                          (0, M.jsxs)(c, {
+                                            size: `sm`,
+                                            variant: `secondary`,
+                                            onClick: () => Y(e.id),
+                                            children: [
+                                              (0, M.jsx)(d, { className: `size-4 mr-1` }),
+                                              `Confirmar`,
+                                            ],
+                                          }),
+                                      ],
+                                    }),
+                                  ],
+                                },
+                                e.id,
+                              )
+                            }),
+                          }),
+                  }),
+                ],
+              }),
+            ],
+          }),
+          (0, M.jsx)(l, {
+            open: I,
+            onOpenChange: L,
+            children: (0, M.jsxs)(S, {
+              children: [
+                (0, M.jsx)(C, { children: (0, M.jsx)(s, { children: `Registrar Nova Compra` }) }),
+                (0, M.jsxs)(`div`, {
+                  className: `grid gap-4 py-4`,
+                  children: [
+                    (0, M.jsxs)(`div`, {
+                      className: `space-y-2`,
+                      children: [
+                        (0, M.jsx)(b, { children: `Produto *` }),
+                        (0, M.jsxs)(y, {
+                          value: R.product_id,
+                          onValueChange: (e) => {
+                            ;(z({ ...R, product_id: e }), V((e) => ({ ...e, product_id: `` })))
+                          },
+                          children: [
+                            (0, M.jsx)(g, {
+                              className: B.product_id ? `border-red-500` : ``,
+                              children: (0, M.jsx)(v, { placeholder: `Selecione o produto...` }),
+                            }),
+                            (0, M.jsx)(m, {
+                              children: P.map((e) =>
+                                (0, M.jsx)(x, { value: e.id, children: e.name }, e.id),
+                              ),
+                            }),
+                          ],
+                        }),
+                        B.product_id &&
+                          (0, M.jsx)(`p`, {
+                            className: `text-xs text-red-500`,
+                            children: B.product_id,
+                          }),
+                      ],
+                    }),
+                    H &&
+                      (0, M.jsxs)(`div`, {
+                        className: `bg-muted/50 p-3 rounded-md text-sm`,
+                        children: [
+                          (0, M.jsx)(`p`, {
+                            className: `font-semibold text-muted-foreground mb-1`,
+                            children: `Última Compra do Produto:`,
+                          }),
+                          (0, M.jsxs)(`p`, {
+                            children: [
+                              `Fornecedor: `,
+                              H.expand?.supplier_id?.name || `Desconhecido`,
+                            ],
+                          }),
+                          (0, M.jsxs)(`p`, {
+                            children: [
+                              `Preço Unitário: R$`,
+                              ` `,
+                              H.unit_price
+                                ? H.unit_price.toFixed(2)
+                                : (H.price_paid / H.quantity).toFixed(2),
+                            ],
+                          }),
+                          (0, M.jsxs)(`p`, {
+                            children: [`Data: `, T(new Date(H.purchase_date), `dd/MM/yyyy`)],
+                          }),
+                        ],
+                      }),
+                    (0, M.jsxs)(`div`, {
+                      className: `grid grid-cols-2 md:grid-cols-3 gap-4`,
+                      children: [
+                        (0, M.jsxs)(`div`, {
+                          className: `space-y-2`,
+                          children: [
+                            (0, M.jsx)(b, { children: `Qtd` }),
+                            (0, M.jsx)(o, {
+                              type: `number`,
+                              value: R.quantity,
+                              onChange: (e) => G(e.target.value),
+                            }),
+                          ],
+                        }),
+                        (0, M.jsxs)(`div`, {
+                          className: `space-y-2`,
+                          children: [
+                            (0, M.jsx)(b, { children: `Preço Unit.` }),
+                            (0, M.jsx)(o, {
+                              type: `number`,
+                              step: `0.01`,
+                              value: R.unit_price,
+                              onChange: (e) => K(e.target.value),
+                            }),
+                          ],
+                        }),
+                        (0, M.jsxs)(`div`, {
+                          className: `space-y-2`,
+                          children: [
+                            (0, M.jsx)(b, { children: `Total Compra *` }),
+                            (0, M.jsx)(o, {
+                              type: `number`,
+                              step: `0.01`,
+                              className: B.price_paid ? `border-red-500` : ``,
+                              value: R.price_paid,
+                              onChange: (e) => {
+                                ;(z({ ...R, price_paid: e.target.value }),
+                                  V((e) => ({ ...e, price_paid: `` })))
+                              },
+                            }),
+                            B.price_paid &&
+                              (0, M.jsx)(`p`, {
+                                className: `text-xs text-red-500`,
+                                children: B.price_paid,
+                              }),
+                          ],
+                        }),
+                        (0, M.jsxs)(`div`, {
+                          className: `space-y-2`,
+                          children: [
+                            (0, M.jsx)(b, { children: `Data *` }),
+                            (0, M.jsx)(o, {
+                              type: `date`,
+                              className: B.purchase_date ? `border-red-500` : ``,
+                              value: R.purchase_date,
+                              onChange: (e) => {
+                                ;(z({ ...R, purchase_date: e.target.value }),
+                                  V((e) => ({ ...e, purchase_date: `` })))
+                              },
+                            }),
+                            B.purchase_date &&
+                              (0, M.jsx)(`p`, {
+                                className: `text-xs text-red-500`,
+                                children: B.purchase_date,
+                              }),
+                          ],
+                        }),
+                        (0, M.jsxs)(`div`, {
+                          className: `space-y-2`,
+                          children: [
+                            (0, M.jsx)(b, { children: `Status *` }),
+                            (0, M.jsxs)(y, {
+                              value: R.status,
+                              onValueChange: (e) => z({ ...R, status: e }),
+                              children: [
+                                (0, M.jsx)(g, {
+                                  children: (0, M.jsx)(v, { placeholder: `Selecione...` }),
+                                }),
+                                (0, M.jsxs)(m, {
+                                  children: [
+                                    (0, M.jsx)(x, { value: `pending`, children: `Pendente` }),
+                                    (0, M.jsx)(x, { value: `received`, children: `Recebido` }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+                (0, M.jsxs)(f, {
+                  children: [
+                    (0, M.jsx)(c, {
+                      variant: `outline`,
+                      onClick: () => {
+                        ;(L(!1), V({}))
+                      },
+                      children: `Cancelar`,
+                    }),
+                    (0, M.jsx)(c, { onClick: J, children: `Salvar Compra` }),
+                  ],
+                }),
+              ],
+            }),
+          }),
+        ],
+      })
+    : (0, M.jsx)(`div`, { className: `p-8`, children: `Carregando...` })
+}
+export { N as default }
