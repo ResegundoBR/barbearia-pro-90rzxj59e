@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-05-24T12:15:01.459Z",
+  "generatedAt": "2026-05-24T12:40:51.674Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id || organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "id = @request.auth.id || organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "list": "id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -125,8 +125,8 @@
       "name": "barbers",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "list": "user_id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "user_id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -232,8 +232,8 @@
       "name": "clients",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "list": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || created_by_id.user_id = @request.auth.id || preferred_barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
+        "view": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || created_by_id.user_id = @request.auth.id || preferred_barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
         "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -429,10 +429,10 @@
       "name": "appointments",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "list": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
+        "view": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
         "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "update": "(organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id)) || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
       },
       "fields": [
