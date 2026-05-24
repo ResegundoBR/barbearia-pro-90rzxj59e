@@ -1,27 +1,36 @@
-import { pt as createLucideIcon } from "./index-Dw6qfu4w.js";
-var CircleAlert = createLucideIcon("circle-alert", [
-	["circle", {
-		cx: "12",
-		cy: "12",
-		r: "10",
-		key: "1mglay"
-	}],
-	["line", {
-		x1: "12",
-		x2: "12",
-		y1: "8",
-		y2: "12",
-		key: "1pkeuh"
-	}],
-	["line", {
-		x1: "12",
-		x2: "12.01",
-		y1: "16",
-		y2: "16",
-		key: "4dfq90"
-	}]
-]);
+import { pt as createLucideIcon } from './index-Dw6qfu4w.js'
+var CircleAlert = createLucideIcon('circle-alert', [
+  [
+    'circle',
+    {
+      cx: '12',
+      cy: '12',
+      r: '10',
+      key: '1mglay',
+    },
+  ],
+  [
+    'line',
+    {
+      x1: '12',
+      x2: '12',
+      y1: '8',
+      y2: '12',
+      key: '1pkeuh',
+    },
+  ],
+  [
+    'line',
+    {
+      x1: '12',
+      x2: '12.01',
+      y1: '16',
+      y2: '16',
+      key: '4dfq90',
+    },
+  ],
+])
 //#endregion
-export { CircleAlert as t };
+export { CircleAlert as t }
 
 //# sourceMappingURL=circle-alert-BqzzoKyi.js.map
