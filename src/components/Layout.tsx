@@ -240,7 +240,7 @@ export default function Layout() {
               className="h-10 max-w-[200px] object-contain drop-shadow-md"
             />
           ) : (
-            <span className="text-xl font-bold tracking-tight text-primary">BARBEARIA PRO</span>
+            <span className="text-xl font-bold tracking-tight text-primary">La Barberiá</span>
           )}
         </SidebarHeader>
         <SidebarContent>
