@@ -17,7 +17,6 @@ routerAdd(
     const body = e.requestInfo().body || {}
     const newPassword = body.password
     if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-      const { ValidationError } = require('pocketbase')
       throw new BadRequestError('Senha inválida', {
         password: new ValidationError(
           'invalid_password',

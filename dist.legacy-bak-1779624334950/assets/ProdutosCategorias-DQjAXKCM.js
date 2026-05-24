@@ -247,16 +247,14 @@ function U() {
               parseFloat(t) || 0
             )
           }
-          ;(await m
-            .collection(`products`)
-            .create({
-              name: e,
-              category_id: c || null,
-              price: l(r),
-              cost_price: l(a),
-              stock_quantity: parseInt(s.toString().replace(/\D/g, ``), 10) || 0,
-              is_active: !0,
-            }),
+          ;(await m.collection(`products`).create({
+            name: e,
+            category_id: c || null,
+            price: l(r),
+            cost_price: l(a),
+            stock_quantity: parseInt(s.toString().replace(/\D/g, ``), 10) || 0,
+            is_active: !0,
+          }),
             t++)
         } catch (e) {
           ;(n++, r.push(`Linha ${a + 2}: ${e.message}`))

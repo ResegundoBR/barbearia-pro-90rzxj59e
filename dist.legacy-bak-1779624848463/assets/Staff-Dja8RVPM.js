@@ -532,12 +532,10 @@ function Ie() {
     Ft = async (e) => {
       it(e)
       try {
-        let t = await m
-          .collection(`commissions`)
-          .getFullList({
-            filter: `barber_id='${e.id}' && status!='paid'`,
-            sort: `due_date,-created`,
-          })
+        let t = await m.collection(`commissions`).getFullList({
+          filter: `barber_id='${e.id}' && status!='paid'`,
+          sort: `due_date,-created`,
+        })
         ;(at(t), ot(t.map((e) => e.id)), st(`pix`), pt(null), rt(!0))
       } catch {
         Y({ title: `Erro ao carregar comissões`, variant: `destructive` })

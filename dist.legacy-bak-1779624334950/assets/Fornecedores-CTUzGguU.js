@@ -93,28 +93,24 @@ function L() {
               n = t.toLowerCase()
             if (a.has(n)) f.push(a.get(n))
             else {
-              let r = await m
-                .collection(`categories`)
-                .create({
-                  name: t,
-                  type: `product`,
-                  organization_id: e?.organization_id || e?.expand?.organization_id?.id,
-                })
+              let r = await m.collection(`categories`).create({
+                name: t,
+                type: `product`,
+                organization_id: e?.organization_id || e?.expand?.organization_id?.id,
+              })
               ;(a.set(n, r.id), f.push(r.id))
             }
           }
-          ;(await m
-            .collection(`suppliers`)
-            .create({
-              name: t,
-              document: d,
-              address: i,
-              contact_person: o,
-              whatsapp: l.toString().replace(/\D/g, ``),
-              phone: l.toString().replace(/\D/g, ``),
-              category_id: f,
-              organization_id: e?.organization_id || e?.expand?.organization_id?.id,
-            }),
+          ;(await m.collection(`suppliers`).create({
+            name: t,
+            document: d,
+            address: i,
+            contact_person: o,
+            whatsapp: l.toString().replace(/\D/g, ``),
+            phone: l.toString().replace(/\D/g, ``),
+            category_id: f,
+            organization_id: e?.organization_id || e?.expand?.organization_id?.id,
+          }),
             n++)
         } catch (e) {
           ;(r++, i.push(`Linha ${o + 2}: ${e.message}`))
