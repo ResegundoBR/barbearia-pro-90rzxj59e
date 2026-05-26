@@ -1,0 +1,4 @@
+import { a as e } from './index-CHmnQ-gm.js'
+var t = () => e.collection(`categories`).getFullList({ sort: `-created` }),
+  n = (t) => e.collection(`categories`).create(t)
+export { t as n, n as t }

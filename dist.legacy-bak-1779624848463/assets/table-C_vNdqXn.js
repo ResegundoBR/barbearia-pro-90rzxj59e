@@ -1,0 +1,59 @@
+import { a as e, n as t, t as n } from './jsx-runtime-m7G7yzlP.js'
+import { U as r } from './index-CHmnQ-gm.js'
+var i = e(t(), 1),
+  a = n(),
+  o = i.forwardRef(({ className: e, wrapperClassName: t, ...n }, i) =>
+    (0, a.jsx)(`div`, {
+      className: r(`relative w-full h-full overflow-auto`, t),
+      children: (0, a.jsx)(`table`, {
+        ref: i,
+        className: r(`w-full caption-bottom text-sm`, e),
+        ...n,
+      }),
+    }),
+  )
+o.displayName = `Table`
+var s = i.forwardRef(({ className: e, ...t }, n) =>
+  (0, a.jsx)(`thead`, { ref: n, className: r(`[&_tr]:border-b`, e), ...t }),
+)
+s.displayName = `TableHeader`
+var c = i.forwardRef(({ className: e, ...t }, n) =>
+  (0, a.jsx)(`tbody`, { ref: n, className: r(e), ...t }),
+)
+c.displayName = `TableBody`
+var l = i.forwardRef(({ className: e, ...t }, n) =>
+  (0, a.jsx)(`tfoot`, { ref: n, className: r(`border-t bg-muted/50 font-medium`, e), ...t }),
+)
+l.displayName = `TableFooter`
+var u = i.forwardRef(({ className: e, ...t }, n) =>
+  (0, a.jsx)(`tr`, {
+    ref: n,
+    className: r(`transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted`, e),
+    ...t,
+  }),
+)
+u.displayName = `TableRow`
+var d = i.forwardRef(({ className: e, ...t }, n) =>
+  (0, a.jsx)(`th`, {
+    ref: n,
+    className: r(
+      `h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0`,
+      e,
+    ),
+    ...t,
+  }),
+)
+d.displayName = `TableHead`
+var f = i.forwardRef(({ className: e, ...t }, n) =>
+  (0, a.jsx)(`td`, {
+    ref: n,
+    className: r(`p-4 align-middle [&:has([role=checkbox])]:pr-0`, e),
+    ...t,
+  }),
+)
+f.displayName = `TableCell`
+var p = i.forwardRef(({ className: e, ...t }, n) =>
+  (0, a.jsx)(`caption`, { ref: n, className: r(`mt-4 text-sm text-muted-foreground`, e), ...t }),
+)
+p.displayName = `TableCaption`
+export { s as a, d as i, c as n, u as o, f as r, o as t }

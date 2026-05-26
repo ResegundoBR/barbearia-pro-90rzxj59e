@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-05-23T13:12:32.527Z",
+  "generatedAt": "2026-05-26T17:33:58.728Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id || organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "id = @request.auth.id || organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "list": "id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -100,6 +100,12 @@
           "required": false,
           "system": false,
           "collectionRef": "organizations"
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -111,8 +117,8 @@
       "name": "barbers",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "list": "user_id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "view": "user_id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
         "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -204,8 +210,8 @@
       "name": "clients",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "list": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || created_by_id.user_id = @request.auth.id || preferred_barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
+        "view": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || created_by_id.user_id = @request.auth.id || preferred_barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
         "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
         "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
@@ -386,10 +392,10 @@
       "name": "appointments",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "list": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
+        "view": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
         "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
+        "update": "(organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id)) || @request.auth.email = 'alissonmayer7@gmail.com'",
         "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
       },
       "fields": [
@@ -1740,6 +1746,62 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "name": "role_permissions",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
+        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
+        "create": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id",
+        "update": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id",
+        "delete": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id"
+      },
+      "fields": [
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Socio", "Autonomo"]
+        },
+        {
+          "name": "module_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "is_enabled",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_role_perms ON role_permissions (organization_id, role, module_name)"
+      ]
     }
   ]
 }

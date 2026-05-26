@@ -38,7 +38,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
-import { getContrastColor, phoneMask, getRowVal, parseImportDate } from '@/lib/utils'
+import { getContrastColor, phoneMask } from '@/lib/utils'
 
 const defForm = {
   name: '',
@@ -73,22 +73,63 @@ export default function Clientes() {
     for (let i = 0; i < data.length; i++) {
       const row = data[i]
       try {
-        const name = getRowVal(row, ['nome'])
-        const surname = getRowVal(row, ['sobrenome'])
-        const phoneRaw = getRowVal(row, ['celular', 'telefone'])
-        const phoneSecRaw = getRowVal(row, ['fone secundario', 'celular 2', 'telefone 2'])
-        const birthRaw = getRowVal(row, ['nascimento', 'data de nascimento', 'aniversario'])
-        const profRaw = getRowVal(row, ['profissional', 'barbeiro', 'atendente'])
-        const locRaw = getRowVal(row, ['localizacao', 'local', 'localização'])
+        const getCol = (r: any, keys: string[]) => {
+          for (const k of Object.keys(r)) {
+            if (keys.includes(k.toLowerCase().trim())) {
+              return typeof r[k] === 'string' ? r[k].trim() : String(r[k] || '')
+            }
+          }
+          return ''
+        }
 
-        if (!name) throw new Error('Nome é obrigatório')
+        const name = getCol(row, ['nome'])
+        const surname = getCol(row, ['sobrenome'])
+        const phoneRaw = getCol(row, ['celular', 'telefone'])
+        const phoneSecRaw = getCol(row, ['celular 2', 'fone secundario', 'telefone 2'])
+        const birthRaw = getCol(row, ['nascimento', 'data de nascimento', 'aniversario'])
+        const profRaw = getCol(row, ['profissional', 'barbeiro', 'atendente'])
+        const locRaw = getCol(row, ['localização', 'localizacao', 'local'])
+
+        if (!name) throw new Error('O campo [Nome] é obrigatório.')
 
         const cleanPhone = (p: string) => {
+          if (!p) return ''
           const d = p.replace(/\D/g, '')
           return d.slice(0, 11)
         }
 
-        let birthday = parseImportDate(birthRaw)
+        let birthday = ''
+        if (birthRaw) {
+          const raw = birthRaw.trim()
+          const parts = raw.split('/')
+          if (parts.length === 3) {
+            const day = parseInt(parts[0], 10)
+            const month = parseInt(parts[1], 10)
+            const year = parseInt(parts[2], 10)
+            if (
+              !isNaN(day) &&
+              !isNaN(month) &&
+              !isNaN(year) &&
+              day > 0 &&
+              day <= 31 &&
+              month > 0 &&
+              month <= 12 &&
+              year > 1900 &&
+              year <= new Date().getFullYear() + 1
+            ) {
+              birthday = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00.000Z`
+            } else {
+              throw new Error('O campo [Nascimento] possui um formato inválido.')
+            }
+          } else {
+            const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+            if (isoMatch) {
+              birthday = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}T12:00:00.000Z`
+            } else {
+              throw new Error('O campo [Nascimento] possui um formato inválido.')
+            }
+          }
+        }
 
         let preferred_barber_id = ''
         if (profRaw) {
@@ -96,16 +137,16 @@ export default function Clientes() {
           if (bId) {
             preferred_barber_id = bId
           } else {
-            throw new Error(`Profissional "${profRaw}" não encontrado`)
+            throw new Error(`Profissional "${profRaw}" não encontrado.`)
           }
         }
 
         let location_type = 'nearby'
         const loc = locRaw.toLowerCase().trim()
-        if (loc === 'de passagem') location_type = 'passage'
-        else if (loc === 'mora perto') location_type = 'nearby'
-        else if (loc === 'mora cidade') location_type = 'mora_cidade'
-        else if (loc === 'outra cidade') location_type = 'other_city'
+        if (loc === 'de passagem' || loc === 'passage') location_type = 'passage'
+        else if (loc === 'mora perto' || loc === 'nearby') location_type = 'nearby'
+        else if (loc === 'mora cidade' || loc === 'mora_cidade') location_type = 'mora_cidade'
+        else if (loc === 'outra cidade' || loc === 'other_city') location_type = 'other_city'
 
         const payload: any = {
           name,
@@ -125,7 +166,7 @@ export default function Clientes() {
         success++
       } catch (err: any) {
         errors++
-        errorsList.push(`Linha ${i + 2}: ${err.message}`)
+        errorsList.push(`Erro na linha ${i + 2}: ${err.message}`)
       }
     }
 
