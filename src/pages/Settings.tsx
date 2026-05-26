@@ -3,9 +3,6 @@ import { Download, Upload, Users, Package, Truck, Settings as SettingsIcon } fro
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-import importacaoClientes from '@/assets/importacao-de-clientes-d0194.xlsx'
-import importacaoProdutos from '@/assets/importacao-de-produtos-5da39.xlsx'
-
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('importacao')
 
@@ -79,11 +76,11 @@ export default function Settings() {
                     className="w-full border-slate-600 text-slate-300 hover:text-white hover:bg-[#1e293b] bg-transparent h-11"
                     asChild
                   >
-                    <a href={importacaoClientes} download="importacao-de-clientes.xlsx">
+                    <a href="/importacao-de-clientes.xlsx" download="importacao-de-clientes.xlsx">
                       <Download className="mr-2 h-4 w-4" />
                       Modelo (Sheets)
                     </a>
-                  </Button>
+                  </Button>{' '}
                   <Button className="w-full bg-[#f59e0b] hover:bg-[#d97706] text-slate-900 font-bold h-11 transition-colors">
                     <Upload className="mr-2 h-4 w-4" />
                     Importar CSV
@@ -106,11 +103,11 @@ export default function Settings() {
                     className="w-full border-slate-600 text-slate-300 hover:text-white hover:bg-[#1e293b] bg-transparent h-11"
                     asChild
                   >
-                    <a href={importacaoProdutos} download="importacao-de-produtos.xlsx">
+                    <a href="/importacao-de-produtos.xlsx" download="importacao-de-produtos.xlsx">
                       <Download className="mr-2 h-4 w-4" />
                       Modelo (Sheets)
                     </a>
-                  </Button>
+                  </Button>{' '}
                   <Button className="w-full bg-[#f59e0b] hover:bg-[#d97706] text-slate-900 font-bold h-11 transition-colors">
                     <Upload className="mr-2 h-4 w-4" />
                     Importar CSV
