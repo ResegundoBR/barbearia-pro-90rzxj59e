@@ -313,7 +313,12 @@ export default function Agenda() {
       return toast({ title: 'Preencha nome e celular', variant: 'destructive' })
     }
     try {
-      const c = await createClient({ ...newClient, location_type: 'nearby', is_active: true })
+      const c = await createClient({
+        ...newClient,
+        location_type: 'nearby',
+        is_active: true,
+        organization_id: user?.organization_id,
+      })
       setData((prev) => ({ ...prev, clients: [c, ...prev.clients] }))
       setForm((f) => ({ ...f, client_id: c.id }))
       setNewClientDialogOpen(false)
@@ -361,6 +366,7 @@ export default function Agenda() {
         date: format(form.date, 'yyyy-MM-dd 12:00:00'),
         status: 'Confirmado',
         price: isPkg ? 0 : svc?.price || 0,
+        organization_id: user?.organization_id,
       }
 
       if (isPkg && activePackage) {

@@ -1,5 +1,0 @@
-import { n as e } from './startOfMonth-Dtw_Bedr.js'
-function t(t, n, r) {
-  return e(t, -n, r)
-}
-export { t }
