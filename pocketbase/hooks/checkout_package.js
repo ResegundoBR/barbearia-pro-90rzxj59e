@@ -97,10 +97,15 @@ routerAdd(
       const feeVal = Number((price * (pmFeePct / 100)).toFixed(2))
 
       let isSocio = false
+      let isAutonomo = false
       try {
         const barber = txApp.findRecordById('barbers', barber_id)
-        if (barber.getString('work_level') === 'socio') {
+        const wLvl = barber.getString('work_level')
+        if (wLvl === 'socio') {
           isSocio = true
+        }
+        if (wLvl === 'autonomo') {
+          isAutonomo = true
         }
       } catch (_) {}
 
@@ -111,7 +116,8 @@ routerAdd(
         grossComm = calculateComm('package', package_id, price, barber_id)
       }
 
-      const netComm = grossComm // No longer deducting feeVal
+      // Explicitly ensuring no fee deduction for Autonomo, while maintaining the fee record for accounting
+      const netComm = grossComm
 
       if (netComm !== 0 || isSocio) {
         const commCol = txApp.findCollectionByNameOrId('commissions')
@@ -119,7 +125,7 @@ routerAdd(
         comm.set('client_package_id', cp.id)
         comm.set('barber_id', barber_id)
         comm.set('amount', netComm)
-        comm.set('gross_amount', grossComm)
+        comm.set('gross_amount', price)
         comm.set('fee_amount', isSocio ? 0 : feeVal)
         comm.set('type', 'package_sale')
         comm.set('date', new Date().toISOString())

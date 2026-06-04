@@ -187,17 +187,23 @@ routerAdd(
         if (inferredPm === 'debito') pmType = 'debit_card'
         if (inferredPm === 'cash') pmType = 'cash'
 
-        const feePct = 0
-        const feeVal = 0
-        const amount = grossComm
+        const feePct = pmFeeMap[pmType] || 0
+        const feeVal = Number((price * (feePct / 100)).toFixed(2))
 
-        if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
+        let isAutonomo = barber && barber.getString('work_level') === 'autonomo'
+        let isSocio = barber && barber.getString('work_level') === 'socio'
+
+        // Rule: Autonomo does not have fee deducted from amount. Socio receives gross but also has fee recorded as 0.
+        // The fee_amount is still recorded for Autonomo.
+        let amount = grossComm
+
+        if (amount !== 0 || isSocio) {
           const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
           comm.set('appointment_id', apt.id)
           comm.set('barber_id', barberId)
           comm.set('amount', amount)
           comm.set('gross_amount', price)
-          comm.set('fee_amount', barber && barber.getString('work_level') === 'socio' ? 0 : feeVal)
+          comm.set('fee_amount', isSocio ? 0 : feeVal)
           comm.set('type', 'service')
 
           if (!existingComm) {
@@ -256,17 +262,21 @@ routerAdd(
         if (inferredPm === 'debito') pmType = 'debit_card'
         if (inferredPm === 'cash') pmType = 'cash'
 
-        const feePct = 0
-        const feeVal = 0
-        const amount = grossComm
+        const feePct = pmFeeMap[pmType] || 0
+        const feeVal = Number((price * (feePct / 100)).toFixed(2))
 
-        if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
+        let isAutonomo = barber && barber.getString('work_level') === 'autonomo'
+        let isSocio = barber && barber.getString('work_level') === 'socio'
+
+        let amount = grossComm
+
+        if (amount !== 0 || isSocio) {
           const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
           comm.set('product_purchase_id', prod.id)
           comm.set('barber_id', barberId)
           comm.set('amount', amount)
           comm.set('gross_amount', price)
-          comm.set('fee_amount', barber && barber.getString('work_level') === 'socio' ? 0 : feeVal)
+          comm.set('fee_amount', isSocio ? 0 : feeVal)
           comm.set('type', 'product')
 
           if (!existingComm) {
@@ -322,17 +332,21 @@ routerAdd(
         if (inferredPm === 'debito') pmType = 'debit_card'
         if (inferredPm === 'cash') pmType = 'cash'
 
-        const feePct = 0
-        const feeVal = 0
-        const amount = grossComm
+        const feePct = pmFeeMap[pmType] || 0
+        const feeVal = Number((price * (feePct / 100)).toFixed(2))
 
-        if (amount !== 0 || (barber && barber.getString('work_level') === 'socio')) {
+        let isAutonomo = barber && barber.getString('work_level') === 'autonomo'
+        let isSocio = barber && barber.getString('work_level') === 'socio'
+
+        let amount = grossComm
+
+        if (amount !== 0 || isSocio) {
           const comm = existingComm || new Record(txApp.findCollectionByNameOrId('commissions'))
           comm.set('client_package_id', pack.id)
           comm.set('barber_id', barberId)
           comm.set('amount', amount)
           comm.set('gross_amount', price)
-          comm.set('fee_amount', barber && barber.getString('work_level') === 'socio' ? 0 : feeVal)
+          comm.set('fee_amount', isSocio ? 0 : feeVal)
           comm.set('type', 'package_sale')
 
           if (!existingComm) {

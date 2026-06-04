@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-05-26T17:33:58.728Z",
+  "generatedAt": "2026-06-04T16:06:44.596Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -117,11 +117,11 @@
       "name": "barbers",
       "type": "base",
       "apiRules": {
-        "list": "user_id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "user_id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "user_id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "user_id = @request.auth.id || (@request.auth.access_level != 'Autonomo' && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -210,11 +210,11 @@
       "name": "clients",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || created_by_id.user_id = @request.auth.id || preferred_barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
-        "view": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || created_by_id.user_id = @request.auth.id || preferred_barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
-        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || created_by_id.user_id = @request.auth.id || preferred_barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com') || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || created_by_id.user_id = @request.auth.id || preferred_barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com') || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -320,11 +320,11 @@
       "name": "services",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -392,11 +392,11 @@
       "name": "appointments",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
-        "view": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com')",
-        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "(organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id)) || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com') || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id || @request.auth.email = 'alissonmayer7@gmail.com') || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "(organization_id = @request.auth.organization_id && (@request.auth.access_level != 'Autonomo' || barber_id.user_id = @request.auth.id)) || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -488,11 +488,11 @@
       "name": "commissions",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
-        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
-        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -607,11 +607,11 @@
       "name": "packages",
       "type": "base",
       "apiRules": {
-        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -679,11 +679,11 @@
       "name": "client_packages",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
-        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id)",
-        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id = '' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -740,11 +740,11 @@
       "name": "products",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -849,11 +849,11 @@
       "name": "product_purchases",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
-        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
-        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -910,11 +910,11 @@
       "name": "commission_rules",
       "type": "base",
       "apiRules": {
-        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -971,11 +971,11 @@
       "name": "business_hours",
       "type": "base",
       "apiRules": {
-        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1010,11 +1010,11 @@
       "name": "categories",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1064,11 +1064,11 @@
       "name": "settings",
       "type": "base",
       "apiRules": {
-        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "((@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id) || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1102,6 +1102,13 @@
           "type": "file",
           "required": false,
           "system": false
+        },
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "organizations"
         }
       ],
       "indexes": []
@@ -1110,11 +1117,11 @@
       "name": "payment_methods",
       "type": "base",
       "apiRules": {
-        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1163,11 +1170,11 @@
       "name": "client_logs",
       "type": "base",
       "apiRules": {
-        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1232,11 +1239,11 @@
       "name": "notifications",
       "type": "base",
       "apiRules": {
-        "list": "user_id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "user_id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "user_id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "user_id = @request.auth.id || @request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1291,11 +1298,11 @@
       "name": "notification_rules",
       "type": "base",
       "apiRules": {
-        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1356,11 +1363,11 @@
       "name": "suppliers",
       "type": "base",
       "apiRules": {
-        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1434,11 +1441,11 @@
       "name": "inventory_purchases",
       "type": "base",
       "apiRules": {
-        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "(@request.auth.id != '') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1513,11 +1520,11 @@
       "name": "stock_movements",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "@request.auth.id != '' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "@request.auth.id != '' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1585,8 +1592,8 @@
       "name": "checkouts",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
-        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
+        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
         "create": null,
         "update": null,
         "delete": null
@@ -1657,11 +1664,11 @@
       "name": "barber_blocks",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
-        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
-        "create": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
-        "update": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)",
-        "delete": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id)"
+        "list": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio' || @request.auth.email = 'alissonmayer7@gmail.com' || barber_id.user_id = @request.auth.id) || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1710,11 +1717,11 @@
       "name": "organizations",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.organization_id = id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "view": "@request.auth.organization_id = id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "create": "@request.auth.email = 'alissonmayer7@gmail.com'",
-        "update": "@request.auth.organization_id = id || @request.auth.email = 'alissonmayer7@gmail.com'",
-        "delete": "@request.auth.email = 'alissonmayer7@gmail.com'"
+        "list": "@request.auth.organization_id = id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "@request.auth.organization_id = id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.organization_id = id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1751,11 +1758,11 @@
       "name": "role_permissions",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
-        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
-        "create": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id",
-        "update": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id",
-        "delete": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id"
+        "list": "@request.auth.id != '' && organization_id = @request.auth.organization_id || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "@request.auth.id != '' && (@request.auth.access_level = 'Admin' || @request.auth.access_level = 'Socio') && organization_id = @request.auth.organization_id || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
       },
       "fields": [
         {
@@ -1801,6 +1808,91 @@
       ],
       "indexes": [
         "CREATE UNIQUE INDEX idx_role_perms ON role_permissions (organization_id, role, module_name)"
+      ]
+    },
+    {
+      "name": "queue_entries",
+      "type": "base",
+      "apiRules": {
+        "list": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "view": "organization_id = @request.auth.organization_id || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "create": "(organization_id = @request.auth.organization_id && @request.auth.access_level != 'Autonomo') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "update": "(organization_id = @request.auth.organization_id && @request.auth.access_level != 'Autonomo') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'",
+        "delete": "(organization_id = @request.auth.organization_id && @request.auth.access_level != 'Autonomo') || @request.auth.email = 'alissonmayer7@gmail.com' || @request.auth.email = 'reginaldo.segundo@planagroup.com.br'"
+      },
+      "fields": [
+        {
+          "name": "client_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "service_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "services"
+        },
+        {
+          "name": "barber_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "barbers"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["waiting", "in_progress", "completed", "cancelled"]
+        },
+        {
+          "name": "joined_at",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "estimated_start_time",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "appointment_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "appointments"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_queue_entries_org ON queue_entries (organization_id)",
+        "CREATE INDEX idx_queue_entries_status ON queue_entries (status)"
       ]
     }
   ]

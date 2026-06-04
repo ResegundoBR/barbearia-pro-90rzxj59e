@@ -28,17 +28,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { UserPlus, Edit, Eye, Upload } from 'lucide-react'
+import { UserPlus, Edit, Eye } from 'lucide-react'
 import { getClients, createClient, updateClient, getBarbers } from '@/services/api'
-import pb from '@/lib/pocketbase/client'
-import { ImportDialog } from '@/components/ImportDialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RankingDashboard } from '@/components/RankingDashboard'
 import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
-import { getContrastColor, phoneMask } from '@/lib/utils'
+import { getContrastColor } from '@/lib/utils'
+
+const applyPhoneMask = (v: string) => {
+  if (!v) return ''
+  let val = v.replace(/\D/g, '')
+  if (val.length > 11) val = val.slice(0, 11)
+  if (val.length > 10) return val.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3')
+  if (val.length > 5) return val.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3')
+  if (val.length > 2) return val.replace(/^(\d{2})(\d{0,5})/, '($1) $2')
+  return val
+}
 
 const defForm = {
   name: '',
@@ -60,120 +68,7 @@ export default function Clientes() {
   const [isOpen, setIsOpen] = useState(false)
   const [formData, setFormData] = useState<any>(defForm)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [isImportOpen, setIsImportOpen] = useState(false)
   const { toast } = useToast()
-
-  const handleImport = async (data: any[]) => {
-    let success = 0
-    let errors = 0
-    const errorsList: string[] = []
-
-    const barbersMap = new Map(barbers.map((b) => [b.name.toLowerCase().trim(), b.id]))
-
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i]
-      try {
-        const getCol = (r: any, keys: string[]) => {
-          for (const k of Object.keys(r)) {
-            if (keys.includes(k.toLowerCase().trim())) {
-              return typeof r[k] === 'string' ? r[k].trim() : String(r[k] || '')
-            }
-          }
-          return ''
-        }
-
-        const name = getCol(row, ['nome'])
-        const surname = getCol(row, ['sobrenome'])
-        const phoneRaw = getCol(row, ['celular', 'telefone'])
-        const phoneSecRaw = getCol(row, ['celular 2', 'fone secundario', 'telefone 2'])
-        const birthRaw = getCol(row, ['nascimento', 'data de nascimento', 'aniversario'])
-        const profRaw = getCol(row, ['profissional', 'barbeiro', 'atendente'])
-        const locRaw = getCol(row, ['localização', 'localizacao', 'local'])
-
-        if (!name) throw new Error('O campo [Nome] é obrigatório.')
-
-        const cleanPhone = (p: string) => {
-          if (!p) return ''
-          const d = p.replace(/\D/g, '')
-          return d.slice(0, 11)
-        }
-
-        let birthday = ''
-        if (birthRaw) {
-          const raw = birthRaw.trim()
-          const parts = raw.split('/')
-          if (parts.length === 3) {
-            const day = parseInt(parts[0], 10)
-            const month = parseInt(parts[1], 10)
-            const year = parseInt(parts[2], 10)
-            if (
-              !isNaN(day) &&
-              !isNaN(month) &&
-              !isNaN(year) &&
-              day > 0 &&
-              day <= 31 &&
-              month > 0 &&
-              month <= 12 &&
-              year > 1900 &&
-              year <= new Date().getFullYear() + 1
-            ) {
-              birthday = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00.000Z`
-            } else {
-              throw new Error('O campo [Nascimento] possui um formato inválido.')
-            }
-          } else {
-            const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
-            if (isoMatch) {
-              birthday = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}T12:00:00.000Z`
-            } else {
-              throw new Error('O campo [Nascimento] possui um formato inválido.')
-            }
-          }
-        }
-
-        let preferred_barber_id = ''
-        if (profRaw) {
-          const bId = barbersMap.get(profRaw.toLowerCase().trim())
-          if (bId) {
-            preferred_barber_id = bId
-          } else {
-            throw new Error(`Profissional "${profRaw}" não encontrado.`)
-          }
-        }
-
-        let location_type = 'nearby'
-        const loc = locRaw.toLowerCase().trim()
-        if (loc === 'de passagem' || loc === 'passage') location_type = 'passage'
-        else if (loc === 'mora perto' || loc === 'nearby') location_type = 'nearby'
-        else if (loc === 'mora cidade' || loc === 'mora_cidade') location_type = 'mora_cidade'
-        else if (loc === 'outra cidade' || loc === 'other_city') location_type = 'other_city'
-
-        const payload: any = {
-          name,
-          surname,
-          phone: cleanPhone(phoneRaw),
-          phone_secondary: cleanPhone(phoneSecRaw),
-          location_type,
-          is_active: true,
-          organization_id: user?.organization_id || user?.expand?.organization_id?.id,
-        }
-        if (birthday) payload.birthday = birthday
-        if (preferred_barber_id) payload.preferred_barber_id = preferred_barber_id
-        if (loggedInBarber) payload.created_by_id = loggedInBarber.id
-
-        await pb.collection('clients').create(payload)
-
-        success++
-      } catch (err: any) {
-        errors++
-        errorsList.push(`Erro na linha ${i + 2}: ${err.message}`)
-      }
-    }
-
-    if (success > 0) loadData()
-
-    return { success, errors, errorsList }
-  }
 
   const loadData = async () => {
     setClients(await getClients())
@@ -216,6 +111,10 @@ export default function Clientes() {
         payload.preferred_barber_id = ''
       }
 
+      if (user?.organization_id) {
+        payload.organization_id = user.organization_id
+      }
+
       if (editingId) await updateClient(editingId, payload)
       else await createClient(payload)
       toast({ title: editingId ? 'Cliente atualizado!' : 'Cliente cadastrado com sucesso!' })
@@ -249,23 +148,11 @@ export default function Clientes() {
           <p className="text-muted-foreground">Gerencie seus clientes e acompanhe histórico.</p>
         </div>
         {hasAccess('action_delete') && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsImportOpen(true)} className="gap-2">
-              <Upload className="size-4" /> Importar
-            </Button>
-            <Button onClick={openNew} className="gap-2">
-              <UserPlus className="size-4" /> Novo Cliente
-            </Button>
-          </div>
+          <Button onClick={openNew} className="gap-2">
+            <UserPlus className="size-4" /> Novo Cliente
+          </Button>
         )}
       </div>
-
-      <ImportDialog
-        open={isImportOpen}
-        onOpenChange={setIsImportOpen}
-        title="Importar Clientes"
-        onImport={handleImport}
-      />
 
       <Tabs defaultValue="lista">
         <TabsList className="mb-4">
@@ -331,7 +218,7 @@ export default function Clientes() {
                       className="min-h-[44px]"
                       value={formData.phone}
                       onChange={(e) =>
-                        setFormData({ ...formData, phone: phoneMask(e.target.value) })
+                        setFormData({ ...formData, phone: applyPhoneMask(e.target.value) })
                       }
                       placeholder="(00) 00000-0000"
                     />
@@ -344,7 +231,7 @@ export default function Clientes() {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          phone_secondary: phoneMask(e.target.value),
+                          phone_secondary: applyPhoneMask(e.target.value),
                         })
                       }
                       placeholder="(00) 00000-0000"
@@ -358,11 +245,8 @@ export default function Clientes() {
                     <Input
                       type="date"
                       className="min-h-[44px]"
-                      value={formData.birthday ? formData.birthday.split('T')[0] : ''}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        setFormData({ ...formData, birthday: val ? `${val}T12:00:00.000Z` : '' })
-                      }}
+                      value={formData.birthday?.split('T')[0] || ''}
+                      onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -468,10 +352,10 @@ export default function Clientes() {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <div>{phoneMask(c.phone)}</div>
+                          <div>{c.phone}</div>
                           {c.phone_secondary && (
                             <div className="text-sm text-muted-foreground">
-                              {phoneMask(c.phone_secondary)} (Sec)
+                              {c.phone_secondary} (Sec)
                             </div>
                           )}
                         </div>

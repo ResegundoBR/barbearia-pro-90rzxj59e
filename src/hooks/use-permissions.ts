@@ -1,69 +1,90 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import pb from '@/lib/pocketbase/client'
-import { useAuth } from './use-auth'
+import { useAuth } from '@/hooks/use-auth'
+
+const defaultPerms = {
+  Admin: ['*'],
+  Socio: [
+    'agenda',
+    'clientes',
+    'checkout',
+    'staff',
+    'dash_tab_overview',
+    'dash_block_revenue',
+    'dash_block_clients',
+    'dash_block_new_clients',
+    'dash_block_ticket_serv',
+    'dash_block_ticket_prod',
+    'dash_block_peak',
+    'dash_block_history',
+    'dash_block_top_sellers',
+    'dash_block_forecast',
+    'dash_block_alerts',
+  ],
+  Autonomo: [
+    'agenda',
+    'dash_tab_overview',
+    'dash_block_revenue',
+    'dash_block_history',
+    'dash_block_peak',
+    'dash_block_forecast',
+  ],
+}
+
+let cachedPerms: any = null
+let permsPromise: Promise<any> | null = null
 
 export function usePermissions() {
   const { user } = useAuth()
-  const [permissions, setPermissions] = useState<Record<string, boolean>>({})
-  const [loadingPerms, setLoadingPerms] = useState(true)
 
-  const fetchPermissions = useCallback(async () => {
-    if (!user || user.access_level === 'Admin') {
+  const isAdmin =
+    user?.access_level === 'Admin' ||
+    user?.email === 'reginaldo.segundo@planagroup.com.br' ||
+    user?.email === 'alissonmayer7@gmail.com'
+
+  const [rolePerms, setRolePerms] = useState<any>(cachedPerms || defaultPerms)
+  const [loadingPerms, setLoadingPerms] = useState(!cachedPerms)
+
+  useEffect(() => {
+    if (cachedPerms) {
       setLoadingPerms(false)
       return
     }
-
-    try {
-      const records = await pb.collection('role_permissions').getFullList({
-        filter: `role = "${user.access_level}"`,
-      })
-      const permsMap: Record<string, boolean> = {}
-      records.forEach((r) => {
-        permsMap[r.module_name] = r.is_enabled
-      })
-      setPermissions(permsMap)
-    } catch (error) {
-      console.error('Error fetching permissions', error)
-    } finally {
-      setLoadingPerms(false)
+    if (!permsPromise) {
+      permsPromise = pb
+        .collection('settings')
+        .getFirstListItem('key="role_permissions"', { requestKey: null })
+        .then((r) => {
+          cachedPerms = r.value || defaultPerms
+          return cachedPerms
+        })
+        .catch(() => {
+          cachedPerms = defaultPerms
+          return cachedPerms
+        })
     }
-  }, [user])
+    permsPromise.then((perms) => {
+      setRolePerms(perms)
+      setLoadingPerms(false)
+    })
+  }, [])
 
-  useEffect(() => {
-    fetchPermissions()
-  }, [fetchPermissions])
+  const allowedModules =
+    rolePerms[user?.access_level || 'Autonomo'] ||
+    defaultPerms[user?.access_level as keyof typeof defaultPerms] ||
+    []
 
-  const hasAccess = useCallback(
-    (module: string) => {
-      if (!user) return false
-      if (user.access_level === 'Admin') return true
+  const hasAccess = (module: string) => {
+    if (isAdmin) return true
+    if (allowedModules.includes('*')) return true
 
-      const isSocio = user.access_level === 'Socio'
-      const defaults: Record<string, boolean> = {
-        dashboard: true,
-        agenda: true,
-        clientes: true,
-        checkout: true,
-        estoque: isSocio,
-        produtos: isSocio,
-        fornecedores: isSocio,
-        staff: isSocio,
-        financeiro: isSocio,
-        settings: isSocio,
-        users: isSocio,
-      }
+    if ((module === 'settings' || module === 'users') && user?.access_level === 'Socio') return true
 
-      return permissions[module] ?? defaults[module] ?? false
-    },
-    [user, permissions],
-  )
+    if (module.startsWith('staff_') && allowedModules.includes('staff')) return true
+    if (module.startsWith('dash_') && allowedModules.includes('dashboard')) return true
 
-  return {
-    hasAccess,
-    isAdmin: user?.access_level === 'Admin',
-    isSocio: user?.access_level === 'Socio',
-    isAutonomo: user?.access_level === 'Autonomo',
-    loadingPerms,
-    refetchPerms: fetchPermissions,
+    return allowedModules.includes(module)
   }
+
+  return { hasAccess, rolePerms, isAdmin, loadingPerms }
 }

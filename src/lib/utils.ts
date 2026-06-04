@@ -11,70 +11,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function normalizeHeader(h: string) {
-  return h
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-}
-
-export function getRowVal(row: Record<string, string>, keys: string[]) {
-  const normKeys = Object.keys(row).reduce(
-    (acc, k) => {
-      acc[normalizeHeader(k)] = row[k]
-      return acc
-    },
-    {} as Record<string, string>,
-  )
-
-  for (const k of keys) {
-    if (normKeys[k] !== undefined) return normKeys[k]
-  }
-  return ''
-}
-
-export function parseImportDate(val: string) {
-  if (!val) return ''
-  val = val.trim()
-  const parts = val.includes('/') ? val.split('/') : val.includes('-') ? val.split('-') : []
-  if (parts.length === 3) {
-    let year, month, day
-    if (parts[0].length === 4) {
-      year = parts[0]
-      month = parts[1]
-      day = parts[2]
-    } else {
-      day = parts[0]
-      month = parts[1]
-      year = parts[2]
-    }
-    if (year.length === 2) year = (parseInt(year) > 50 ? '19' : '20') + year
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T12:00:00.000Z`
-  }
-  const clean = val.replace(/\D/g, '')
-  if (clean.length === 8) {
-    return `${clean.slice(4, 8)}-${clean.slice(2, 4)}-${clean.slice(0, 2)}T12:00:00.000Z`
-  }
-  if (clean.length === 6) {
-    let year = clean.slice(4, 6)
-    year = (parseInt(year) > 50 ? '19' : '20') + year
-    return `${year}-${clean.slice(2, 4)}-${clean.slice(0, 2)}T12:00:00.000Z`
-  }
-  return ''
-}
-
-export function cpfCnpjMask(value: string) {
-  if (!value) return ''
-  const digits = value.replace(/\D/g, '')
-  if (digits.length <= 11) {
-    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-  }
-  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
-}
-
 export function phoneMask(value: string) {
-  if (!value) return ''
   const v = value.replace(/\D/g, '').slice(0, 11)
   if (v.length >= 11) return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`
   if (v.length >= 7) return `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`

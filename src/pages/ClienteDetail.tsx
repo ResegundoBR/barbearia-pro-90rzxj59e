@@ -39,7 +39,7 @@ import {
   getClientPackages,
 } from '@/services/api'
 import { format } from 'date-fns'
-import { getContrastColor, phoneMask } from '@/lib/utils'
+import { getContrastColor } from '@/lib/utils'
 
 function PackageCard({ p, status, used, total, progress, packageAppointments }: any) {
   const [expanded, setExpanded] = useState(false)
@@ -269,15 +269,7 @@ export default function ClienteDetail() {
           <h2 className="text-2xl font-bold tracking-tight">
             {client.name} {client.surname}
           </h2>
-          {(client.phone || client.phone_secondary) && (
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-muted-foreground text-sm font-medium">
-                {phoneMask(client.phone)}
-                {client.phone_secondary && ` | ${phoneMask(client.phone_secondary)}`}
-              </p>
-            </div>
-          )}
-          <p className="text-muted-foreground mt-1 text-sm">
+          <p className="text-muted-foreground">
             Cadastrado em: {format(new Date(client.created), 'dd/MM/yyyy')} | Cliente desde:{' '}
             {activity.length > 0 ? format(activity[activity.length - 1].date, 'dd/MM/yyyy') : 'N/A'}
           </p>

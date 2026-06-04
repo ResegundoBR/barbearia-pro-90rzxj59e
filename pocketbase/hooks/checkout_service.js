@@ -224,9 +224,12 @@ routerAdd(
       }
 
       let isSocio = false
+      let isAutonomo = false
       try {
         const barber = txApp.findRecordById('barbers', barberId)
-        if (barber.getString('work_level') === 'socio') isSocio = true
+        const workLevel = barber.getString('work_level')
+        if (workLevel === 'socio') isSocio = true
+        if (workLevel === 'autonomo') isAutonomo = true
       } catch (_) {}
 
       if (finalServicePrice > 0 || (packageToConsume && finalServicePrice === 0)) {
@@ -235,7 +238,9 @@ routerAdd(
         if (isSocio) {
           netComm = finalServicePrice
         } else {
-          netComm = calculateComm('service', serviceId, finalServicePrice, barberId)
+          const baseComm = calculateComm('service', serviceId, finalServicePrice, barberId)
+          // For Autonomo, ensure no fee deduction. For others, apply existing rules if any (currently none, but future proofing).
+          netComm = baseComm
         }
 
         if (netComm > 0 || isSocio || packageToConsume) {
@@ -246,6 +251,7 @@ routerAdd(
           comm.set('barber_id', barberId)
           comm.set('amount', netComm)
           comm.set('gross_amount', finalServicePrice)
+          // Fee is recorded for accounting but not deducted for Autonomo
           comm.set('fee_amount', isSocio ? 0 : feeVal)
           comm.set('type', 'service')
           comm.set('date', new Date().toISOString())
@@ -283,10 +289,13 @@ routerAdd(
 
           if (extPrice > 0) {
             let isExtSocio = false
+            let isExtAutonomo = false
             let catCommPct = 0
             try {
               const b = txApp.findRecordById('barbers', extBarberId)
-              if (b.getString('work_level') === 'socio') isExtSocio = true
+              const workLvl = b.getString('work_level')
+              if (workLvl === 'socio') isExtSocio = true
+              if (workLvl === 'autonomo') isExtAutonomo = true
               catCommPct = b.getFloat('commission_value') || 0
             } catch (_) {}
 
@@ -301,6 +310,8 @@ routerAdd(
               }
             }
 
+            let extFeeVal = Number((extPrice * (pmFeePct / 100)).toFixed(2))
+
             if (extGross > 0 || isExtSocio) {
               const cComm = new Record(txApp.findCollectionByNameOrId('commissions'))
               if (extAptId) cComm.set('appointment_id', extAptId)
@@ -308,10 +319,7 @@ routerAdd(
               cComm.set('barber_id', extBarberId)
               cComm.set('amount', extGross)
               cComm.set('gross_amount', extPrice)
-              cComm.set(
-                'fee_amount',
-                isExtSocio ? 0 : Number((extPrice * (pmFeePct / 100)).toFixed(2)),
-              )
+              cComm.set('fee_amount', isExtSocio ? 0 : extFeeVal)
               cComm.set('type', 'service')
               cComm.set('date', new Date().toISOString())
               cComm.set('payment_method', commissionPm)
@@ -349,10 +357,15 @@ routerAdd(
           txApp.save(purchase)
 
           let isSocioProd = false
+          let isAutonomoProd = false
           try {
             const barberProd = txApp.findRecordById('barbers', item.barber_id)
-            if (barberProd.getString('work_level') === 'socio') {
+            const wLvl = barberProd.getString('work_level')
+            if (wLvl === 'socio') {
               isSocioProd = true
+            }
+            if (wLvl === 'autonomo') {
+              isAutonomoProd = true
             }
           } catch (_) {}
 

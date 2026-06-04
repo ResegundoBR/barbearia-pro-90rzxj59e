@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, Scissors, Eye, EyeOff, Upload } from 'lucide-react'
-import { ImportDialog } from '@/components/ImportDialog'
+import { Plus, Pencil, Trash2, Scissors, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -48,75 +47,6 @@ export function ProductsTab() {
   const [consumeProduct, setConsumeProduct] = useState<any>(null)
   const [consumeForm, setConsumeForm] = useState({ quantity: 1, barber_id: '', description: '' })
   const [barbers, setBarbers] = useState<any[]>([])
-  const [isImportOpen, setIsImportOpen] = useState(false)
-
-  const handleImport = async (data: any[]) => {
-    let success = 0
-    let errors = 0
-    const errorsList: string[] = []
-
-    const categoriesMap = new Map(categories.map((c) => [c.name.toLowerCase().trim(), c.id]))
-
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i]
-      try {
-        const name = row['Produto'] || row['produto'] || ''
-        const catRaw = row['Categoria'] || row['categoria'] || ''
-        const priceRaw =
-          row['Preço de venda'] || row['preço de venda'] || row['preco de venda'] || '0'
-        const costRaw =
-          row['Preço de Custo'] || row['preço de custo'] || row['preco de custo'] || '0'
-        const stockRaw = row['Estoque atual'] || row['estoque atual'] || '0'
-
-        if (!name) throw new Error('Produto é obrigatório')
-
-        let category_id = ''
-        if (catRaw) {
-          const catName = catRaw.trim()
-          const lowerCat = catName.toLowerCase()
-          if (categoriesMap.has(lowerCat)) {
-            category_id = categoriesMap.get(lowerCat)!
-          } else {
-            const newCat = await pb.collection('categories').create({
-              name: catName,
-              type: 'product',
-            })
-            categoriesMap.set(lowerCat, newCat.id)
-            category_id = newCat.id
-          }
-        }
-
-        const parseNum = (v: string) => {
-          if (!v) return 0
-          let s = v.toString()
-          if (s.includes(',') && s.includes('.')) {
-            s = s.replace(/\./g, '').replace(',', '.')
-          } else if (s.includes(',')) {
-            s = s.replace(',', '.')
-          }
-          return parseFloat(s) || 0
-        }
-
-        await pb.collection('products').create({
-          name,
-          category_id: category_id || null,
-          price: parseNum(priceRaw),
-          cost_price: parseNum(costRaw),
-          stock_quantity: parseInt(stockRaw.toString().replace(/\D/g, ''), 10) || 0,
-          is_active: true,
-        })
-
-        success++
-      } catch (err: any) {
-        errors++
-        errorsList.push(`Linha ${i + 2}: ${err.message}`)
-      }
-    }
-
-    if (success > 0) loadData()
-
-    return { success, errors, errorsList }
-  }
 
   const loadData = async () => {
     try {
@@ -231,10 +161,6 @@ export function ProductsTab() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
-            <Upload className="w-4 h-4 mr-2" />
-            Importar
-          </Button>
           <Button
             onClick={() => {
               setProductToEdit(null)
@@ -246,13 +172,6 @@ export function ProductsTab() {
           </Button>
         </div>
       </div>
-
-      <ImportDialog
-        open={isImportOpen}
-        onOpenChange={setIsImportOpen}
-        title="Importar Produtos"
-        onImport={handleImport}
-      />
 
       <div className="border rounded-md overflow-x-auto">
         <Table>

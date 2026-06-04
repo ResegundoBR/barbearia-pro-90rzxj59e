@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Plus, Building2, ExternalLink, Clock, Upload } from 'lucide-react'
-import { ImportDialog } from '@/components/ImportDialog'
+import { Plus, Building2, ExternalLink, Clock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -28,8 +27,15 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
 import { createCategory } from '@/services/categories'
 import { getInventoryPurchases } from '@/services/inventory_purchases'
-import { phoneMask, cpfCnpjMask, getRowVal } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
+
+const applyCpfCnpjMask = (value: string) => {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length <= 11) {
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  }
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+}
 
 export default function Fornecedores() {
   const { user } = useAuth()
@@ -50,70 +56,7 @@ export default function Fornecedores() {
     category_id: [] as string[],
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isImportOpen, setIsImportOpen] = useState(false)
   const { toast } = useToast()
-
-  const handleImport = async (data: any[]) => {
-    let success = 0
-    let errorsCount = 0
-    const errorsList: string[] = []
-
-    const categoriesMap = new Map(categories.map((c) => [c.name.toLowerCase().trim(), c.id]))
-
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i]
-      try {
-        const name = getRowVal(row, ['nome', 'razao social'])
-        const docRaw = getRowVal(row, ['documento', 'cpf/cnpj', 'cnpj', 'cpf'])
-        const address = getRowVal(row, ['endereco', 'endereço'])
-        const contact = getRowVal(row, ['contato', 'pessoa de contato'])
-        const phoneRaw = getRowVal(row, ['telefone', 'fone', 'whatsapp', 'wpp', 'whatsapp/fone'])
-        const catRaw = getRowVal(row, ['categoria'])
-
-        if (!name) throw new Error('Nome é obrigatório')
-
-        const document = docRaw.toString().replace(/\D/g, '')
-        if (!document) throw new Error('CPF/CNPJ é obrigatório')
-
-        let category_ids: string[] = []
-        if (catRaw) {
-          const catName = catRaw.trim()
-          const lowerCat = catName.toLowerCase()
-          if (categoriesMap.has(lowerCat)) {
-            category_ids.push(categoriesMap.get(lowerCat)!)
-          } else {
-            const newCat = await pb.collection('categories').create({
-              name: catName,
-              type: 'product',
-              organization_id: user?.organization_id || user?.expand?.organization_id?.id,
-            })
-            categoriesMap.set(lowerCat, newCat.id)
-            category_ids.push(newCat.id)
-          }
-        }
-
-        await pb.collection('suppliers').create({
-          name,
-          document,
-          address,
-          contact_person: contact,
-          whatsapp: phoneRaw.toString().replace(/\D/g, ''),
-          phone: phoneRaw.toString().replace(/\D/g, ''),
-          category_id: category_ids,
-          organization_id: user?.organization_id || user?.expand?.organization_id?.id,
-        })
-
-        success++
-      } catch (err: any) {
-        errorsCount++
-        errorsList.push(`Linha ${i + 2}: ${err.message}`)
-      }
-    }
-
-    if (success > 0) loadData()
-
-    return { success, errors: errorsCount, errorsList }
-  }
 
   const loadData = async () => {
     try {
@@ -147,6 +90,7 @@ export default function Fornecedores() {
       await pb.collection('suppliers').create({
         ...formData,
         document: cleanDocument,
+        organization_id: user?.organization_id,
       })
       toast({ title: 'Fornecedor cadastrado' })
       setDialogOpen(false)
@@ -163,7 +107,11 @@ export default function Fornecedores() {
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return
     try {
-      const cat = await createCategory({ name: newCatName.trim(), type: 'product' })
+      const cat = await createCategory({
+        name: newCatName.trim(),
+        type: 'product',
+        organization_id: user?.organization_id,
+      })
       setCategories([...categories, cat])
       setFormData({ ...formData, category_id: [...formData.category_id, cat.id] })
       setNewCatName('')
@@ -176,38 +124,25 @@ export default function Fornecedores() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Compras/Fornec.</h2>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
-            <Upload className="size-4 mr-2" />
-            Importar
-          </Button>
-          <Button
-            onClick={() => {
-              setFormData({
-                name: '',
-                document: '',
-                address: '',
-                phone: '',
-                whatsapp: '',
-                contact_person: '',
-                category_id: [],
-              })
-              setErrors({})
-              setDialogOpen(true)
-            }}
-          >
-            <Plus className="size-4 mr-2" />
-            Novo Fornecedor
-          </Button>
-        </div>
+        <Button
+          onClick={() => {
+            setFormData({
+              name: '',
+              document: '',
+              address: '',
+              phone: '',
+              whatsapp: '',
+              contact_person: '',
+              category_id: [],
+            })
+            setErrors({})
+            setDialogOpen(true)
+          }}
+        >
+          <Plus className="size-4 mr-2" />
+          Novo Fornecedor
+        </Button>
       </div>
-
-      <ImportDialog
-        open={isImportOpen}
-        onOpenChange={setIsImportOpen}
-        title="Importar Fornecedores"
-        onImport={handleImport}
-      />
 
       <div className="border rounded-md bg-card">
         <Table>
@@ -253,12 +188,12 @@ export default function Fornecedores() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>{cpfCnpjMask(sup.document)}</TableCell>
+                  <TableCell>{applyCpfCnpjMask(sup.document)}</TableCell>
                   <TableCell>
                     {sup.contact_person}
                     <br />
                     <span className="text-xs text-muted-foreground">
-                      {phoneMask(sup.whatsapp || sup.phone)}
+                      {sup.whatsapp || sup.phone}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -304,7 +239,7 @@ export default function Fornecedores() {
             <div className="space-y-2">
               <Label>CPF / CNPJ *</Label>
               <Input
-                value={cpfCnpjMask(formData.document)}
+                value={applyCpfCnpjMask(formData.document)}
                 onChange={(e) => setFormData({ ...formData, document: e.target.value })}
                 maxLength={18}
               />
@@ -328,10 +263,8 @@ export default function Fornecedores() {
               <div className="space-y-2">
                 <Label>WhatsApp / Fone</Label>
                 <Input
-                  value={phoneMask(formData.whatsapp)}
-                  onChange={(e) =>
-                    setFormData({ ...formData, whatsapp: phoneMask(e.target.value) })
-                  }
+                  value={formData.whatsapp}
+                  onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
                 />
               </div>
             </div>

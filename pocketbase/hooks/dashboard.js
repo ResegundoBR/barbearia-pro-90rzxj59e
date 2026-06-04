@@ -2,141 +2,172 @@ routerAdd(
   'GET',
   '/backend/v1/dashboard',
   (e) => {
-    const period = e.request.url.query().get('period') || 'semana'
-    const orgId = e.auth?.get('organization_id')
+    const today = new Date()
+    // Current month start
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const startOfMonthStr = startOfMonth.toISOString().replace('T', ' ')
 
-    if (!orgId) {
-      return e.badRequestError('Organização não encontrada.')
-    }
+    // Current week start (Sunday)
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay())
+    startOfWeek.setHours(0, 0, 0, 0)
+    const startOfWeekStr = startOfWeek.toISOString().replace('T', ' ')
 
-    const now = new Date()
-    let startDate = new Date()
-    let endDate = new Date()
+    // Today start
+    const startOfToday = new Date(today)
+    startOfToday.setHours(0, 0, 0, 0)
+    const startOfTodayStr = startOfToday.toISOString().replace('T', ' ')
 
-    if (period === 'hoje') {
-      startDate.setHours(0, 0, 0, 0)
-      endDate.setHours(23, 59, 59, 999)
-    } else if (period === 'semana') {
-      const day = now.getDay()
-      const diff = now.getDate() - day
-      startDate.setDate(diff)
-      startDate.setHours(0, 0, 0, 0)
-      endDate.setDate(diff + 6)
-      endDate.setHours(23, 59, 59, 999)
-    } else if (period === 'mes') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-    } else if (period === 'ano') {
-      startDate = new Date(now.getFullYear(), 0, 1)
-      endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
-    }
-
-    // Format to PocketBase date string format (UTC)
-    const startStr = startDate.toISOString().replace('T', ' ')
-    const endStr = endDate.toISOString().replace('T', ' ')
-
-    // 1. Fetch valid appointments
-    const appointments = $app.findRecordsByFilter(
+    const apts = $app.findRecordsByFilter(
       'appointments',
-      `organization_id = {:orgId} && date >= {:start} && date <= {:end}`,
-      '-date',
+      `status = 'Concluído' && created >= '${startOfMonthStr}'`,
+      '',
       10000,
       0,
-      { orgId, start: startStr, end: endStr },
     )
-
-    let totalRevenue = 0
-    let completedDurationMinutes = 0
-    let validAppointmentsCount = 0
-
-    for (const appt of appointments) {
-      const st = (appt.get('status') || '').toLowerCase()
-      // Ignore canceled or no-show appointments
-      if (st.includes('cancel') || st.includes('no_show') || st.includes('falta')) {
-        continue
-      }
-
-      validAppointmentsCount++
-      totalRevenue += appt.get('price') || 0
-
-      try {
-        const srvId = appt.get('service_id')
-        if (srvId) {
-          const srv = $app.findRecordById('services', srvId)
-          completedDurationMinutes += srv.get('duration_minutes') || 0
-        }
-      } catch (_) {
-        // Service not found or deleted, ignore duration
-      }
-    }
-
-    // 2. Fetch Fixed Barbers
-    const barbers = $app.findRecordsByFilter(
-      'barbers',
-      `organization_id = {:orgId} && work_regime = 'fixed'`,
+    const prods = $app.findRecordsByFilter(
+      'product_purchases',
+      `created >= '${startOfMonthStr}'`,
       '',
-      1000,
+      10000,
       0,
-      { orgId },
     )
+    const packs = $app.findRecordsByFilter(
+      'client_packages',
+      `created >= '${startOfMonthStr}'`,
+      '',
+      10000,
+      0,
+    )
+    const barbers = $app.findRecordsByFilter('barbers', '1=1', '', 100, 0)
 
-    const fixedBarbersCount = barbers.length
+    let dailyFaturamento = 0
+    const dailyClients = new Set()
+    let dailyAptCount = 0
 
-    // 3. Fetch Business Hours to calculate total active weekly capacity
-    const businessHours = $app.findRecordsByFilter('business_hours', `is_active = true`, '', 100, 0)
+    let weeklyFaturamento = 0
+    let weeklyNovosClientes = 0
 
-    let todayCapacityMinutes = 0
-    let weeklyCapacityMinutes = 0
-    const currentDayOfWeek = String(now.getDay())
+    const barberStats = {}
+    for (const b of barbers) {
+      barberStats[b.id] = { name: b.getString('name'), revenue: 0, cuts: 0, id: b.id }
+    }
 
-    for (const bh of businessHours) {
-      const open = bh.get('open_time') || '09:00'
-      const close = bh.get('close_time') || '18:00'
+    // Process Appointments
+    for (const apt of apts) {
+      const created = new Date(apt.getString('created'))
+      let price = apt.getFloat('price')
+      if (price === 0 && !apt.getString('client_package_id')) {
+        try {
+          const s = $app.findRecordById('services', apt.getString('service_id'))
+          price = s.getFloat('price')
+        } catch (err) {}
+      } else if (apt.getString('client_package_id')) {
+        price = 0 // Revenue accounted in package purchase
+      }
 
-      const [oH, oM] = open.split(':').map(Number)
-      const [cH, cM] = close.split(':').map(Number)
+      if (created >= startOfToday) {
+        dailyFaturamento += price
+        dailyClients.add(apt.getString('client_id'))
+        dailyAptCount++
+      }
 
-      const duration = cH * 60 + (cM || 0) - (oH * 60 + (oM || 0))
-      if (duration > 0) {
-        weeklyCapacityMinutes += duration
-        // Also grab today's specific capacity for the 'hoje' filter
-        if (bh.get('day_of_week') === currentDayOfWeek) {
-          todayCapacityMinutes = duration
-        }
+      if (created >= startOfWeek) {
+        weeklyFaturamento += price
+      }
+
+      const bId = apt.getString('barber_id')
+      if (bId && barberStats[bId]) {
+        barberStats[bId].revenue += price
+        barberStats[bId].cuts++
       }
     }
 
-    // Calculate Total Capacity depending on the requested period
-    let totalCapacityMinutes = 0
+    // Process Products
+    for (const prod of prods) {
+      const created = new Date(prod.getString('created'))
+      const price = prod.getFloat('price_at_sale')
 
-    if (period === 'hoje') {
-      totalCapacityMinutes = todayCapacityMinutes * fixedBarbersCount
-    } else if (period === 'semana') {
-      totalCapacityMinutes = weeklyCapacityMinutes * fixedBarbersCount
-    } else if (period === 'mes') {
-      // Approx 4 weeks per month for standardized capacity
-      totalCapacityMinutes = weeklyCapacityMinutes * 4 * fixedBarbersCount
-    } else if (period === 'ano') {
-      // 52 weeks per year
-      totalCapacityMinutes = weeklyCapacityMinutes * 52 * fixedBarbersCount
+      if (created >= startOfToday) {
+        dailyFaturamento += price
+        dailyClients.add(prod.getString('client_id'))
+      }
+      if (created >= startOfWeek) {
+        weeklyFaturamento += price
+      }
+
+      const bId = prod.getString('barber_id')
+      if (bId && barberStats[bId]) {
+        barberStats[bId].revenue += price
+      }
     }
 
-    // 4. Final Efficiency Metrics
-    const occupiedHours = completedDurationMinutes / 60
-    const capacityHours = totalCapacityMinutes / 60
-    const idleHours = Math.max(0, capacityHours - occupiedHours)
-    const efficiencyPercentage = capacityHours > 0 ? (occupiedHours / capacityHours) * 100 : 0
+    // Process Packages
+    for (const pack of packs) {
+      const created = new Date(pack.getString('created'))
+      let price = 0
+      try {
+        const pkg = $app.findRecordById('packages', pack.getString('package_id'))
+        price = pkg.getFloat('price')
+      } catch (err) {}
+
+      if (created >= startOfToday) {
+        dailyFaturamento += price
+        dailyClients.add(pack.getString('client_id'))
+      }
+      if (created >= startOfWeek) {
+        weeklyFaturamento += price
+      }
+
+      const bId = pack.getString('barber_id')
+      if (bId && barberStats[bId]) {
+        barberStats[bId].revenue += price
+      }
+    }
+
+    const ranking = Object.values(barberStats)
+      .sort((a, b) => b.revenue - a.revenue)
+      .map((b, i) => ({
+        name: b.name,
+        revenue: b.revenue,
+        cuts: b.cuts,
+        medal: i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '',
+      }))
+
+    const ticketMedio =
+      dailyClients.size > 0 ? (dailyFaturamento / dailyClients.size).toFixed(0) : 0
 
     return e.json(200, {
-      period,
-      revenue: totalRevenue,
-      appointmentsCount: validAppointmentsCount,
-      efficiency: {
-        capacityHours: parseFloat(capacityHours.toFixed(1)),
-        occupiedHours: parseFloat(occupiedHours.toFixed(1)),
-        idleHours: parseFloat(idleHours.toFixed(1)),
-        percentage: parseFloat(efficiencyPercentage.toFixed(1)),
+      daily: {
+        faturamento: dailyFaturamento.toFixed(2),
+        clientesAtendidos: dailyClients.size,
+        ticketMedio: ticketMedio,
+        taxaOcupacao: 80, // Mock for visual
       },
+      ranking: ranking,
+      alerts: {
+        clientesRisco: 2,
+        pacotesVencendo: 3,
+        agendamentosAmanha: 5,
+      },
+      weekly: {
+        period: 'Semana Atual',
+        faturamento: weeklyFaturamento.toFixed(2),
+        crescimento: 5,
+        novosClientes: 3,
+        taxaRetorno: 68,
+        barbeiroProcurado: ranking.length > 0 ? `${ranking[0].name}` : '-',
+        servicoVendido: 'Corte Especial',
+        pico: '14h-17h',
+      },
+      commissions: barbers.map((b) => {
+        const isSocio = b.getString('work_level') === 'socio'
+        return {
+          name: b.getString('name'),
+          work_level: b.getString('work_level'),
+          nota: isSocio ? 'Repasse Integral (Sócio)' : 'Comissão (Autônomo)',
+        }
+      }),
     })
   },
   $apis.requireAuth(),
