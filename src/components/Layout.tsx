@@ -72,6 +72,7 @@ export default function Layout() {
   const [isPackagesModalOpen, setIsPackagesModalOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   const [logoUrl, setLogoUrl] = useState('')
+  const [organization, setOrganization] = useState<any>(null)
 
   const { hasAccess, isAdmin } = usePermissions()
   const canAccessSettings = isAdmin || hasAccess('settings')
@@ -215,11 +216,21 @@ export default function Layout() {
   useEffect(() => {
     if (user) {
       loadAlerts()
+      if (user.organization_id) {
+        pb.collection('organizations')
+          .getOne(user.organization_id)
+          .then(setOrganization)
+          .catch(console.error)
+      }
     }
     loadLogo()
     window.addEventListener('logo-updated', loadLogo)
     return () => window.removeEventListener('logo-updated', loadLogo)
   }, [user])
+
+  const orgName = organization?.name || ''
+  const isLab =
+    orgName.toLowerCase().includes('laboratório') || orgName.toLowerCase().includes('laboratorio')
 
   useRealtime('client_packages', () => {
     loadAlerts()
@@ -236,15 +247,30 @@ export default function Layout() {
   return (
     <SidebarProvider>
       <Sidebar variant="inset" className="hidden md:flex">
-        <SidebarHeader className="p-4 flex flex-row items-center gap-3">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt="Barbearia Pro"
-              className="h-10 max-w-[200px] object-contain drop-shadow-md"
-            />
-          ) : (
-            <span className="text-xl font-bold tracking-tight text-primary">BARBEARIA PRO</span>
+        <SidebarHeader className="p-4 flex flex-col items-start gap-1">
+          <div className="flex flex-row items-center gap-3">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Barbearia Pro"
+                className="h-10 max-w-[200px] object-contain drop-shadow-md"
+              />
+            ) : (
+              <span className="text-xl font-bold tracking-tight text-primary">BARBEARIA PRO</span>
+            )}
+          </div>
+          {organization && (
+            <div className="flex items-center">
+              {isLab ? (
+                <span className="text-[10px] font-bold bg-amber-500 text-amber-950 px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
+                  LABORATÓRIO
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
+                  {orgName}
+                </span>
+              )}
+            </div>
           )}
         </SidebarHeader>
         <SidebarContent>
@@ -294,15 +320,30 @@ export default function Layout() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[280px] p-0 flex flex-col">
-                <div className="p-4 border-b flex items-center gap-3">
-                  {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt="Barbearia Pro"
-                      className="h-8 max-w-[150px] object-contain drop-shadow-md"
-                    />
-                  ) : (
-                    <span className="font-bold tracking-tight text-primary">BARBEARIA PRO</span>
+                <div className="p-4 border-b flex flex-col items-start gap-1">
+                  <div className="flex items-center gap-3">
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt="Barbearia Pro"
+                        className="h-8 max-w-[150px] object-contain drop-shadow-md"
+                      />
+                    ) : (
+                      <span className="font-bold tracking-tight text-primary">BARBEARIA PRO</span>
+                    )}
+                  </div>
+                  {organization && (
+                    <div className="flex items-center">
+                      {isLab ? (
+                        <span className="text-[10px] font-bold bg-amber-500 text-amber-950 px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
+                          LABORATÓRIO
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
+                          {orgName}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <ScrollArea className="flex-1">
@@ -342,19 +383,35 @@ export default function Layout() {
                 </div>
               </SheetContent>
             </Sheet>
-            <div className="text-primary font-bold flex items-center gap-2">
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt="Barbearia Pro"
-                  className="h-8 max-w-[120px] object-contain drop-shadow-md hidden sm:block"
-                />
-              ) : (
-                <span className="text-lg tracking-tight hidden sm:block">BARBEARIA PRO</span>
+            <div className="text-primary font-bold flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-2">
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt="Barbearia Pro"
+                    className="h-8 max-w-[120px] object-contain drop-shadow-md hidden sm:block"
+                  />
+                ) : (
+                  <span className="text-lg tracking-tight hidden sm:block">BARBEARIA PRO</span>
+                )}
+                <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">
+                  {currentPlan}
+                </span>
+              </div>
+
+              {organization && (
+                <div className="flex items-center">
+                  {isLab ? (
+                    <span className="text-[10px] font-bold bg-amber-500 text-amber-950 px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
+                      LABORATÓRIO
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap hidden sm:inline-block">
+                      {orgName}
+                    </span>
+                  )}
+                </div>
               )}
-              <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">
-                {currentPlan}
-              </span>
             </div>
           </div>
 
