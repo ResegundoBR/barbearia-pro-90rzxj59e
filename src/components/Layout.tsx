@@ -133,7 +133,7 @@ export default function Layout() {
   const allNavItems = [
     { id: 'dashboard', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { id: 'agenda', title: 'Agenda', url: '/agenda', icon: CalendarDays },
-    { id: 'fila', title: 'Fila (Smart Queue)', url: '/fila', icon: ListOrdered },
+    { id: 'fila', title: 'Lista Atendimento', url: '/fila', icon: ListOrdered },
     { id: 'clientes', title: 'Clientes', url: '/clientes', icon: Users },
     { id: 'estoque', title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
     {
