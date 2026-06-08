@@ -8,13 +8,22 @@ routerAdd(
     const isAdmin =
       auth.getString('access_level') === 'Admin' ||
       auth.getString('access_level') === 'Socio' ||
-      auth.getString('email') === 'reginaldo.segundo@planagroup.com.br'
+      auth.getString('email') === 'reginaldo.segundo@planagroup.com.br' ||
+      auth.getString('email') === 'alissonmayer7@gmail.com'
 
     if (!isAdmin) {
       throw new ForbiddenError('Forbidden')
     }
 
-    const records = $app.findRecordsByFilter('users', '1=1', '-created', 2000, 0)
+    const orgId = auth.getString('organization_id')
+    let filter = `organization_id = '${orgId}'`
+    if (
+      auth.getString('email') === 'reginaldo.segundo@planagroup.com.br' ||
+      auth.getString('email') === 'alissonmayer7@gmail.com'
+    ) {
+      filter = '1=1'
+    }
+    const records = $app.findRecordsByFilter('users', filter, '-created', 2000, 0)
     const result = []
 
     for (const r of records) {

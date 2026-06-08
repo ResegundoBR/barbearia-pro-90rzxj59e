@@ -235,5 +235,10 @@ export default function useMainStore() {
     }))
   }
 
-  return { state, updateStore, updateTier, updateAppointmentStatus, updateProductStock }
+  const resetStore = () => {
+    globalState = mockState
+    listeners.forEach((listener) => listener(globalState))
+  }
+
+  return { state, updateStore, updateTier, updateAppointmentStatus, updateProductStock, resetStore }
 }

@@ -21,19 +21,41 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<any>(pb.authStore.isValid ? pb.authStore.record : null)
-  const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid)
+
+  const checkAuthValid = (record: any) => {
+    if (!record) return false
+    const isSuperAdmin =
+      record.email === 'reginaldo.segundo@planagroup.com.br' ||
+      record.email === 'alissonmayer7@gmail.com'
+    return !!record.organization_id || isSuperAdmin
+  }
+
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    pb.authStore.isValid && checkAuthValid(pb.authStore.record),
+  )
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const unsubscribe = pb.authStore.onChange((_token, record) => {
       setUser(pb.authStore.isValid ? record : null)
-      setIsAuthenticated(pb.authStore.isValid)
+      setIsAuthenticated(pb.authStore.isValid && checkAuthValid(record))
     })
 
     if (pb.authStore.isValid) {
       pb.collection('users')
         .authRefresh()
-        .catch(() => pb.authStore.clear())
+        .then((res) => {
+          if (!checkAuthValid(res.record)) {
+            pb.authStore.clear()
+            setUser(null)
+            setIsAuthenticated(false)
+          }
+        })
+        .catch(() => {
+          pb.authStore.clear()
+          setUser(null)
+          setIsAuthenticated(false)
+        })
         .finally(() => setLoading(false))
     } else {
       if (pb.authStore.record) pb.authStore.clear()
@@ -75,6 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = () => {
     pb.authStore.clear()
+    window.location.href = '/' // Force full reload to clear all React state completely
   }
 
   return (
