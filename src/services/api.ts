@@ -2,13 +2,11 @@ import pb from '@/lib/pocketbase/client'
 import { withOrgFilter } from '@/lib/pocketbase/helpers'
 
 export const getClients = (filter?: string) =>
-  pb
-    .collection('clients')
-    .getFullList({
-      expand: 'created_by_id,preferred_barber_id',
-      sort: '-created',
-      filter: withOrgFilter(filter),
-    })
+  pb.collection('clients').getFullList({
+    expand: 'created_by_id,preferred_barber_id',
+    sort: '-created',
+    filter: withOrgFilter(filter),
+  })
 export const createClient = (data: any) => pb.collection('clients').create(data)
 export const updateClient = (id: string, data: any) => pb.collection('clients').update(id, data)
 
@@ -16,13 +14,11 @@ export const getBusinessHours = () =>
   pb.collection('business_hours').getFullList({ sort: 'day_of_week', filter: withOrgFilter() })
 
 export const getClientPackages = (filter?: string) =>
-  pb
-    .collection('client_packages')
-    .getFullList({
-      expand: 'package_id,client_id,barber_id',
-      sort: '-created',
-      filter: withOrgFilter(filter),
-    })
+  pb.collection('client_packages').getFullList({
+    expand: 'package_id,client_id,barber_id',
+    sort: '-created',
+    filter: withOrgFilter(filter),
+  })
 
 export const getBarbers = () =>
   pb

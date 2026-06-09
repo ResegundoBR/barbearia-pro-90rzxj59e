@@ -44,6 +44,9 @@ export default function Settings() {
   const [logoPreview, setLogoPreview] = useState<string>('')
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null)
 
+  const [businessNameId, setBusinessNameId] = useState<string>('')
+  const [businessName, setBusinessName] = useState<string>('')
+
   const [finConfigId, setFinConfigId] = useState<string>('')
   const [finForm, setFinForm] = useState({
     inventory_owner_id: '',
@@ -77,6 +80,12 @@ export default function Settings() {
         if (logoSett.logo) {
           setLogoPreview(pb.files.getURL(logoSett, logoSett.logo))
         }
+      }
+
+      const nameSett = sett.find((s) => s.key === 'business_name')
+      if (nameSett) {
+        setBusinessNameId(nameSett.id)
+        setBusinessName(nameSett.value?.name || '')
       }
 
       const finSett = sett.find((s) => s.key === 'financial_config')
@@ -239,6 +248,14 @@ export default function Settings() {
   const handleLogoFile = (e: any) => {
     const file = e.target.files?.[0]
     if (file) {
+      if (!['image/jpeg', 'image/png', 'image/jpg', 'image/svg+xml'].includes(file.type)) {
+        toast({
+          title: 'Formato inválido',
+          description: 'Apenas JPG, PNG e SVG são permitidos.',
+          variant: 'destructive',
+        })
+        return
+      }
       setSelectedLogoFile(file)
       setLogoPreview(URL.createObjectURL(file))
     }
@@ -274,6 +291,26 @@ export default function Settings() {
         description: 'Verifique se o arquivo é um PNG, JPG ou SVG válido e tente novamente.',
         variant: 'destructive',
       })
+    }
+  }
+
+  const handleSaveBusinessName = async () => {
+    const payload = {
+      key: 'business_name',
+      value: { name: businessName },
+      organization_id: user?.organization_id,
+    }
+    try {
+      if (businessNameId) {
+        await pb.collection('settings').update(businessNameId, payload)
+      } else {
+        const r = await pb.collection('settings').create(payload)
+        setBusinessNameId(r.id)
+      }
+      toast({ title: 'Nome da barbearia atualizado com sucesso!' })
+      window.dispatchEvent(new Event('logo-updated')) // Reusing this event to refresh Layout
+    } catch (err) {
+      toast({ title: 'Erro ao salvar nome da barbearia', variant: 'destructive' })
     }
   }
 
@@ -631,11 +668,23 @@ export default function Settings() {
             <CardHeader>
               <CardTitle>Identidade Visual</CardTitle>
               <CardDescription>
-                Faça upload do logotipo da barbearia (PNG recomendado).
+                Configure o nome e logotipo da barbearia para exibição no sistema.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-6">
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Nome da Barbearia</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="Ex: Barbearia do Zé"
+                  />
+                  <Button onClick={handleSaveBusinessName}>Salvar Nome</Button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6 pt-4 border-t">
                 <div className="w-32 h-32 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-card overflow-hidden shrink-0">
                   {logoPreview ? (
                     <img

@@ -113,18 +113,14 @@ export default function Checkout() {
       getClients(),
       getPackages(),
       getAppointments(`status != 'Concluído' && status != 'Cancelado' && status != 'FALTOU'`),
-      pb
-        .collection('products')
-        .getFullList({
-          filter: `is_active=true${pb.authStore.record?.organization_id ? ` && organization_id='${pb.authStore.record.organization_id}'` : ''}`,
-          expand: 'category_id',
-        }),
+      pb.collection('products').getFullList({
+        filter: `is_active=true${pb.authStore.record?.organization_id ? ` && organization_id='${pb.authStore.record.organization_id}'` : ''}`,
+        expand: 'category_id',
+      }),
       getClientPackages(),
-      pb
-        .collection('services')
-        .getFullList({
-          filter: `is_active=true${pb.authStore.record?.organization_id ? ` && organization_id='${pb.authStore.record.organization_id}'` : ''}`,
-        }),
+      pb.collection('services').getFullList({
+        filter: `is_active=true${pb.authStore.record?.organization_id ? ` && organization_id='${pb.authStore.record.organization_id}'` : ''}`,
+      }),
       pb
         .collection('payment_methods')
         .getFullList({

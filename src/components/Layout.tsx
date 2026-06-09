@@ -73,6 +73,7 @@ export default function Layout() {
   const [isPackagesModalOpen, setIsPackagesModalOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   const [logoUrl, setLogoUrl] = useState('')
+  const [businessName, setBusinessName] = useState('')
   const [organization, setOrganization] = useState<any>(null)
 
   const { hasAccess, isAdmin } = usePermissions()
@@ -205,9 +206,22 @@ export default function Layout() {
 
   const loadLogo = async () => {
     try {
-      const records = await pb.collection('settings').getFullList({ filter: 'key="logo"' })
-      if (records.length > 0 && records[0].logo) {
-        setLogoUrl(pb.files.getURL(records[0], records[0].logo))
+      const orgFilter = user?.organization_id ? `organization_id="${user.organization_id}"` : ''
+      const filterStr = orgFilter
+        ? `(key="logo" || key="business_name") && ${orgFilter}`
+        : 'key="logo" || key="business_name"'
+      const records = await pb.collection('settings').getFullList({ filter: filterStr })
+
+      const logoRec = records.find((r) => r.key === 'logo')
+      const nameRec = records.find((r) => r.key === 'business_name')
+
+      if (logoRec && logoRec.logo) {
+        setLogoUrl(pb.files.getURL(logoRec, logoRec.logo))
+      }
+      if (nameRec && nameRec.value?.name) {
+        setBusinessName(nameRec.value.name)
+      } else {
+        setBusinessName('')
       }
     } catch {
       /* intentionally ignored */
@@ -253,14 +267,19 @@ export default function Layout() {
             {logoUrl ? (
               <img
                 src={logoUrl}
-                alt="Barbearia Pro"
+                alt={businessName || 'Barbearia Pro'}
                 className="h-10 max-w-[200px] object-contain drop-shadow-md"
               />
             ) : (
               <span className="text-xl font-bold tracking-tight text-primary">BARBEARIA PRO</span>
             )}
           </div>
-          {organization && (
+          {businessName && (
+            <div className="text-sm font-semibold text-muted-foreground mt-1 tracking-wide">
+              {businessName}
+            </div>
+          )}
+          {organization && !businessName && (
             <div className="flex items-center">
               {isLab ? (
                 <span className="text-[10px] font-bold bg-amber-500 text-amber-950 px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
@@ -351,14 +370,19 @@ export default function Layout() {
                     {logoUrl ? (
                       <img
                         src={logoUrl}
-                        alt="Barbearia Pro"
+                        alt={businessName || 'Barbearia Pro'}
                         className="h-8 max-w-[150px] object-contain drop-shadow-md"
                       />
                     ) : (
                       <span className="font-bold tracking-tight text-primary">BARBEARIA PRO</span>
                     )}
                   </div>
-                  {organization && (
+                  {businessName && (
+                    <div className="text-sm font-semibold text-muted-foreground mt-1">
+                      {businessName}
+                    </div>
+                  )}
+                  {organization && !businessName && (
                     <div className="flex items-center">
                       {isLab ? (
                         <span className="text-[10px] font-bold bg-amber-500 text-amber-950 px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
@@ -435,18 +459,23 @@ export default function Layout() {
                 {logoUrl ? (
                   <img
                     src={logoUrl}
-                    alt="Barbearia Pro"
+                    alt={businessName || 'Barbearia Pro'}
                     className="h-8 max-w-[120px] object-contain drop-shadow-md hidden sm:block"
                   />
                 ) : (
                   <span className="text-lg tracking-tight hidden sm:block">BARBEARIA PRO</span>
                 )}
-                <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5">
+                {businessName && (
+                  <span className="text-sm font-semibold text-muted-foreground hidden sm:block ml-2 border-l pl-2">
+                    {businessName}
+                  </span>
+                )}
+                <span className="text-xs border border-primary/20 px-1.5 py-0.5 rounded-md bg-primary/5 ml-2">
                   {currentPlan}
                 </span>
               </div>
 
-              {organization && (
+              {organization && !businessName && (
                 <div className="flex items-center">
                   {isLab ? (
                     <span className="text-[10px] font-bold bg-amber-500 text-amber-950 px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">

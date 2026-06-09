@@ -139,7 +139,12 @@ export default function Index() {
       /* intentionally ignored */
     }
     try {
-      setCheckouts(await pb.collection('checkouts').getFullList({ expand: 'client_id,barber_id' }))
+      setCheckouts(
+        await pb.collection('checkouts').getFullList({
+          expand: 'client_id,barber_id',
+          filter: user?.organization_id ? `organization_id='${user.organization_id}'` : '',
+        }),
+      )
     } catch {
       /* intentionally ignored */
     }
@@ -694,7 +699,17 @@ export default function Index() {
     let d = new Date(periodStart)
     const end = new Date(periodEnd)
     const today = startOfDay(new Date())
-    const actualEnd = period === 'month' ? end : end > today ? today : end
+
+    // When "Semana" (week) is selected, calculate full 7-day capacity.
+    // For today/month/year, keep the original cap logic or natural end.
+    const actualEnd =
+      period === 'week'
+        ? end
+        : period === 'month' || period === 'year'
+          ? end
+          : end > today
+            ? today
+            : end
 
     while (d <= actualEnd) {
       const dayOfWeek = d.getDay().toString()

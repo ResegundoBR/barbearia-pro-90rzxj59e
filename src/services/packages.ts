@@ -9,13 +9,11 @@ export const updatePackage = (id: string, data: any) => pb.collection('packages'
 export const deletePackage = (id: string) => pb.collection('packages').delete(id)
 
 export const getClientPackages = () =>
-  pb
-    .collection('client_packages')
-    .getFullList({
-      sort: '-created',
-      expand: 'client_id,package_id,barber_id',
-      filter: withOrgFilter(),
-    })
+  pb.collection('client_packages').getFullList({
+    sort: '-created',
+    expand: 'client_id,package_id,barber_id',
+    filter: withOrgFilter(),
+  })
 export const getClientPackage = (id: string) =>
   pb.collection('client_packages').getOne(id, { expand: 'client_id,package_id,barber_id' })
 export const createClientPackage = (data: any) => pb.collection('client_packages').create(data)
