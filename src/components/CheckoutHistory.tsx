@@ -37,8 +37,13 @@ export function CheckoutHistory() {
         if (!isNaN(Number(searchTerm))) {
           filter = `checkout_number = ${searchTerm}`
         } else {
-          filter = `client_id.name ~ "${searchTerm}" || barber_id.name ~ "${searchTerm}"`
+          filter = `(client_id.name ~ "${searchTerm}" || barber_id.name ~ "${searchTerm}")`
         }
+      }
+
+      const orgId = pb.authStore.record?.organization_id
+      if (orgId) {
+        filter = filter ? `(${filter}) && organization_id='${orgId}'` : `organization_id='${orgId}'`
       }
 
       const records = await pb.collection('checkouts').getList(1, 50, {

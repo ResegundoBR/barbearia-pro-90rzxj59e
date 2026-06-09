@@ -60,9 +60,14 @@ export default function Fornecedores() {
 
   const loadData = async () => {
     try {
+      const orgId = pb.authStore.record?.organization_id
+      const catFilter = orgId ? `type="product" && organization_id='${orgId}'` : 'type="product"'
+      const supFilter = orgId ? `organization_id='${orgId}'` : ''
       const [supData, catData, purData] = await Promise.all([
-        pb.collection('suppliers').getFullList({ sort: 'name', expand: 'category_id' }),
-        pb.collection('categories').getFullList({ filter: 'type="product"' }),
+        pb
+          .collection('suppliers')
+          .getFullList({ sort: 'name', expand: 'category_id', filter: supFilter }),
+        pb.collection('categories').getFullList({ filter: catFilter }),
         getInventoryPurchases(),
       ])
       setSuppliers(supData)

@@ -174,7 +174,10 @@ export default function Agenda() {
       packages: await getClientPackages(),
     })
 
-    const bBlocks = await getBarberBlocks(`start_time <= "${endStr}" && end_time >= "${startStr}"`)
+    const orgId = pb.authStore.record?.organization_id
+    let blockFilter = `start_time <= "${endStr}" && end_time >= "${startStr}"`
+    if (orgId) blockFilter += ` && organization_id='${orgId}'`
+    const bBlocks = await getBarberBlocks(blockFilter)
     setBlocks(bBlocks)
   }
 

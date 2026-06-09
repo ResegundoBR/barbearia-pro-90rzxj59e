@@ -170,11 +170,13 @@ export default function Staff() {
     setBarbers(await getBarbers())
     setCommissions(await getCommissions())
     try {
+      const orgId = pb.authStore.record?.organization_id
+      const f = orgId ? `organization_id='${orgId}'` : ''
       setPaymentMethods(await getPaymentMethods())
-      setServices(await pb.collection('services').getFullList({ expand: 'category_id' }))
-      setProducts(await pb.collection('products').getFullList({ expand: 'category_id' }))
-      setPackages(await pb.collection('packages').getFullList())
-      setCommissionRules(await pb.collection('commission_rules').getFullList())
+      setServices(await pb.collection('services').getFullList({ expand: 'category_id', filter: f }))
+      setProducts(await pb.collection('products').getFullList({ expand: 'category_id', filter: f }))
+      setPackages(await pb.collection('packages').getFullList({ filter: f }))
+      setCommissionRules(await pb.collection('commission_rules').getFullList({ filter: f }))
     } catch {
       /* intentionally ignored */
     }
@@ -278,9 +280,11 @@ export default function Staff() {
       const apts = await getAppointments(`barber_id='${b.id}' && status='Concluído'`)
       const prods = await getProductPurchases(`barber_id='${b.id}'`)
       const packs = await getClientPackages(`barber_id='${b.id}'`)
+      const orgId = pb.authStore.record?.organization_id
+      const f = orgId ? `barber_id='${b.id}' && organization_id='${orgId}'` : `barber_id='${b.id}'`
       const checks = await pb
         .collection('checkouts')
-        .getFullList({ filter: `barber_id='${b.id}'`, expand: 'client_id' })
+        .getFullList({ filter: f, expand: 'client_id' })
         .catch(() => [])
 
       const currentRange = getRange()
@@ -630,8 +634,12 @@ export default function Staff() {
   const openPayModal = async (b: any) => {
     setBarberToPay(b)
     try {
+      const orgId = pb.authStore.record?.organization_id
+      const f = orgId
+        ? `barber_id='${b.id}' && status!='paid' && organization_id='${orgId}'`
+        : `barber_id='${b.id}' && status!='paid'`
       const records = await pb.collection('commissions').getFullList({
-        filter: `barber_id='${b.id}' && status!='paid'`,
+        filter: f,
         sort: 'due_date,-created',
       })
       setPendingCommsToPay(records)

@@ -44,7 +44,9 @@ export default function Financeiro() {
 
   const loadMethods = async () => {
     try {
-      const records = await pb.collection('payment_methods').getFullList({ sort: 'name' })
+      const orgId = pb.authStore.record?.organization_id
+      const filter = orgId ? `organization_id='${orgId}'` : ''
+      const records = await pb.collection('payment_methods').getFullList({ sort: 'name', filter })
       setMethods(records)
     } catch (e) {
       console.error(e)

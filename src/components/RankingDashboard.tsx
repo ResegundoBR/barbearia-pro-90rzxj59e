@@ -51,14 +51,20 @@ export function RankingDashboard() {
         const dateStr = format(startDate, 'yyyy-MM-dd') + ' 00:00:00.000Z'
         const createdFilter = `created >= '${dateStr}'`
 
+        const orgId = pb.authStore.record?.organization_id
+        const orgFilter = orgId ? `organization_id='${orgId}'` : ''
+        const logsFilter = orgFilter
+          ? `event_type = 'no_show' && ${createdFilter} && ${orgFilter}`
+          : `event_type = 'no_show' && ${createdFilter}`
+
         const [clients, appointments, purchases, logs, servicesList, productsList] =
           await Promise.all([
             getClients(),
             getAppointments(createdFilter),
             getProductPurchases(createdFilter),
-            getClientLogs(`event_type = 'no_show' && ${createdFilter}`),
-            pb.collection('services').getFullList(),
-            pb.collection('products').getFullList(),
+            getClientLogs(logsFilter),
+            pb.collection('services').getFullList({ filter: orgFilter }),
+            pb.collection('products').getFullList({ filter: orgFilter }),
           ])
 
         const statsMap: Record<string, any> = {}

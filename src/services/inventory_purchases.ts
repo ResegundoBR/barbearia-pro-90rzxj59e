@@ -1,9 +1,11 @@
 import pb from '@/lib/pocketbase/client'
+import { withOrgFilter } from '@/lib/pocketbase/helpers'
 
 export const getInventoryPurchases = () =>
   pb.collection('inventory_purchases').getFullList({
     sort: '-created',
     expand: 'product_id,supplier_id',
+    filter: withOrgFilter(),
   })
 
 export const getInventoryPurchase = (id: string) => pb.collection('inventory_purchases').getOne(id)

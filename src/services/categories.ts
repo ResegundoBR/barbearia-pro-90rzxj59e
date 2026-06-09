@@ -1,6 +1,8 @@
 import pb from '@/lib/pocketbase/client'
+import { withOrgFilter } from '@/lib/pocketbase/helpers'
 
-export const getCategories = () => pb.collection('categories').getFullList({ sort: '-created' })
+export const getCategories = () =>
+  pb.collection('categories').getFullList({ sort: '-created', filter: withOrgFilter() })
 export const getCategory = (id: string) => pb.collection('categories').getOne(id)
 export const createCategory = (data: any) => pb.collection('categories').create(data)
 export const updateCategory = (id: string, data: any) =>

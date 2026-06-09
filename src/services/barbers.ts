@@ -1,7 +1,10 @@
 import pb from '@/lib/pocketbase/client'
+import { withOrgFilter } from '@/lib/pocketbase/helpers'
 
 export const getBarbers = () =>
-  pb.collection('barbers').getFullList({ sort: '-created', expand: 'user_id' })
+  pb
+    .collection('barbers')
+    .getFullList({ sort: '-created', expand: 'user_id', filter: withOrgFilter() })
 export const getBarber = (id: string) => pb.collection('barbers').getOne(id)
 export const createBarber = (data: any) => {
   const payload = { ...data }

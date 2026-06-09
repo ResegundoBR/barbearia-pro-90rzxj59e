@@ -1,6 +1,8 @@
 import pb from '@/lib/pocketbase/client'
+import { withOrgFilter } from '@/lib/pocketbase/helpers'
 
-export const getSuppliers = () => pb.collection('suppliers').getFullList({ sort: 'name' })
+export const getSuppliers = () =>
+  pb.collection('suppliers').getFullList({ sort: 'name', filter: withOrgFilter() })
 
 export const getSupplier = (id: string) => pb.collection('suppliers').getOne(id)
 

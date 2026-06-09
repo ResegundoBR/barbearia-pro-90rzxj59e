@@ -68,7 +68,9 @@ export default function Settings() {
 
   const loadData = async () => {
     try {
-      const sett = await pb.collection('settings').getFullList()
+      const orgId = pb.authStore.record?.organization_id
+      const filter = orgId ? `organization_id='${orgId}'` : ''
+      const sett = await pb.collection('settings').getFullList({ filter })
       const logoSett = sett.find((s) => s.key === 'logo')
       if (logoSett) {
         setLogoConfigId(logoSett.id)
@@ -124,10 +126,12 @@ export default function Settings() {
         })
       }
 
-      const bList = await pb.collection('barbers').getFullList({ sort: 'name' })
+      const bList = await pb.collection('barbers').getFullList({ sort: 'name', filter })
       setBarbers(bList)
 
-      const bhList = await pb.collection('business_hours').getFullList({ sort: 'day_of_week' })
+      const bhList = await pb
+        .collection('business_hours')
+        .getFullList({ sort: 'day_of_week', filter })
 
       const defaultDays = [
         { day_of_week: '0', is_active: false, open_time: '09:00', close_time: '18:00' },
@@ -166,11 +170,15 @@ export default function Settings() {
 
   const handleSaveBusinessHours = async () => {
     try {
+      const orgId = pb.authStore.record?.organization_id
       for (const bh of businessHours) {
+        const payload = { ...bh }
+        if (orgId && !payload.organization_id) payload.organization_id = orgId
+
         if (bh.id) {
-          await pb.collection('business_hours').update(bh.id, bh)
+          await pb.collection('business_hours').update(bh.id, payload)
         } else {
-          await pb.collection('business_hours').create(bh)
+          await pb.collection('business_hours').create(payload)
         }
       }
       toast({ title: 'Horários atualizados com sucesso!' })
@@ -187,7 +195,9 @@ export default function Settings() {
 
   const loadNotificationRules = async () => {
     try {
-      const rules = await pb.collection('notification_rules').getFullList()
+      const orgId = pb.authStore.record?.organization_id
+      const filter = orgId ? `organization_id='${orgId}'` : ''
+      const rules = await pb.collection('notification_rules').getFullList({ filter })
       setNotifRules(rules)
     } catch {
       /* intentionally ignored */
@@ -440,6 +450,9 @@ export default function Settings() {
         is_active: notifForm.is_active,
       }
 
+      if (user?.organization_id) {
+        ;(payload as any).organization_id = user.organization_id
+      }
       if (editingNotifId) {
         await pb.collection('notification_rules').update(editingNotifId, payload)
         toast({ title: 'Regra atualizada!' })
