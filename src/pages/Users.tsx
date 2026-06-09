@@ -55,7 +55,13 @@ export default function UsersPage() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const res = await pb.collection('users').getFullList({ sort: '-created' })
+      let filter = ''
+      if (currentUser?.access_level === 'Autonomo') {
+        filter = `id="${currentUser.id}"`
+      } else if (currentUser?.organization_id) {
+        filter = `organization_id="${currentUser.organization_id}"`
+      }
+      const res = await pb.collection('users').getFullList({ filter, sort: '-created' })
       setUsers(res)
     } catch (err) {
       toast.error('Erro ao carregar usuários')
@@ -82,9 +88,12 @@ export default function UsersPage() {
         const data: any = {
           name: formData.name,
           surname: formData.surname,
-          access_level: formData.access_level,
-          plan: formData.plan,
           whatsapp: formData.whatsapp,
+        }
+
+        if (currentUser?.access_level !== 'Autonomo') {
+          data.access_level = formData.access_level
+          data.plan = formData.plan
         }
 
         let needsOldPassword = false
@@ -198,9 +207,11 @@ export default function UsersPage() {
           <h2 className="text-2xl font-bold tracking-tight">Usuários e Acessos</h2>
           <p className="text-muted-foreground text-sm">Gerencie quem tem acesso ao sistema</p>
         </div>
-        <Button onClick={openNew} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" /> Novo Usuário
-        </Button>
+        {currentUser?.access_level !== 'Autonomo' && (
+          <Button onClick={openNew} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" /> Novo Usuário
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -272,23 +283,28 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(u)}
-                            title="Editar"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(u.id)}
-                            disabled={u.id === currentUser?.id}
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          {(currentUser?.access_level !== 'Autonomo' ||
+                            currentUser?.id === u.id) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEdit(u)}
+                              title="Editar"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {currentUser?.access_level !== 'Autonomo' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(u.id)}
+                              disabled={u.id === currentUser?.id}
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -404,45 +420,49 @@ export default function UsersPage() {
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Nível de Acesso</label>
-                <Select
-                  value={formData.access_level}
-                  onValueChange={(v) => setFormData({ ...formData, access_level: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                    <SelectItem value="Socio">Socio</SelectItem>
-                    <SelectItem value="Autonomo">Autonomo</SelectItem>
-                  </SelectContent>
-                </Select>
-                {fieldErrors.access_level && (
-                  <p className="text-sm text-destructive">{fieldErrors.access_level}</p>
-                )}
+            {currentUser?.access_level !== 'Autonomo' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Nível de Acesso</label>
+                  <Select
+                    value={formData.access_level}
+                    onValueChange={(v) => setFormData({ ...formData, access_level: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Socio">Socio</SelectItem>
+                      <SelectItem value="Autonomo">Autonomo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {fieldErrors.access_level && (
+                    <p className="text-sm text-destructive">{fieldErrors.access_level}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Plano</label>
+                  <Select
+                    value={formData.plan}
+                    onValueChange={(v) => setFormData({ ...formData, plan: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Free">Free</SelectItem>
+                      <SelectItem value="Basic">Basic</SelectItem>
+                      <SelectItem value="Pro">Pro</SelectItem>
+                      <SelectItem value="Platinum">Platinum</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {fieldErrors.plan && (
+                    <p className="text-sm text-destructive">{fieldErrors.plan}</p>
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Plano</label>
-                <Select
-                  value={formData.plan}
-                  onValueChange={(v) => setFormData({ ...formData, plan: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Free">Free</SelectItem>
-                    <SelectItem value="Basic">Basic</SelectItem>
-                    <SelectItem value="Pro">Pro</SelectItem>
-                    <SelectItem value="Platinum">Platinum</SelectItem>
-                  </SelectContent>
-                </Select>
-                {fieldErrors.plan && <p className="text-sm text-destructive">{fieldErrors.plan}</p>}
-              </div>
-            </div>
+            )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0 mt-2">
             <Button variant="outline" onClick={() => setModalOpen(false)}>

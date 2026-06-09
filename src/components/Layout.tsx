@@ -134,7 +134,7 @@ export default function Layout() {
   const allNavItems = [
     { id: 'dashboard', title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { id: 'agenda', title: 'Agenda', url: '/agenda', icon: CalendarDays },
-    { id: 'fila', title: 'Lista Atendimento', url: '/fila', icon: ListOrdered },
+    { id: 'fila', title: 'Fila de Atendimento', url: '/fila', icon: ListOrdered },
     { id: 'clientes', title: 'Clientes', url: '/clientes', icon: Users },
     { id: 'estoque', title: 'Serviços & Pacotes', url: '/estoque', icon: Package },
     {
