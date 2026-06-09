@@ -30,6 +30,7 @@ import {
 import { Plus, Edit } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 export function PackagesTab() {
   const [items, setItems] = useState<any[]>([])
@@ -91,6 +92,7 @@ export function PackagesTab() {
         price: Number(form.price),
         quantity: Number(form.quantity),
         duration_minutes: Number(form.duration_minutes),
+        organization_id: pb.authStore.record?.organization_id,
       }
       if (editingId) {
         await pb.collection('packages').update(editingId, data)
@@ -102,7 +104,7 @@ export function PackagesTab() {
       setIsOpen(false)
       loadData()
     } catch (err) {
-      toast({ title: 'Erro ao salvar', variant: 'destructive' })
+      toast({ title: 'Erro ao salvar', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -111,7 +113,11 @@ export function PackagesTab() {
       await pb.collection('packages').update(id, { is_active: !current })
       loadData()
     } catch (err) {
-      toast({ title: 'Erro ao atualizar status', variant: 'destructive' })
+      toast({
+        title: 'Erro ao atualizar status',
+        description: getErrorMessage(err),
+        variant: 'destructive',
+      })
     }
   }
 

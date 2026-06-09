@@ -23,6 +23,7 @@ import {
 import { Plus, Edit } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 import {
   Select,
   SelectContent,
@@ -79,6 +80,7 @@ export function ServicesTab() {
         category_id: form.category_id === 'none' ? '' : form.category_id,
         price: Number(form.price),
         duration_minutes: Number(form.duration_minutes),
+        organization_id: pb.authStore.record?.organization_id,
       }
       if (editingId) {
         await pb.collection('services').update(editingId, data)
@@ -90,7 +92,7 @@ export function ServicesTab() {
       setIsOpen(false)
       loadData()
     } catch (err) {
-      toast({ title: 'Erro ao salvar', variant: 'destructive' })
+      toast({ title: 'Erro ao salvar', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 
@@ -99,7 +101,11 @@ export function ServicesTab() {
       await pb.collection('services').update(id, { is_active: !current })
       loadData()
     } catch (err) {
-      toast({ title: 'Erro ao atualizar status', variant: 'destructive' })
+      toast({
+        title: 'Erro ao atualizar status',
+        description: getErrorMessage(err),
+        variant: 'destructive',
+      })
     }
   }
 

@@ -33,7 +33,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { extractFieldErrors } from '@/lib/pocketbase/errors'
+import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
+import pb from '@/lib/pocketbase/client'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -118,6 +119,7 @@ export function CategoriasTab() {
         commission_percentage: formData.commission_percentage
           ? Number(formData.commission_percentage)
           : null,
+        organization_id: pb.authStore.record?.organization_id,
       }
       if (editingId) {
         await updateCategory(editingId, payload)
@@ -132,7 +134,11 @@ export function CategoriasTab() {
       if (Object.keys(fieldErrs).length > 0) {
         setErrors(fieldErrs)
       } else {
-        toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' })
+        toast({
+          title: 'Erro ao salvar',
+          description: getErrorMessage(err),
+          variant: 'destructive',
+        })
       }
     }
   }
@@ -144,7 +150,7 @@ export function CategoriasTab() {
       toast({ title: 'Categoria excluída' })
       setDeletePromptId(null)
     } catch (err: any) {
-      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
+      toast({ title: 'Erro ao excluir', description: getErrorMessage(err), variant: 'destructive' })
     }
   }
 

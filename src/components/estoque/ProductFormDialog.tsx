@@ -13,6 +13,8 @@ import {
 import { createProduct, updateProduct } from '@/services/products'
 import { getCategories } from '@/services/categories'
 import { useToast } from '@/hooks/use-toast'
+import pb from '@/lib/pocketbase/client'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 export function ProductFormDialog({ open, onOpenChange, productToEdit, onSuccess }: any) {
   const { toast } = useToast()
@@ -58,6 +60,7 @@ export function ProductFormDialog({ open, onOpenChange, productToEdit, onSuccess
       stock_quantity: Number(stockQuantity),
       category_id: categoryId || null,
       is_active: true,
+      organization_id: pb.authStore.record?.organization_id,
     }
     try {
       if (productToEdit) {
@@ -70,7 +73,7 @@ export function ProductFormDialog({ open, onOpenChange, productToEdit, onSuccess
       onSuccess()
       onOpenChange(false)
     } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+      toast({ title: 'Erro', description: getErrorMessage(err), variant: 'destructive' })
     } finally {
       setLoading(false)
     }

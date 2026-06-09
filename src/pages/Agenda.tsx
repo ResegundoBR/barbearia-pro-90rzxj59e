@@ -254,6 +254,7 @@ export default function Agenda() {
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         reason: blockForm.reason,
+        organization_id: user?.organization_id,
       })
       toast({ title: 'Horário bloqueado com sucesso!' })
       setBlockDialogOpen(false)
