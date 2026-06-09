@@ -1115,20 +1115,22 @@ export default function Staff() {
                   <SelectItem value="a_pagar">A Pagar</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  await handleReconcile()
-                  if (selectedBarberDetailed) {
-                    openDetailedReport(selectedBarberDetailed)
-                  }
-                }}
-                disabled={isReconciling}
-              >
-                <RefreshCw className={`size-4 mr-2 ${isReconciling ? 'animate-spin' : ''}`} />
-                Recalcular
-              </Button>
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    await handleReconcile()
+                    if (selectedBarberDetailed) {
+                      openDetailedReport(selectedBarberDetailed)
+                    }
+                  }}
+                  disabled={isReconciling}
+                >
+                  <RefreshCw className={`size-4 mr-2 ${isReconciling ? 'animate-spin' : ''}`} />
+                  Recalcular
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={printReport}>
                 <Printer className="size-4 mr-2" /> Imprimir
               </Button>
