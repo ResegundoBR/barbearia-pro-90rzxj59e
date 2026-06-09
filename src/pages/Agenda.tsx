@@ -84,6 +84,7 @@ import {
 import { ptBR } from 'date-fns/locale'
 import { cn, getContrastColor } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
+import pb from '@/lib/pocketbase/client'
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8) // 08:00 to 20:00
 

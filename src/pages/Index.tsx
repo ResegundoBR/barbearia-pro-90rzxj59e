@@ -702,14 +702,7 @@ export default function Index() {
 
     // When "Semana" (week) is selected, calculate full 7-day capacity.
     // For today/month/year, keep the original cap logic or natural end.
-    const actualEnd =
-      period === 'week'
-        ? end
-        : period === 'month' || period === 'year'
-          ? end
-          : end > today
-            ? today
-            : end
+    const actualEnd = period === 'week' ? end : end > today ? today : end
 
     while (d <= actualEnd) {
       const dayOfWeek = d.getDay().toString()
