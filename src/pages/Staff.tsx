@@ -63,6 +63,7 @@ import { usePermissions } from '@/hooks/use-permissions'
 import { useRealtime } from '@/hooks/use-realtime'
 import pb from '@/lib/pocketbase/client'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { Calendar } from '@/components/ui/calendar'
@@ -996,25 +997,20 @@ export default function Staff() {
                   <TableRow key={b.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
-                          {b.avatar ? (
-                            <img
-                              src={b.avatar}
-                              alt={b.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : b.expand?.user_id?.avatar ? (
-                            <img
-                              src={pb.files.getUrl(b.expand.user_id, b.expand.user_id.avatar)}
-                              alt={b.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-primary font-bold">
-                              {b.name.charAt(0).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage
+                            src={
+                              b.avatar ||
+                              (b.expand?.user_id?.avatar
+                                ? pb.files.getURL(b.expand.user_id, b.expand.user_id.avatar)
+                                : undefined)
+                            }
+                            alt={b.name}
+                          />
+                          <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                            {b.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
                         <div>
                           <span>{b.name}</span>
                         </div>

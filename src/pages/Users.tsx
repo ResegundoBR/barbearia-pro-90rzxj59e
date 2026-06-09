@@ -25,6 +25,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
 import pb from '@/lib/pocketbase/client'
 import { toast } from 'sonner'
@@ -239,19 +240,15 @@ export default function UsersPage() {
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
-                            {u.avatar ? (
-                              <img
-                                src={pb.files.getUrl(u, u.avatar)}
-                                alt={u.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-primary font-bold">
-                                {(u.name?.charAt(0) || 'U').toUpperCase()}
-                              </span>
-                            )}
-                          </div>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage
+                              src={u.avatar ? pb.files.getURL(u, u.avatar) : undefined}
+                              alt={u.name}
+                            />
+                            <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                              {(u.name?.charAt(0) || 'U').toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             {u.name || 'Sem nome'} {u.surname || ''}
                           </div>

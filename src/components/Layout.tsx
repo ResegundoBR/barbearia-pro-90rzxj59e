@@ -62,6 +62,7 @@ import { useState, useEffect } from 'react'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { Label } from '@/components/ui/label'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 export default function Layout() {
   const location = useLocation()
@@ -296,10 +297,35 @@ export default function Layout() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="border-t border-border p-4 flex flex-col gap-4">
+          {user && (
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9">
+                <AvatarImage
+                  src={user.avatar ? pb.files.getURL(user, user.avatar) : undefined}
+                  alt={user.name}
+                />
+                <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                  {(user.name?.charAt(0) || 'U').toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-sm font-medium truncate">
+                  {user.name} {user.surname}
+                </span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {user.email || user.access_level}
+                </span>
+              </div>
+            </div>
+          )}
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={handleSignOut} tooltip="Sair">
+              <SidebarMenuButton
+                onClick={handleSignOut}
+                tooltip="Sair"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
                 <LogOut />
                 <span>Sair</span>
               </SidebarMenuButton>
@@ -371,10 +397,31 @@ export default function Layout() {
                     })}
                   </div>
                 </ScrollArea>
-                <div className="p-4 border-t">
+                <div className="p-4 border-t flex flex-col gap-4">
+                  {user && (
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage
+                          src={user.avatar ? pb.files.getURL(user, user.avatar) : undefined}
+                          alt={user.name}
+                        />
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                          {(user.name?.charAt(0) || 'U').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-sm font-medium truncate">
+                          {user.name} {user.surname}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {user.email || user.access_level}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-muted-foreground"
+                    className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={handleSignOut}
                   >
                     <LogOut className="size-4 mr-2" />
