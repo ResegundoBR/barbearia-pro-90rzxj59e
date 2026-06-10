@@ -28,8 +28,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { UserPlus, Edit, Eye } from 'lucide-react'
+import { UserPlus, Edit, Eye, ChevronDown } from 'lucide-react'
 import { getClients, createClient, updateClient, getBarbers } from '@/services/api'
+import { useIsMobile } from '@/hooks/use-mobile'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RankingDashboard } from '@/components/RankingDashboard'
 import { useToast } from '@/hooks/use-toast'
@@ -69,6 +77,8 @@ export default function Clientes() {
   const [formData, setFormData] = useState<any>(defForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const { toast } = useToast()
+  const isMobile = useIsMobile()
+  const [isBarberDrawerOpen, setIsBarberDrawerOpen] = useState(false)
 
   const loadData = async () => {
     setClients(await getClients())
@@ -251,22 +261,81 @@ export default function Clientes() {
                   </div>
                   <div className="space-y-2">
                     <Label>Profissional Preferido</Label>
-                    <Select
-                      value={formData.preferred_barber_id || 'none'}
-                      onValueChange={(v) => setFormData({ ...formData, preferred_barber_id: v })}
-                    >
-                      <SelectTrigger className="min-h-[44px]">
-                        <SelectValue placeholder="Nenhum" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {barbers.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isMobile ? (
+                      <Drawer open={isBarberDrawerOpen} onOpenChange={setIsBarberDrawerOpen}>
+                        <DrawerTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between min-h-[44px] font-normal px-3 py-2"
+                            role="combobox"
+                          >
+                            <span className="truncate">
+                              {formData.preferred_barber_id &&
+                              formData.preferred_barber_id !== 'none'
+                                ? barbers.find((b) => b.id === formData.preferred_barber_id)?.name
+                                : 'Nenhum'}
+                            </span>
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </DrawerTrigger>
+                        <DrawerContent>
+                          <DrawerHeader className="text-left">
+                            <DrawerTitle>Profissional Preferido</DrawerTitle>
+                          </DrawerHeader>
+                          <div className="p-4 flex flex-col gap-2 max-h-[50vh] overflow-y-auto">
+                            <Button
+                              type="button"
+                              variant={
+                                formData.preferred_barber_id === 'none' ||
+                                !formData.preferred_barber_id
+                                  ? 'default'
+                                  : 'outline'
+                              }
+                              className="justify-start"
+                              onClick={() => {
+                                setFormData({ ...formData, preferred_barber_id: 'none' })
+                                setIsBarberDrawerOpen(false)
+                              }}
+                            >
+                              Nenhum
+                            </Button>
+                            {barbers.map((b) => (
+                              <Button
+                                key={b.id}
+                                type="button"
+                                variant={
+                                  formData.preferred_barber_id === b.id ? 'default' : 'outline'
+                                }
+                                className="justify-start"
+                                onClick={() => {
+                                  setFormData({ ...formData, preferred_barber_id: b.id })
+                                  setIsBarberDrawerOpen(false)
+                                }}
+                              >
+                                {b.name}
+                              </Button>
+                            ))}
+                          </div>
+                        </DrawerContent>
+                      </Drawer>
+                    ) : (
+                      <Select
+                        value={formData.preferred_barber_id || 'none'}
+                        onValueChange={(v) => setFormData({ ...formData, preferred_barber_id: v })}
+                      >
+                        <SelectTrigger className="min-h-[44px]">
+                          <SelectValue placeholder="Nenhum" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {barbers.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>
+                              {b.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </div>
 
