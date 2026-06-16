@@ -4,20 +4,36 @@ routerAdd(
   (e) => {
     const body = e.requestInfo().body || {}
     const { startDate, endDate } = body
+    const orgId = e.auth?.getString('organization_id')
 
     if (!startDate || !endDate) {
       throw new BadRequestError('startDate and endDate are required')
     }
+    if (!orgId) {
+      throw new BadRequestError('Organization not found for user')
+    }
 
-    const barbers = $app.findRecordsByFilter('barbers', '1=1', '', 1000, 0)
+    const barbers = $app.findRecordsByFilter('barbers', `organization_id = '${orgId}'`, '', 1000, 0)
     const barbersMap = {}
     for (const b of barbers) {
       barbersMap[b.id] = b
     }
 
-    const rules = $app.findRecordsByFilter('commission_rules', '1=1', '', 10000, 0)
+    const rules = $app.findRecordsByFilter(
+      'commission_rules',
+      `organization_id = '${orgId}'`,
+      '',
+      10000,
+      0,
+    )
 
-    const paymentMethods = $app.findRecordsByFilter('payment_methods', '1=1', '', 100, 0)
+    const paymentMethods = $app.findRecordsByFilter(
+      'payment_methods',
+      `organization_id = '${orgId}'`,
+      '',
+      100,
+      0,
+    )
     const pmFeeMap = {}
     for (const pm of paymentMethods) {
       pmFeeMap[pm.getString('type')] = pm.getFloat('fee_percentage')
@@ -108,7 +124,7 @@ routerAdd(
 
     const existingCommsAll = $app.findRecordsByFilter(
       'commissions',
-      `created >= '${startDate}' && created <= '${endDate}'`,
+      `organization_id = '${orgId}' && created >= '${startDate}' && created <= '${endDate}'`,
       '',
       10000,
       0,
@@ -120,21 +136,21 @@ routerAdd(
 
     const apts = $app.findRecordsByFilter(
       'appointments',
-      `status = 'Concluído' && created >= '${startDate}' && created <= '${endDate}'`,
+      `organization_id = '${orgId}' && status = 'Concluído' && created >= '${startDate}' && created <= '${endDate}'`,
       '',
       10000,
       0,
     )
     const prods = $app.findRecordsByFilter(
       'product_purchases',
-      `created >= '${startDate}' && created <= '${endDate}'`,
+      `organization_id = '${orgId}' && created >= '${startDate}' && created <= '${endDate}'`,
       '',
       10000,
       0,
     )
     const packs = $app.findRecordsByFilter(
       'client_packages',
-      `created >= '${startDate}' && created <= '${endDate}'`,
+      `organization_id = '${orgId}' && created >= '${startDate}' && created <= '${endDate}'`,
       '',
       10000,
       0,
@@ -205,6 +221,7 @@ routerAdd(
           comm.set('gross_amount', price)
           comm.set('fee_amount', isSocio ? 0 : feeVal)
           comm.set('type', 'service')
+          comm.set('organization_id', apt.getString('organization_id') || orgId)
 
           if (!existingComm) {
             comm.set('date', apt.getString('date') || apt.getString('created'))
@@ -278,6 +295,7 @@ routerAdd(
           comm.set('gross_amount', price)
           comm.set('fee_amount', isSocio ? 0 : feeVal)
           comm.set('type', 'product')
+          comm.set('organization_id', prod.getString('organization_id') || orgId)
 
           if (!existingComm) {
             comm.set('date', prod.getString('date') || prod.getString('created'))
@@ -348,6 +366,7 @@ routerAdd(
           comm.set('gross_amount', price)
           comm.set('fee_amount', isSocio ? 0 : feeVal)
           comm.set('type', 'package_sale')
+          comm.set('organization_id', pack.getString('organization_id') || orgId)
 
           if (!existingComm) {
             comm.set('date', pack.getString('created'))
