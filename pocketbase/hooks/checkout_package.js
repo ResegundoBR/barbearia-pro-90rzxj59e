@@ -9,7 +9,10 @@ routerAdd(
       throw new BadRequestError('Preencha todos os campos obrigatórios.')
     }
 
-    const orgId = e.auth?.get('organization_id') || ''
+    const orgId = e.auth?.getString('organization_id') || ''
+    if (!orgId) {
+      throw new BadRequestError('organization_id is missing from auth session.')
+    }
 
     $app.runInTransaction((txApp) => {
       const pkg = txApp.findRecordById('packages', package_id)

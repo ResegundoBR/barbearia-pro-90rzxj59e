@@ -17,7 +17,10 @@ routerAdd(
       throw new BadRequestError('Método de pagamento é obrigatório.')
     }
 
-    const orgId = e.auth?.get('organization_id') || ''
+    const orgId = e.auth?.getString('organization_id') || ''
+    if (!orgId) {
+      throw new BadRequestError('organization_id is missing from auth session.')
+    }
     let resultId = null
 
     $app.runInTransaction((txApp) => {
