@@ -124,7 +124,7 @@ routerAdd(
 
     const existingCommsAll = $app.findRecordsByFilter(
       'commissions',
-      `organization_id = '${orgId}' && created >= '${startDate}' && created <= '${endDate}'`,
+      `organization_id = '${orgId}' && date >= '${startDate}' && date <= '${endDate}'`,
       '',
       10000,
       0,
@@ -136,14 +136,14 @@ routerAdd(
 
     const apts = $app.findRecordsByFilter(
       'appointments',
-      `organization_id = '${orgId}' && status = 'Concluído' && created >= '${startDate}' && created <= '${endDate}'`,
+      `organization_id = '${orgId}' && status = 'Concluído' && date >= '${startDate}' && date <= '${endDate}'`,
       '',
       10000,
       0,
     )
     const prods = $app.findRecordsByFilter(
       'product_purchases',
-      `organization_id = '${orgId}' && created >= '${startDate}' && created <= '${endDate}'`,
+      `organization_id = '${orgId}' && date >= '${startDate}' && date <= '${endDate}'`,
       '',
       10000,
       0,
@@ -223,6 +223,10 @@ routerAdd(
           comm.set('type', 'service')
           comm.set('organization_id', apt.getString('organization_id') || orgId)
 
+          if (!comm.getString('organization_id')) {
+            comm.set('organization_id', orgId)
+          }
+
           if (!existingComm) {
             comm.set('date', apt.getString('date') || apt.getString('created'))
             comm.set('payment_method', inferredPm)
@@ -232,6 +236,7 @@ routerAdd(
             )
             createdCount++
           } else {
+            comm.set('date', apt.getString('date') || apt.getString('created'))
             if (
               barber &&
               barber.getString('work_level') === 'socio' &&
@@ -297,6 +302,10 @@ routerAdd(
           comm.set('type', 'product')
           comm.set('organization_id', prod.getString('organization_id') || orgId)
 
+          if (!comm.getString('organization_id')) {
+            comm.set('organization_id', orgId)
+          }
+
           if (!existingComm) {
             comm.set('date', prod.getString('date') || prod.getString('created'))
             comm.set('payment_method', inferredPm)
@@ -306,6 +315,7 @@ routerAdd(
             )
             createdCount++
           } else {
+            comm.set('date', prod.getString('date') || prod.getString('created'))
             updatedCount++
           }
           txApp.save(comm)
@@ -368,6 +378,10 @@ routerAdd(
           comm.set('type', 'package_sale')
           comm.set('organization_id', pack.getString('organization_id') || orgId)
 
+          if (!comm.getString('organization_id')) {
+            comm.set('organization_id', orgId)
+          }
+
           if (!existingComm) {
             comm.set('date', pack.getString('created'))
             comm.set('payment_method', inferredPm)
@@ -377,6 +391,7 @@ routerAdd(
             )
             createdCount++
           } else {
+            comm.set('date', pack.getString('created'))
             updatedCount++
           }
           txApp.save(comm)

@@ -7,6 +7,9 @@ routerAdd(
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const startOfMonthStr = startOfMonth.toISOString().replace('T', ' ')
 
+    const orgId = e.auth?.getString('organization_id')
+    const orgFilter = orgId ? `organization_id = '${orgId}'` : '1=1'
+
     // Current week start (Sunday)
     const startOfWeek = new Date(today)
     startOfWeek.setDate(today.getDate() - today.getDay())
@@ -20,26 +23,26 @@ routerAdd(
 
     const apts = $app.findRecordsByFilter(
       'appointments',
-      `status = 'Concluído' && created >= '${startOfMonthStr}'`,
+      `status = 'Concluído' && date >= '${startOfMonthStr}' && ${orgFilter}`,
       '',
       10000,
       0,
     )
     const prods = $app.findRecordsByFilter(
       'product_purchases',
-      `created >= '${startOfMonthStr}'`,
+      `date >= '${startOfMonthStr}' && ${orgFilter}`,
       '',
       10000,
       0,
     )
     const packs = $app.findRecordsByFilter(
       'client_packages',
-      `created >= '${startOfMonthStr}'`,
+      `created >= '${startOfMonthStr}' && ${orgFilter}`,
       '',
       10000,
       0,
     )
-    const barbers = $app.findRecordsByFilter('barbers', '1=1', '', 100, 0)
+    const barbers = $app.findRecordsByFilter('barbers', orgFilter, '', 100, 0)
 
     let dailyFaturamento = 0
     const dailyClients = new Set()
@@ -55,7 +58,9 @@ routerAdd(
 
     // Process Appointments
     for (const apt of apts) {
-      const created = new Date(apt.getString('created'))
+      const dt = apt.getString('date')
+        ? new Date(apt.getString('date'))
+        : new Date(apt.getString('created'))
       let price = apt.getFloat('price')
       if (price === 0 && !apt.getString('client_package_id')) {
         try {
@@ -66,13 +71,13 @@ routerAdd(
         price = 0 // Revenue accounted in package purchase
       }
 
-      if (created >= startOfToday) {
+      if (dt >= startOfToday) {
         dailyFaturamento += price
         dailyClients.add(apt.getString('client_id'))
         dailyAptCount++
       }
 
-      if (created >= startOfWeek) {
+      if (dt >= startOfWeek) {
         weeklyFaturamento += price
       }
 
@@ -85,14 +90,16 @@ routerAdd(
 
     // Process Products
     for (const prod of prods) {
-      const created = new Date(prod.getString('created'))
+      const dt = prod.getString('date')
+        ? new Date(prod.getString('date'))
+        : new Date(prod.getString('created'))
       const price = prod.getFloat('price_at_sale')
 
-      if (created >= startOfToday) {
+      if (dt >= startOfToday) {
         dailyFaturamento += price
         dailyClients.add(prod.getString('client_id'))
       }
-      if (created >= startOfWeek) {
+      if (dt >= startOfWeek) {
         weeklyFaturamento += price
       }
 
@@ -104,18 +111,18 @@ routerAdd(
 
     // Process Packages
     for (const pack of packs) {
-      const created = new Date(pack.getString('created'))
+      const dt = new Date(pack.getString('created'))
       let price = 0
       try {
         const pkg = $app.findRecordById('packages', pack.getString('package_id'))
         price = pkg.getFloat('price')
       } catch (err) {}
 
-      if (created >= startOfToday) {
+      if (dt >= startOfToday) {
         dailyFaturamento += price
         dailyClients.add(pack.getString('client_id'))
       }
-      if (created >= startOfWeek) {
+      if (dt >= startOfWeek) {
         weeklyFaturamento += price
       }
 
@@ -136,6 +143,26 @@ routerAdd(
 
     const ticketMedio =
       dailyClients.size > 0 ? (dailyFaturamento / dailyClients.size).toFixed(0) : 0
+
+    // Fetch commissions for the period to show accurate repasses
+    const comms = $app.findRecordsByFilter(
+      'commissions',
+      `date >= '${startOfMonthStr}' && ${orgFilter}`,
+      '',
+      10000,
+      0,
+    )
+    const barberComms = {}
+    for (const b of barbers) {
+      barberComms[b.id] = { total: 0, count: 0 }
+    }
+    for (const c of comms) {
+      const bId = c.getString('barber_id')
+      if (bId && barberComms[bId]) {
+        barberComms[bId].total += c.getFloat('amount')
+        barberComms[bId].count++
+      }
+    }
 
     return e.json(200, {
       daily: {
@@ -162,10 +189,12 @@ routerAdd(
       },
       commissions: barbers.map((b) => {
         const isSocio = b.getString('work_level') === 'socio'
+        const commData = barberComms[b.id] || { total: 0 }
         return {
           name: b.getString('name'),
           work_level: b.getString('work_level'),
           nota: isSocio ? 'Repasse Integral (Sócio)' : 'Comissão (Autônomo)',
+          amount: commData.total,
         }
       }),
     })
