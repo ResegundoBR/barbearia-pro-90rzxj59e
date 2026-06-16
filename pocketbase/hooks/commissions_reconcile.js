@@ -156,6 +156,39 @@ routerAdd(
       0,
     )
 
+    const checkouts = $app.findRecordsByFilter(
+      'checkouts',
+      `organization_id = '${orgId}' && date >= '${startDate}' && date <= '${endDate}'`,
+      '',
+      10000,
+      0,
+    )
+    const aptToCheckout = {}
+    const prodToCheckout = {}
+    const packToCheckout = {}
+
+    for (const chk of checkouts) {
+      let items = []
+      try {
+        const snap = chk.get('items_snapshot')
+        if (typeof snap === 'string') items = JSON.parse(snap)
+        else if (snap && typeof snap === 'object') items = snap
+      } catch (e) {}
+
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (!item.id) continue
+          if (item.type === 'service' || item.type === 'appointment') {
+            aptToCheckout[item.id] = chk.id
+          } else if (item.type === 'product' || item.type === 'product_purchase') {
+            prodToCheckout[item.id] = chk.id
+          } else if (item.type === 'package' || item.type === 'client_package') {
+            packToCheckout[item.id] = chk.id
+          }
+        }
+      }
+    }
+
     let createdCount = 0
     let updatedCount = 0
 
@@ -225,6 +258,12 @@ routerAdd(
 
           if (!comm.getString('organization_id')) {
             comm.set('organization_id', orgId)
+          }
+
+          if (aptToCheckout[apt.id]) {
+            comm.set('checkout_id', aptToCheckout[apt.id])
+          } else if (existingComm && existingComm.getString('checkout_id')) {
+            comm.set('checkout_id', existingComm.getString('checkout_id'))
           }
 
           if (!existingComm) {
@@ -306,6 +345,12 @@ routerAdd(
             comm.set('organization_id', orgId)
           }
 
+          if (prodToCheckout[prod.id]) {
+            comm.set('checkout_id', prodToCheckout[prod.id])
+          } else if (existingComm && existingComm.getString('checkout_id')) {
+            comm.set('checkout_id', existingComm.getString('checkout_id'))
+          }
+
           if (!existingComm) {
             comm.set('date', prod.getString('date') || prod.getString('created'))
             comm.set('payment_method', inferredPm)
@@ -380,6 +425,12 @@ routerAdd(
 
           if (!comm.getString('organization_id')) {
             comm.set('organization_id', orgId)
+          }
+
+          if (packToCheckout[pack.id]) {
+            comm.set('checkout_id', packToCheckout[pack.id])
+          } else if (existingComm && existingComm.getString('checkout_id')) {
+            comm.set('checkout_id', existingComm.getString('checkout_id'))
           }
 
           if (!existingComm) {
