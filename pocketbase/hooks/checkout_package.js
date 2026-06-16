@@ -9,6 +9,8 @@ routerAdd(
       throw new BadRequestError('Preencha todos os campos obrigatórios.')
     }
 
+    const orgId = e.auth?.get('organization_id') || ''
+
     $app.runInTransaction((txApp) => {
       const pkg = txApp.findRecordById('packages', package_id)
 
@@ -18,6 +20,7 @@ routerAdd(
       cp.set('package_id', package_id)
       cp.set('barber_id', barber_id)
       cp.set('remaining_uses', pkg.getInt('quantity'))
+      if (orgId) cp.set('organization_id', orgId)
 
       const periodicity = pkg.getString('periodicity')
       if (periodicity === 'semanal') {
@@ -131,6 +134,7 @@ routerAdd(
         comm.set('date', new Date().toISOString())
         comm.set('payment_method', commissionPm)
         comm.set('status', isSocio ? 'paid' : 'pending')
+        if (orgId) comm.set('organization_id', orgId)
         txApp.save(comm)
       }
 
@@ -156,6 +160,7 @@ routerAdd(
       checkout.set('total_amount', price)
       checkout.set('date', new Date().toISOString())
       checkout.set('payment_method', payment_method)
+      if (orgId) checkout.set('organization_id', orgId)
 
       const itemsSnapshot = {
         packages: [

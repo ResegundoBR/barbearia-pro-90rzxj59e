@@ -22,6 +22,7 @@ import { Search, Eye, History, ReceiptText } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { Separator } from '@/components/ui/separator'
 import { getContrastColor } from '@/lib/utils'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export function CheckoutHistory() {
   const [checkouts, setCheckouts] = useState<any[]>([])
@@ -62,6 +63,10 @@ export function CheckoutHistory() {
   useEffect(() => {
     loadCheckouts()
   }, [searchTerm])
+
+  useRealtime('checkouts', () => {
+    loadCheckouts()
+  })
 
   const openTicket = (checkout: any) => {
     setSelectedTicket(checkout)

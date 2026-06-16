@@ -17,6 +17,7 @@ routerAdd(
       throw new BadRequestError('Método de pagamento é obrigatório.')
     }
 
+    const orgId = e.auth?.get('organization_id') || ''
     let resultId = null
 
     $app.runInTransaction((txApp) => {
@@ -112,6 +113,7 @@ routerAdd(
       checkout.set('total_amount', grandTotal)
       checkout.set('date', new Date().toISOString())
       checkout.set('payment_method', pmName)
+      if (orgId) checkout.set('organization_id', orgId)
       txApp.save(checkout)
       const checkoutId = checkout.id
 
@@ -132,6 +134,7 @@ routerAdd(
         if (packageToConsume) {
           appointment.set('client_package_id', packageToConsume)
         }
+        if (orgId) appointment.set('organization_id', orgId)
         txApp.save(appointment)
         appointmentId = appointment.id
       } else {
@@ -257,6 +260,7 @@ routerAdd(
           comm.set('date', new Date().toISOString())
           comm.set('payment_method', commissionPm)
           comm.set('status', isSocio ? 'paid' : 'pending')
+          if (orgId) comm.set('organization_id', orgId)
           txApp.save(comm)
         }
       }
@@ -283,6 +287,7 @@ routerAdd(
               new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
             )
             extApt.set('status', 'Concluído')
+            if (orgId) extApt.set('organization_id', orgId)
             txApp.save(extApt)
             extAptId = extApt.id
           }
@@ -324,6 +329,7 @@ routerAdd(
               cComm.set('date', new Date().toISOString())
               cComm.set('payment_method', commissionPm)
               cComm.set('status', isExtSocio ? 'paid' : 'pending')
+              if (orgId) cComm.set('organization_id', orgId)
               txApp.save(cComm)
             }
           }
@@ -354,6 +360,7 @@ routerAdd(
           purchase.set('barber_id', item.barber_id)
           purchase.set('price_at_sale', totalProdPrice)
           purchase.set('date', new Date().toISOString())
+          if (orgId) purchase.set('organization_id', orgId)
           txApp.save(purchase)
 
           let isSocioProd = false
@@ -402,6 +409,7 @@ routerAdd(
             pComm.set('payment_method', commissionPm)
             const st = inventoryOwnerId && item.barber_id === inventoryOwnerId ? 'paid' : 'pending'
             pComm.set('status', st)
+            if (orgId) pComm.set('organization_id', orgId)
             txApp.save(pComm)
           }
 
@@ -421,6 +429,7 @@ routerAdd(
               oComm.set('date', new Date().toISOString())
               oComm.set('payment_method', commissionPm)
               oComm.set('status', 'paid')
+              if (orgId) oComm.set('organization_id', orgId)
               txApp.save(oComm)
             }
           }
