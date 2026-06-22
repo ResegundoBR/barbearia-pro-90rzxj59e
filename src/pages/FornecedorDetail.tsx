@@ -137,6 +137,7 @@ export default function FornecedorDetail() {
         purchase_date: dateIso,
         status: purchaseForm.status,
         received_at: purchaseForm.status === 'received' ? new Date().toISOString() : null,
+        organization_id: pb.authStore.record?.organization_id,
       })
       toast({ title: 'Compra registrada com sucesso' })
       setPurchaseDialogOpen(false)
