@@ -1,18 +1,18 @@
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
-import { hasFeature } from '@/lib/tiers'
+import { hasFeature, SubscriptionTier } from '@/lib/tiers'
 
 interface FeatureGuardProps {
-  feature: string
+  feature: SubscriptionTier | string
   children: React.ReactNode
 }
 
 export function FeatureGuard({ feature, children }: FeatureGuardProps) {
   const { user } = useAuth()
-  const currentPlan = user?.plan || 'Free'
+  const currentPlan = (user?.plan || 'Free') as SubscriptionTier
 
-  const isAllowed = hasFeature(currentPlan, feature)
+  const isAllowed = hasFeature(currentPlan, feature as SubscriptionTier)
 
   if (isAllowed) return <>{children}</>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import {
@@ -9,6 +9,16 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -104,6 +114,45 @@ export default function Agenda() {
   const [agendaFormat, setAgendaFormat] = useState<'grid' | 'list'>('grid')
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [barberFilter, setBarberFilter] = useState<string>('all')
+
+  // Drag and Drop state
+  const [draggedItem, setDraggedItem] = useState<any | null>(null)
+  const [dragOverTarget, setDragOverTarget] = useState<{
+    dayKey: string
+    barberId: string
+    startMins: number
+    durationMinutes: number
+  } | null>(null)
+
+  // Touch drag state
+  const touchStateRef = useRef<{
+    item: any | null
+    startX: number
+    startY: number
+    isDragging: boolean
+    hasMoved: boolean
+    touchTimer: any
+  }>({
+    item: null,
+    startX: 0,
+    startY: 0,
+    isDragging: false,
+    hasMoved: false,
+    touchTimer: null,
+  })
+
+  // Conflict dialog state
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false)
+  const [conflictData, setConflictData] = useState<{
+    item: any
+    targetBarberId: string
+    targetDate: Date
+    targetStartMins: number
+    targetEndMins: number
+    suggestedStartMins: number | null
+    suggestedEndMins: number | null
+    conflictingEvents: any[]
+  } | null>(null)
 
   const [blockDialogOpen, setBlockDialogOpen] = useState(false)
   const [blockForm, setBlockForm] = useState({
@@ -474,51 +523,309 @@ export default function Agenda() {
     return blocks.filter((b) => b.barber_id === barberFilter)
   }, [blocks, barberFilter])
 
-  const getEventsForDay = (day: Date) => {
-    if (!isValid(day)) return []
+  const getEventsForDay = useCallback(
+    (day: Date, targetBarberId?: string) => {
+      if (!isValid(day)) return []
 
-    const dayStr = format(day, 'yyyy-MM-dd')
-    const dayApts = filteredApts.filter((a) => a.date && a.date.startsWith(dayStr))
+      const dayStr = format(day, 'yyyy-MM-dd')
+      const targetApts = targetBarberId
+        ? data.apts.filter((a) => a.barber_id === targetBarberId)
+        : filteredApts
+      const dayApts = targetApts.filter((a) => a.date && a.date.startsWith(dayStr))
 
-    const dStart = new Date(day)
-    dStart.setHours(0, 0, 0, 0)
-    const dEnd = new Date(day)
-    dEnd.setHours(23, 59, 59, 999)
+      const dStart = new Date(day)
+      dStart.setHours(0, 0, 0, 0)
+      const dEnd = new Date(day)
+      dEnd.setHours(23, 59, 59, 999)
 
-    const dayBlocks = filteredBlocks
-      .filter((b) => {
-        if (!b.start_time || !b.end_time) return false
-        const bStart = new Date(b.start_time)
-        const bEnd = new Date(b.end_time)
-        if (!isValid(bStart) || !isValid(bEnd)) return false
-        return bStart <= dEnd && bEnd >= dStart
-      })
-      .map((b) => {
-        const bStart = new Date(b.start_time)
-        const bEnd = new Date(b.end_time)
-        const isSameStartDay = isValid(bStart) && format(bStart, 'yyyy-MM-dd') === dayStr
-        const isSameEndDay = isValid(bEnd) && format(bEnd, 'yyyy-MM-dd') === dayStr
+      const targetBlocks = targetBarberId
+        ? blocks.filter((b) => b.barber_id === targetBarberId)
+        : filteredBlocks
+      const dayBlocks = targetBlocks
+        .filter((b) => {
+          if (!b.start_time || !b.end_time) return false
+          const bStart = new Date(b.start_time)
+          const bEnd = new Date(b.end_time)
+          if (!isValid(bStart) || !isValid(bEnd)) return false
+          return bStart <= dEnd && bEnd >= dStart
+        })
+        .map((b) => {
+          const bStart = new Date(b.start_time)
+          const bEnd = new Date(b.end_time)
+          const isSameStartDay = isValid(bStart) && format(bStart, 'yyyy-MM-dd') === dayStr
+          const isSameEndDay = isValid(bEnd) && format(bEnd, 'yyyy-MM-dd') === dayStr
 
-        return {
-          ...b,
-          isBlock: true,
-          date: format(day, 'yyyy-MM-dd 12:00:00'),
-          time: isSameStartDay ? format(bStart, 'HH:mm') : '08:00',
-          end_time: isSameEndDay ? format(bEnd, 'HH:mm') : '20:00',
-          original_start_time: b.start_time,
-          original_end_time: b.end_time,
-          status: 'Bloqueado',
-          expand: {
-            barber_id: data.barbers.find((barb) => barb.id === b.barber_id),
-          },
+          return {
+            ...b,
+            isBlock: true,
+            date: format(day, 'yyyy-MM-dd 12:00:00'),
+            time: isSameStartDay ? format(bStart, 'HH:mm') : '08:00',
+            end_time: isSameEndDay ? format(bEnd, 'HH:mm') : '20:00',
+            original_start_time: b.start_time,
+            original_end_time: b.end_time,
+            status: 'Bloqueado',
+            expand: {
+              barber_id: data.barbers.find((barb) => barb.id === b.barber_id),
+            },
+          }
+        })
+
+      return [...dayApts, ...dayBlocks]
+    },
+    [data.apts, filteredApts, blocks, filteredBlocks, data.barbers],
+  )
+
+  // Execute move / update appointment or block
+  const executeMove = async (
+    item: any,
+    targetBarberId: string,
+    targetDate: Date,
+    targetStartMins: number,
+    targetEndMins: number,
+  ) => {
+    const startHour = Math.floor(targetStartMins / 60)
+      .toString()
+      .padStart(2, '0')
+    const startMin = (targetStartMins % 60).toString().padStart(2, '0')
+    const startTimeStr = `${startHour}:${startMin}`
+
+    const endHour = Math.floor(targetEndMins / 60)
+      .toString()
+      .padStart(2, '0')
+    const endMin = (targetEndMins % 60).toString().padStart(2, '0')
+    const endTimeStr = `${endHour}:${endMin}`
+
+    const dateStr = format(targetDate, 'yyyy-MM-dd 12:00:00')
+
+    try {
+      if (item.isBlock) {
+        const start = new Date(targetDate)
+        start.setHours(Math.floor(targetStartMins / 60), targetStartMins % 60, 0, 0)
+
+        const end = new Date(targetDate)
+        end.setHours(Math.floor(targetEndMins / 60), targetEndMins % 60, 0, 0)
+
+        await updateBarberBlock(item.id, {
+          barber_id: targetBarberId,
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+        })
+        toast({ title: 'Bloqueio remanejado com sucesso!' })
+      } else {
+        const payload: any = {
+          barber_id: targetBarberId,
+          date: dateStr,
+          time: startTimeStr,
+          end_time: endTimeStr,
         }
+        await updateAppointment(item.id, payload)
+        toast({
+          title: 'Agendamento atualizado com sucesso!',
+          description: `${format(targetDate, 'dd/MM')} às ${startTimeStr}`,
+        })
+      }
+      loadData()
+    } catch (err) {
+      toast({
+        title: getErrorMessage(err) || 'Erro ao mover item',
+        variant: 'destructive',
       })
-
-    return [...dayApts, ...dayBlocks]
+    } finally {
+      setConflictDialogOpen(false)
+      setConflictData(null)
+      setDraggedItem(null)
+      setDragOverTarget(null)
+    }
   }
 
-  const renderDayColumn = (day: Date) => {
-    const rawEvents = getEventsForDay(day)
+  // Handle Drop and Conflict Detection
+  const handleDropOnSlot = (targetDay: Date, targetBarberId: string, targetStartMins: number) => {
+    if (!draggedItem) return
+
+    const item = draggedItem
+    const itemStartMins = item.startMins ?? 9 * 60
+    const itemEndMins = item.endMins ?? itemStartMins + 30
+    const durationMinutes = Math.max(15, itemEndMins - itemStartMins)
+    const targetEndMins = targetStartMins + durationMinutes
+
+    // Check if anything actually changed (same barber, same day, same start time)
+    const originalDate = item.date ? new Date(item.date) : new Date()
+    const isSameDate = isValid(originalDate) && isSameDay(originalDate, targetDay)
+    const isSameBarber = item.barber_id === targetBarberId
+    const isSameTime = item.startMins === targetStartMins
+
+    if (isSameDate && isSameBarber && isSameTime) {
+      setDraggedItem(null)
+      setDragOverTarget(null)
+      return
+    }
+
+    // Check conflicts on destination barber and date
+    const dayEvents = getEventsForDay(targetDay, targetBarberId)
+    const conflicts = dayEvents.filter((evt) => {
+      if (evt.id === item.id) return false // ignore self
+      if (evt.status === 'Cancelado') return false // ignore cancelled
+
+      const [sH, sM] = (evt.time || '00:00').split(':').map(Number)
+      const [eH, eM] = (evt.end_time || evt.time || '00:00').split(':').map(Number)
+      const eStart = sH * 60 + sM
+      const eDuration = (eH - sH) * 60 + (eM - sM)
+      const eEnd = eStart + Math.max(15, eDuration > 0 ? eDuration : 30)
+
+      // Overlap condition: start < otherEnd && end > otherStart
+      return targetStartMins < eEnd && targetEndMins > eStart
+    })
+
+    if (conflicts.length > 0) {
+      // Find next free slot on that day for target barber
+      // Working hours 08:00 (480) to 20:00 (1200)
+      const activeEvents = dayEvents
+        .filter((evt) => evt.id !== item.id && evt.status !== 'Cancelado')
+        .map((evt) => {
+          const [sH, sM] = (evt.time || '00:00').split(':').map(Number)
+          const [eH, eM] = (evt.end_time || evt.time || '00:00').split(':').map(Number)
+          const eStart = sH * 60 + sM
+          const eDuration = (eH - sH) * 60 + (eM - sM)
+          const eEnd = eStart + Math.max(15, eDuration > 0 ? eDuration : 30)
+          return { startMins: eStart, endMins: eEnd }
+        })
+        .sort((a, b) => a.startMins - b.startMins)
+
+      let suggestedStartMins: number | null = null
+      let suggestedEndMins: number | null = null
+
+      // Search starting from targetStartMins in 15-min increments
+      for (
+        let testStart = targetStartMins + 15;
+        testStart <= 20 * 60 - durationMinutes;
+        testStart += 15
+      ) {
+        const testEnd = testStart + durationMinutes
+        const hasCollision = activeEvents.some(
+          (e) => testStart < e.endMins && testEnd > e.startMins,
+        )
+        if (!hasCollision) {
+          suggestedStartMins = testStart
+          suggestedEndMins = testEnd
+          break
+        }
+      }
+
+      // If not found after targetStartMins, search from beginning of day 08:00
+      if (suggestedStartMins === null) {
+        for (let testStart = 8 * 60; testStart < targetStartMins; testStart += 15) {
+          const testEnd = testStart + durationMinutes
+          const hasCollision = activeEvents.some(
+            (e) => testStart < e.endMins && testEnd > e.startMins,
+          )
+          if (!hasCollision) {
+            suggestedStartMins = testStart
+            suggestedEndMins = testEnd
+            break
+          }
+        }
+      }
+
+      setConflictData({
+        item,
+        targetBarberId,
+        targetDate: targetDay,
+        targetStartMins,
+        targetEndMins,
+        suggestedStartMins,
+        suggestedEndMins,
+        conflictingEvents: conflicts,
+      })
+      setConflictDialogOpen(true)
+      setDraggedItem(null)
+      setDragOverTarget(null)
+      return
+    }
+
+    // No conflict: execute move directly
+    executeMove(item, targetBarberId, targetDay, targetStartMins, targetEndMins)
+  }
+
+  // Handle Touch drag start, move, end
+  const handleTouchStart = (e: React.TouchEvent, apt: any) => {
+    const touch = e.touches[0]
+    touchStateRef.current = {
+      item: apt,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      isDragging: false,
+      hasMoved: false,
+      touchTimer: setTimeout(() => {
+        touchStateRef.current.isDragging = true
+        setDraggedItem(apt)
+        if (navigator.vibrate) navigator.vibrate(50)
+      }, 300),
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    const state = touchStateRef.current
+    const dx = Math.abs(touch.clientX - state.startX)
+    const dy = Math.abs(touch.clientY - state.startY)
+
+    if (dx > 10 || dy > 10) {
+      state.hasMoved = true
+      if (!state.isDragging) {
+        clearTimeout(state.touchTimer)
+      }
+    }
+
+    if (state.isDragging && state.item) {
+      e.preventDefault()
+      const elem = document.elementFromPoint(touch.clientX, touch.clientY)
+      const slotElem = elem?.closest('[data-slot-time]') as HTMLElement | null
+      if (slotElem) {
+        const slotDay = slotElem.getAttribute('data-slot-day')
+        const slotTime = slotElem.getAttribute('data-slot-time')
+        const slotBarber = slotElem.getAttribute('data-slot-barber')
+        if (slotDay && slotTime && slotBarber) {
+          const [sh, sm] = slotTime.split(':').map(Number)
+          const startMins = sh * 60 + sm
+          const duration = Math.max(
+            15,
+            (state.item.endMins || startMins + 30) - (state.item.startMins || startMins),
+          )
+          setDragOverTarget({
+            dayKey: slotDay,
+            barberId: slotBarber,
+            startMins,
+            durationMinutes: duration,
+          })
+        }
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    const state = touchStateRef.current
+    clearTimeout(state.touchTimer)
+
+    if (state.isDragging && state.item && dragOverTarget) {
+      const targetDate = new Date(dragOverTarget.dayKey)
+      handleDropOnSlot(targetDate, dragOverTarget.barberId, dragOverTarget.startMins)
+    }
+
+    touchStateRef.current = {
+      item: null,
+      startX: 0,
+      startY: 0,
+      isDragging: false,
+      hasMoved: false,
+      touchTimer: null,
+    }
+    setDragOverTarget(null)
+  }
+
+  const renderDayColumn = (day: Date, specificBarberId?: string) => {
+    const targetBarber = specificBarberId || (barberFilter !== 'all' ? barberFilter : '')
+    const rawEvents = getEventsForDay(day, specificBarberId)
+    const dayKey = isValid(day) ? format(day, 'yyyy-MM-dd') : ''
 
     const eventsWithMins = rawEvents
       .map((apt) => {
@@ -588,10 +895,17 @@ export default function Agenda() {
       })
     })
 
+    const barberObj = specificBarberId ? data.barbers.find((b) => b.id === specificBarberId) : null
+
+    const isDropOverThisCol =
+      dragOverTarget &&
+      dragOverTarget.dayKey === dayKey &&
+      (!specificBarberId || dragOverTarget.barberId === specificBarberId)
+
     return (
       <div
-        key={isValid(day) ? day.toISOString() : Math.random()}
-        className="flex-1 border-r min-w-[120px] relative"
+        key={`${dayKey}_${specificBarberId || 'all'}`}
+        className="flex-1 border-r min-w-[140px] relative select-none"
       >
         {view === 'week' && isValid(day) && (
           <div className="h-12 border-b flex flex-col items-center justify-center bg-muted/20 sticky top-0 z-20">
@@ -606,16 +920,117 @@ export default function Agenda() {
             >
               {format(day, 'dd')}
             </span>
+            {barberObj && (
+              <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                {barberObj.name}
+              </span>
+            )}
+          </div>
+        )}
+        {view === 'day' && barberObj && (
+          <div className="h-10 border-b flex items-center justify-center bg-muted/20 sticky top-0 z-20 px-2">
+            <div
+              className="w-2.5 h-2.5 rounded-full mr-2 shrink-0"
+              style={{ backgroundColor: barberObj.color || 'hsl(var(--primary))' }}
+            />
+            <span className="text-xs font-semibold truncate">{barberObj.name}</span>
           </div>
         )}
         <div className="relative" style={{ height: HOURS.length * 60 }}>
-          {HOURS.map((h) => (
+          {HOURS.map((h) => {
+            const hStr = h.toString().padStart(2, '0')
+            return (
+              <div key={h} className="h-[60px] border-b border-border/50 relative">
+                {/* 4 quarter-hour sub-slots (15 mins each) */}
+                {[0, 15, 30, 45].map((m) => {
+                  const mStr = m.toString().padStart(2, '0')
+                  const slotTimeStr = `${hStr}:${mStr}`
+                  const slotStartMins = h * 60 + m
+                  const defaultBarberForSlot =
+                    targetBarber ||
+                    (draggedItem?.barber_id ? draggedItem.barber_id : visibleBarbers[0]?.id || '')
+
+                  return (
+                    <div
+                      key={m}
+                      data-slot-day={dayKey}
+                      data-slot-time={slotTimeStr}
+                      data-slot-barber={defaultBarberForSlot}
+                      className={cn(
+                        'h-[15px] border-t border-border/10 first:border-t-0 hover:bg-muted/15 cursor-pointer transition-colors',
+                        m === 0 && 'cursor-pointer',
+                      )}
+                      onClick={() => handleOpen(slotTimeStr, day)}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        e.dataTransfer.dropEffect = 'move'
+                        const duration = draggedItem
+                          ? Math.max(15, (draggedItem.endMins || 30) - (draggedItem.startMins || 0))
+                          : 30
+                        if (
+                          !dragOverTarget ||
+                          dragOverTarget.dayKey !== dayKey ||
+                          dragOverTarget.startMins !== slotStartMins ||
+                          dragOverTarget.barberId !== defaultBarberForSlot
+                        ) {
+                          setDragOverTarget({
+                            dayKey,
+                            barberId: defaultBarberForSlot,
+                            startMins: slotStartMins,
+                            durationMinutes: duration,
+                          })
+                        }
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault()
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const rawData = e.dataTransfer.getData('application/json')
+                        let item = draggedItem
+                        if (!item && rawData) {
+                          try {
+                            item = JSON.parse(rawData)
+                          } catch {
+                            /* intentionally ignored */
+                          }
+                        }
+                        if (item) {
+                          const barberToUse =
+                            defaultBarberForSlot || item.barber_id || visibleBarbers[0]?.id || ''
+                          handleDropOnSlot(day, barberToUse, slotStartMins)
+                        }
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            )
+          })}
+
+          {/* Visual Drop Shadow / Highlight Preview Indicator */}
+          {isDropOverThisCol && dragOverTarget && (
             <div
-              key={h}
-              className="h-[60px] border-b border-border/50 hover:bg-muted/10 cursor-pointer"
-              onClick={() => handleOpen(`${h.toString().padStart(2, '0')}:00`, day)}
-            />
-          ))}
+              className="absolute left-1 right-1 rounded-md border-2 border-dashed border-primary bg-primary/20 pointer-events-none z-30 transition-all duration-75 flex flex-col justify-between p-1 shadow-md animate-pulse"
+              style={{
+                top: dragOverTarget.startMins - 8 * 60,
+                height: Math.max(20, dragOverTarget.durationMinutes),
+              }}
+            >
+              <div className="flex items-center justify-between text-[9px] font-bold text-primary truncate">
+                <span>Soltar aqui</span>
+                <span>
+                  {Math.floor(dragOverTarget.startMins / 60)
+                    .toString()
+                    .padStart(2, '0')}
+                  :{(dragOverTarget.startMins % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+            </div>
+          )}
+
           {positionedEvents.map((apt) => {
             const top = apt.startMins - 8 * 60
             const height = apt.endMins - apt.startMins
@@ -628,6 +1043,7 @@ export default function Agenda() {
             const isFaltou = apt.status === 'FALTOU'
             const isBlock = apt.isBlock
             const isMissed = isFaltou
+            const isCurrentlyDragging = draggedItem?.id === apt.id
 
             const bgColor = isMissed ? '#000000' : isBlock ? '#e5e7eb' : barberColor
             const textColor = isBlock ? '#374151' : getContrastColor(bgColor)
@@ -635,10 +1051,25 @@ export default function Agenda() {
             return (
               <div
                 key={apt.id}
+                draggable={!isCompleted && !isCanceled}
+                onDragStart={(e) => {
+                  setDraggedItem(apt)
+                  e.dataTransfer.setData('application/json', JSON.stringify(apt))
+                  e.dataTransfer.effectAllowed = 'move'
+                }}
+                onDragEnd={() => {
+                  setDraggedItem(null)
+                  setDragOverTarget(null)
+                }}
+                onTouchStart={(e) => handleTouchStart(e, apt)}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchEnd}
                 className={cn(
-                  'absolute rounded-sm p-1 overflow-hidden shadow-sm transition-all hover:scale-[1.02] cursor-pointer border border-black/5 flex flex-col gap-0.5',
-                  isCompleted ? 'opacity-50' : 'opacity-100',
-                  !isCompleted && isCanceled && 'opacity-50 grayscale',
+                  'absolute rounded-sm p-1 overflow-hidden shadow-sm transition-all hover:scale-[1.02] cursor-grab active:cursor-grabbing border border-black/5 flex flex-col gap-0.5 select-none z-10',
+                  isCompleted ? 'opacity-50 cursor-pointer' : 'opacity-100',
+                  !isCompleted && isCanceled && 'opacity-50 grayscale cursor-pointer',
+                  isCurrentlyDragging && 'opacity-40 scale-95 ring-2 ring-primary ring-offset-1',
                   isBlock &&
                     'bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.03)_10px,rgba(0,0,0,0.03)_20px)] border-gray-300',
                 )}
@@ -652,20 +1083,24 @@ export default function Agenda() {
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleOpenDetail(apt)
+                  if (!touchStateRef.current.hasMoved) {
+                    handleOpenDetail(apt)
+                  }
                 }}
               >
-                <div className="text-[10px] font-bold leading-none truncate">
-                  {isBlock
-                    ? apt.reason || 'Bloqueio'
-                    : `${apt.expand?.client_id?.name || ''} ${apt.expand?.client_id?.surname || ''}`}
+                <div className="text-[10px] font-bold leading-none truncate flex items-center justify-between">
+                  <span className="truncate">
+                    {isBlock
+                      ? apt.reason || 'Bloqueio'
+                      : `${apt.expand?.client_id?.name || ''} ${apt.expand?.client_id?.surname || ''}`}
+                  </span>
                 </div>
-                {!isBlock && height >= 45 && (
+                {!isBlock && height >= 42 && (
                   <div className="text-[9px] font-medium opacity-95 leading-none truncate">
                     {apt.expand?.service_id?.name || 'Serviço'}
                   </div>
                 )}
-                {height >= 60 && (
+                {height >= 55 && (
                   <div className="text-[9px] opacity-80 leading-none font-medium truncate">
                     {apt.time} - {apt.end_time || '--:--'}
                   </div>
@@ -802,11 +1237,17 @@ export default function Agenda() {
       })
     }
 
+    const showBarberColumnsInDayView =
+      view === 'day' && barberFilter === 'all' && visibleBarbers.length > 0
+
     return (
       <ScrollArea className="flex-1 rounded-xl border bg-card/50 shadow-inner">
         <div className="flex min-w-[600px] h-full">
           <div className="w-16 border-r flex flex-col bg-background/95 backdrop-blur sticky left-0 z-30 shadow-[1px_0_5px_rgba(0,0,0,0.05)]">
             {view === 'week' && <div className="h-12 border-b bg-muted/20 sticky top-0" />}
+            {view === 'day' && showBarberColumnsInDayView && (
+              <div className="h-10 border-b bg-muted/20 sticky top-0" />
+            )}
             <div className="relative" style={{ height: HOURS.length * 60 }}>
               {HOURS.map((h) => (
                 <div
@@ -819,7 +1260,11 @@ export default function Agenda() {
               ))}
             </div>
           </div>
-          <div className="flex-1 flex">{daysToRender.map(renderDayColumn)}</div>
+          <div className="flex-1 flex">
+            {showBarberColumnsInDayView
+              ? visibleBarbers.map((barber) => renderDayColumn(selectedDate, barber.id))
+              : daysToRender.map((day) => renderDayColumn(day))}
+          </div>
         </div>
         <ScrollBar orientation="horizontal" />
         <ScrollBar orientation="vertical" />
@@ -1838,6 +2283,118 @@ export default function Agenda() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* CONFLICT OVERLAP / RESCHEDULE DIALOG */}
+      <AlertDialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive flex items-center gap-2">
+              <span>Horário Indisponível</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-2 text-foreground">
+              <p className="text-sm text-muted-foreground">
+                O profissional de destino já possui agendamento ou bloqueio neste intervalo de
+                horário:
+              </p>
+              {conflictData && (
+                <div className="bg-muted/50 p-3 rounded-lg border text-xs space-y-1.5">
+                  <div className="font-semibold text-foreground">
+                    Horário solicitado:{' '}
+                    <span className="text-primary font-bold">
+                      {Math.floor(conflictData.targetStartMins / 60)
+                        .toString()
+                        .padStart(2, '0')}
+                      :{(conflictData.targetStartMins % 60).toString().padStart(2, '0')} às{' '}
+                      {Math.floor(conflictData.targetEndMins / 60)
+                        .toString()
+                        .padStart(2, '0')}
+                      :{(conflictData.targetEndMins % 60).toString().padStart(2, '0')}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    Conflito com:{' '}
+                    {conflictData.conflictingEvents
+                      .map((e) =>
+                        e.isBlock
+                          ? `Bloqueio (${e.time} - ${e.end_time})`
+                          : `${e.expand?.client_id?.name || 'Cliente'} (${e.time} - ${e.end_time})`,
+                      )
+                      .join(', ')}
+                  </div>
+                  {conflictData.suggestedStartMins !== null &&
+                    conflictData.suggestedEndMins !== null && (
+                      <div className="mt-2 pt-2 border-t border-border/50 text-emerald-600 dark:text-emerald-400 font-medium">
+                        Próximo horário livre disponível:{' '}
+                        <strong>
+                          {Math.floor(conflictData.suggestedStartMins / 60)
+                            .toString()
+                            .padStart(2, '0')}
+                          :{(conflictData.suggestedStartMins % 60).toString().padStart(2, '0')} às{' '}
+                          {Math.floor(conflictData.suggestedEndMins / 60)
+                            .toString()
+                            .padStart(2, '0')}
+                          :{(conflictData.suggestedEndMins % 60).toString().padStart(2, '0')}
+                        </strong>
+                      </div>
+                    )}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Como deseja prosseguir com a realocação?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel
+              onClick={() => {
+                setConflictDialogOpen(false)
+                setConflictData(null)
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (conflictData) {
+                  executeMove(
+                    conflictData.item,
+                    conflictData.targetBarberId,
+                    conflictData.targetDate,
+                    conflictData.targetStartMins,
+                    conflictData.targetEndMins,
+                  )
+                }
+              }}
+            >
+              Sobrepor Horário
+            </Button>
+            {conflictData?.suggestedStartMins !== null &&
+              conflictData?.suggestedEndMins !== null && (
+                <AlertDialogAction
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={() => {
+                    if (
+                      conflictData &&
+                      conflictData.suggestedStartMins !== null &&
+                      conflictData.suggestedEndMins !== null
+                    ) {
+                      executeMove(
+                        conflictData.item,
+                        conflictData.targetBarberId,
+                        conflictData.targetDate,
+                        conflictData.suggestedStartMins,
+                        conflictData.suggestedEndMins,
+                      )
+                    }
+                  }}
+                >
+                  Ajustar Horário
+                </AlertDialogAction>
+              )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
