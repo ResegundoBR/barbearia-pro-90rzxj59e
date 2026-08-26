@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,11 +22,13 @@ import {
   Search,
   ListOrdered,
   User,
+  Plus,
   Clock,
   Scissors,
   Play,
   CheckCircle2,
   XCircle,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +50,7 @@ interface QueueEntry {
 }
 
 export default function Fila() {
+  const isMobile = useIsMobile()
   const { user } = useAuth()
   const [now, setNow] = useState(new Date())
 
@@ -77,6 +81,7 @@ export default function Fila() {
   const [newClientName, setNewClientName] = useState('')
   const [newClientPhone, setNewClientPhone] = useState('')
   const [isCreatingClient, setIsCreatingClient] = useState(false)
+  const [mobileTab, setMobileTab] = useState<'fila' | 'novo'>('fila')
 
   const loadBaseData = async () => {
     if (!user?.organization_id) return
@@ -480,6 +485,488 @@ export default function Fila() {
     }
 
     return { occupied: false, remaining: 0 }
+  }
+
+  if (isMobile) {
+    return (
+      <div className="space-y-4 pb-20">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-primary flex items-center gap-2">
+              <ListOrdered className="size-6" /> Fila de Atendimento
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {displayQueue.length} cliente{displayQueue.length === 1 ? '' : 's'} na fila
+            </p>
+          </div>
+          <div className="flex gap-1.5 bg-muted/60 p-1 rounded-lg">
+            <Button
+              variant={mobileTab === 'fila' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 text-xs font-semibold"
+              onClick={() => setMobileTab('fila')}
+            >
+              <Users className="size-3.5 mr-1" /> Fila ({displayQueue.length})
+            </Button>
+            <Button
+              variant={mobileTab === 'novo' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 text-xs font-semibold"
+              onClick={() => setMobileTab('novo')}
+            >
+              <Plus className="size-3.5 mr-1" /> Entrada
+            </Button>
+          </div>
+        </div>
+
+        {/* Professional Availability Horizontal Bar for Mobile */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Profissionais
+          </p>
+          <div className="flex gap-2.5 overflow-x-auto pb-2 custom-scrollbar -mx-4 px-4">
+            {barbers.map((barber) => {
+              const status = getBarberStatus(barber.id)
+              return (
+                <div
+                  key={barber.id}
+                  className={cn(
+                    'min-w-[150px] flex-shrink-0 flex items-center p-2.5 gap-2.5 rounded-xl border bg-card shadow-sm border-l-4',
+                    status.occupied ? 'border-l-destructive' : 'border-l-blue-500',
+                  )}
+                >
+                  <div className="relative shrink-0">
+                    <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs overflow-hidden">
+                      {barber.avatar ? (
+                        <img
+                          src={pb.files.getUrl(barber, barber.avatar)}
+                          alt={barber.name}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        barber.name.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div
+                      className={cn(
+                        'absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border border-background',
+                        status.occupied ? 'bg-destructive' : 'bg-blue-500',
+                      )}
+                    />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-xs truncate leading-tight">{barber.name}</span>
+                    <span
+                      className={cn(
+                        'text-[10px] font-semibold mt-0.5 flex items-center gap-0.5',
+                        status.occupied ? 'text-destructive' : 'text-blue-500',
+                      )}
+                    >
+                      {status.occupied ? (
+                        <>
+                          <Clock className="size-2.5" /> {status.remaining} min
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="size-2.5" /> Livre
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {mobileTab === 'fila' ? (
+          <div className="space-y-3">
+            {displayQueue.length === 0 ? (
+              <Card className="shadow-sm border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <Clock className="size-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-base font-bold text-primary">A fila está vazia</h3>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
+                    Nenhum cliente aguardando atendimento no momento.
+                  </p>
+                  <Button size="sm" className="mt-4 gap-1.5" onClick={() => setMobileTab('novo')}>
+                    <Plus className="size-4" /> Adicionar Cliente
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              displayQueue.map((entry) => {
+                const elapsed = differenceInMinutes(now, parseISO(entry.joined_at))
+                const isWaiting = entry.status === 'waiting'
+
+                let isOverdue = false
+                if (!isWaiting) {
+                  const appt = todayAppointments.find((a) => a.id === entry.appointment_id)
+                  if (appt && appt.end_time) {
+                    const [endH, endM] = appt.end_time.split(':').map(Number)
+                    const endTime = new Date(
+                      now.getFullYear(),
+                      now.getMonth(),
+                      now.getDate(),
+                      endH,
+                      endM,
+                    )
+                    isOverdue = differenceInMinutes(now, endTime) > 10
+                  } else if (entry.estimated_start_time) {
+                    const estStart = parseISO(entry.estimated_start_time)
+                    const endTimeFallback = addMinutes(
+                      estStart,
+                      entry.expand?.service_id?.duration_minutes || 30,
+                    )
+                    isOverdue = differenceInMinutes(now, endTimeFallback) > 10
+                  }
+                }
+
+                return (
+                  <Card
+                    key={entry.id}
+                    className={cn(
+                      'shadow-sm border transition-all overflow-hidden',
+                      isWaiting
+                        ? 'bg-card border-border'
+                        : 'bg-primary/5 border-primary/40 ring-1 ring-primary/20',
+                    )}
+                  >
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={cn(
+                              'size-9 rounded-full flex items-center justify-center shrink-0 shadow-xs font-bold text-xs',
+                              isWaiting
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400',
+                            )}
+                          >
+                            {isWaiting ? (
+                              <Clock className="size-4" />
+                            ) : (
+                              <Play className="size-4 ml-0.5" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-base truncate leading-tight">
+                              {entry.expand?.client_id?.name}{' '}
+                              {entry.expand?.client_id?.surname || ''}
+                            </h4>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                              <span className="flex items-center gap-1 font-medium text-foreground truncate">
+                                <Scissors className="size-3 shrink-0" />{' '}
+                                {entry.expand?.service_id?.name}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <span
+                          className={cn(
+                            'px-2 py-0.5 text-[11px] font-bold rounded-full border shrink-0',
+                            isWaiting
+                              ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300'
+                              : 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300',
+                          )}
+                        >
+                          {isWaiting ? 'Aguardando' : 'Em Atendimento'}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between text-xs bg-muted/40 p-2 rounded-lg gap-2">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <User className="size-3.5 text-primary" />
+                          <strong className="text-foreground">
+                            {entry.expand?.barber_id?.name || 'A definir'}
+                          </strong>
+                        </span>
+                        {isWaiting ? (
+                          <span className="text-muted-foreground">
+                            Espera: <strong className="text-foreground">{elapsed} min</strong>{' '}
+                            (Prev: {format(parseISO(entry.estimated_start_time), 'HH:mm')})
+                          </span>
+                        ) : isOverdue ? (
+                          <span className="text-destructive font-bold flex items-center gap-1 animate-pulse">
+                            <Clock className="size-3" /> Tempo excedido
+                          </span>
+                        ) : (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                            Em andamento
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Action Buttons for Mobile Card */}
+                      <div className="flex items-center gap-2 pt-1">
+                        {isWaiting ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20 h-10 text-xs"
+                              onClick={() => handleCancel(entry)}
+                            >
+                              <XCircle className="size-4 mr-1.5" /> Desistir
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-10 text-xs font-bold"
+                              onClick={() => handleStartService(entry)}
+                            >
+                              <Play className="size-4 mr-1.5" /> Iniciar
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20 h-10 text-xs"
+                              onClick={() => handleCancel(entry)}
+                            >
+                              <XCircle className="size-4 mr-1.5" /> Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              className={cn(
+                                'flex-1 bg-primary hover:bg-primary/90 h-10 text-xs font-bold',
+                                isOverdue &&
+                                  'animate-pulse bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-md shadow-destructive/50 border-destructive',
+                              )}
+                              onClick={() => handleFinishService(entry)}
+                            >
+                              <CheckCircle2 className="size-4 mr-1.5" /> Finalizar
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })
+            )}
+          </div>
+        ) : (
+          <Card className="border-t-4 border-t-primary shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Nova Entrada</CardTitle>
+              <CardDescription className="text-xs">
+                Adicione um cliente à fila de espera em tempo real.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <User className="size-4 text-muted-foreground" /> Cliente
+                  </label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto py-1 px-2 text-xs text-primary"
+                    onClick={() => setShowNewClientDialog(true)}
+                  >
+                    + Novo Cliente
+                  </Button>
+                </div>
+                <Popover open={openClient} onOpenChange={setOpenClient}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between font-normal min-h-[44px]"
+                    >
+                      <span className="truncate">
+                        {selectedClient
+                          ? `${selectedClient.name} ${selectedClient.surname || ''}`
+                          : 'Selecione o cliente...'}
+                      </span>
+                      <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[calc(100vw-2rem)] p-0" align="start">
+                    <div className="p-2 border-b">
+                      <Input
+                        placeholder="Buscar cliente..."
+                        value={searchClient}
+                        onChange={(e) => setSearchClient(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <ScrollArea className="h-56">
+                      {filteredClients.length === 0 && (
+                        <div className="p-4 text-sm text-center text-muted-foreground">
+                          Nenhum cliente encontrado.
+                        </div>
+                      )}
+                      {filteredClients.map((c) => (
+                        <div
+                          key={c.id}
+                          onClick={() => {
+                            setSelectedClient(c)
+                            setOpenClient(false)
+                            setSearchClient('')
+                          }}
+                          className="p-3 border-b last:border-0 hover:bg-primary/5 cursor-pointer text-sm transition-colors"
+                        >
+                          <p className="font-medium">
+                            {c.name} {c.surname}
+                          </p>
+                          {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
+                        </div>
+                      ))}
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Scissors className="size-4 text-muted-foreground" /> Serviço
+                </label>
+                <Select
+                  value={selectedService?.id || undefined}
+                  onValueChange={(val) => setSelectedService(services.find((s) => s.id === val))}
+                >
+                  <SelectTrigger className="min-h-[44px]">
+                    <SelectValue placeholder="Selecione o serviço..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {services
+                      .filter((s) => s.id)
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} ({s.duration_minutes} min) - R$ {s.price}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <User className="size-4 text-muted-foreground" /> Profissional{' '}
+                  <span className="text-xs font-normal text-muted-foreground">(Opcional)</span>
+                </label>
+                <Select value={selectedBarber} onValueChange={setSelectedBarber}>
+                  <SelectTrigger className="min-h-[44px]">
+                    <SelectValue placeholder="Qualquer Profissional Livre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Qualquer Profissional Livre</SelectItem>
+                    {barbers
+                      .filter((b) => b.id)
+                      .map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedService && (
+                <div
+                  className={cn(
+                    'p-4 rounded-lg border',
+                    isEstimating
+                      ? 'opacity-50 animate-pulse bg-muted'
+                      : 'bg-primary/5 border-primary/20',
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <Clock className="size-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Tempo Estimado</p>
+                      {isEstimating ? (
+                        <p className="text-xs text-muted-foreground">
+                          Calculando melhor horário...
+                        </p>
+                      ) : estimate ? (
+                        <>
+                          <p className="text-xl font-bold text-primary">
+                            {estimate.wait_minutes} min
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Início previsto:{' '}
+                            <strong>
+                              {format(addMinutes(new Date(), estimate.wait_minutes), 'HH:mm')}
+                            </strong>
+                            {estimate.barber_id &&
+                              barbers.find((b) => b.id === estimate.barber_id) &&
+                              ` com ${barbers.find((b) => b.id === estimate.barber_id)?.name}`}
+                          </p>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                className="w-full min-h-[44px] font-bold"
+                size="lg"
+                disabled={
+                  !selectedClient || !selectedService || !estimate || isSubmitting || isEstimating
+                }
+                onClick={async () => {
+                  await handleAddToQueue()
+                  setMobileTab('fila')
+                }}
+              >
+                {isSubmitting ? 'Adicionando...' : 'Adicionar à Fila'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <Dialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog}>
+          <DialogContent className="max-w-[calc(100vw-2rem)]">
+            <DialogHeader>
+              <DialogTitle>Novo Cliente Rápido</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Nome do Cliente <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  placeholder="Ex: João Silva"
+                  className="min-h-[44px]"
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Telefone / WhatsApp</label>
+                <Input
+                  placeholder="(00) 00000-0000"
+                  className="min-h-[44px]"
+                  value={newClientPhone}
+                  onChange={(e) => setNewClientPhone(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setShowNewClientDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleCreateQuickClient}
+                disabled={isCreatingClient || !newClientName.trim()}
+              >
+                {isCreatingClient ? 'Salvando...' : 'Salvar e Selecionar'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    )
   }
 
   return (

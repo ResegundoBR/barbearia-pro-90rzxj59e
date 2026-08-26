@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import {
@@ -94,11 +95,21 @@ import {
 import { ptBR } from 'date-fns/locale'
 import { cn, getContrastColor } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
+import { useIsMobile } from '@/hooks/use-mobile'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from '@/components/ui/drawer'
 import pb from '@/lib/pocketbase/client'
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8) // 08:00 to 20:00
 
 export default function Agenda() {
+  const isMobile = useIsMobile()
   const { user } = useAuth()
   const { toast } = useToast()
   const [data, setData] = useState({
@@ -198,7 +209,7 @@ export default function Agenda() {
 
   const loadData = async () => {
     let start, end
-    if (view === 'day') {
+    if (isMobile || view === 'day') {
       start = selectedDate
       end = selectedDate
     } else if (view === 'week') {
@@ -264,14 +275,14 @@ export default function Agenda() {
   }
 
   const navigatePrev = () => {
-    if (view === 'day') setSelectedDate(subDays(selectedDate, 1))
-    if (view === 'week') setSelectedDate(subWeeks(selectedDate, 1))
-    if (view === 'month') setSelectedDate(subMonths(selectedDate, 1))
+    if (isMobile || view === 'day') setSelectedDate(subDays(selectedDate, 1))
+    else if (view === 'week') setSelectedDate(subWeeks(selectedDate, 1))
+    else if (view === 'month') setSelectedDate(subMonths(selectedDate, 1))
   }
   const navigateNext = () => {
-    if (view === 'day') setSelectedDate(addDays(selectedDate, 1))
-    if (view === 'week') setSelectedDate(addWeeks(selectedDate, 1))
-    if (view === 'month') setSelectedDate(addMonths(selectedDate, 1))
+    if (isMobile || view === 'day') setSelectedDate(addDays(selectedDate, 1))
+    else if (view === 'week') setSelectedDate(addWeeks(selectedDate, 1))
+    else if (view === 'month') setSelectedDate(addMonths(selectedDate, 1))
   }
 
   const handleCreateBlock = async () => {
@@ -1411,6 +1422,883 @@ export default function Agenda() {
         ? `${format(startOfWeek(selectedDate, { weekStartsOn: 0 }), 'dd MMM', { locale: ptBR })} - ${format(endOfWeek(selectedDate, { weekStartsOn: 0 }), 'dd MMM, yyyy', { locale: ptBR })}`
         : format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR })
     : 'Data Inválida'
+
+  if (isMobile) {
+    const dayEvents = getEventsForDay(selectedDate).sort((a, b) => {
+      const timeA = a.time || '00:00'
+      const timeB = b.time || '00:00'
+      return timeA.localeCompare(timeB)
+    })
+
+    const headerLabelMobile = isValid(selectedDate)
+      ? format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })
+      : 'Data Inválida'
+
+    return (
+      <div className="space-y-4 pb-20 max-w-lg mx-auto">
+        {/* Mobile Header */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight text-primary">Agenda Mobile</h2>
+              <p className="text-xs text-muted-foreground">
+                {dayEvents.length} agendamento{dayEvents.length === 1 ? '' : 's'} hoje
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setBlockDialogOpen(true)}
+              >
+                <CalendarDays className="size-3.5 mr-1" /> Bloqueio
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs font-bold gap-1"
+                onClick={() => handleOpen('09:00', selectedDate)}
+              >
+                <Plus className="size-3.5" /> Agendar
+              </Button>
+            </div>
+          </div>
+
+          {/* Date Navigator Bar */}
+          <div className="flex items-center justify-between bg-card p-2 rounded-xl border shadow-sm">
+            <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={navigatePrev}>
+              <ChevronLeft className="size-4" />
+            </Button>
+            <div className="flex flex-col items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto py-0.5 px-2 text-xs font-bold capitalize hover:bg-transparent"
+                onClick={() => setSelectedDate(new Date())}
+              >
+                {isSameDay(selectedDate, new Date()) ? 'Hoje • ' : ''}
+                {headerLabelMobile}
+              </Button>
+            </div>
+            <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={navigateNext}>
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+
+          {/* Barber Filter for Mobile */}
+          <div className="flex items-center gap-2">
+            <Select value={barberFilter} onValueChange={setBarberFilter}>
+              <SelectTrigger className="w-full h-9 text-xs">
+                <SelectValue placeholder="Profissional" />
+              </SelectTrigger>
+              <SelectContent>
+                {canSeeAll && <SelectItem value="all">Todos os Profissionais</SelectItem>}
+                {visibleBarbers.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Mobile Events Cards List */}
+        <div className="space-y-3">
+          {dayEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-14 text-center border rounded-xl bg-card/60 shadow-xs">
+              <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Clock className="size-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">Nenhum agendamento</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
+                Não há compromissos para este dia e profissional.
+              </p>
+              <Button
+                size="sm"
+                className="mt-4 gap-1.5"
+                onClick={() => handleOpen('09:00', selectedDate)}
+              >
+                <Plus className="size-4" /> Novo Agendamento
+              </Button>
+            </div>
+          ) : (
+            dayEvents.map((apt) => {
+              let status = apt.status
+              if (status === 'Concluído' && apt.date) {
+                const aptDateTime = new Date(`${apt.date.split(' ')[0]}T${apt.time || '00:00'}`)
+                if (isValid(aptDateTime) && aptDateTime > new Date()) {
+                  status = 'Confirmado'
+                }
+              }
+
+              const isCompleted = status === 'Concluído'
+              const isCanceled = status === 'Cancelado'
+              const isFaltou = status === 'FALTOU'
+              const isBlock = apt.isBlock
+              const barberColor = apt.expand?.barber_id?.color || 'hsl(var(--primary))'
+
+              return (
+                <Card
+                  key={apt.id}
+                  onClick={() => handleOpenDetail(apt)}
+                  className={cn(
+                    'shadow-sm border transition-all cursor-pointer relative overflow-hidden active:scale-[0.99]',
+                    isCompleted && 'opacity-60 bg-muted/20',
+                    isCanceled && 'opacity-50 grayscale',
+                    isFaltou && 'border-red-900/30 bg-red-50/40 dark:bg-red-950/20',
+                    isBlock && 'bg-muted/30 border-dashed',
+                  )}
+                >
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-2.5"
+                    style={{ backgroundColor: isBlock ? '#9ca3af' : barberColor }}
+                  />
+
+                  <CardContent className="p-3.5 pl-5 space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center justify-center px-2 py-1 bg-muted/60 rounded-md text-xs font-bold leading-tight">
+                          <span>{apt.time || '--:--'}</span>
+                          <span className="text-[10px] text-muted-foreground font-normal">
+                            {apt.end_time || '--:--'}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-base leading-tight">
+                            {isBlock
+                              ? apt.reason || 'Período Bloqueado'
+                              : `${apt.expand?.client_id?.name || ''} ${apt.expand?.client_id?.surname || ''}`}
+                          </h4>
+                          <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                            {isBlock
+                              ? apt.end_time
+                                ? `Bloqueio até ${apt.end_time}`
+                                : 'Bloqueio de Agenda'
+                              : apt.expand?.service_id?.name || 'Serviço'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={cn(
+                          'px-2 py-0.5 text-[10px] font-bold rounded-full border shrink-0',
+                          status === 'Concluído'
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
+                            : status === 'Cancelado'
+                              ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300'
+                              : status === 'FALTOU'
+                                ? 'bg-red-600 border-red-700 text-white'
+                                : status === 'Bloqueado'
+                                  ? 'bg-gray-100 border-gray-200 text-gray-800 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200'
+                                  : 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300',
+                        )}
+                      >
+                        {status}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5 font-medium">
+                        <span
+                          className="size-2 rounded-full shadow-xs"
+                          style={{ backgroundColor: barberColor }}
+                        />
+                        <span className="text-foreground">
+                          {apt.expand?.barber_id?.name || 'Profissional'}
+                        </span>
+                      </div>
+                      {!isBlock && apt.price !== undefined && (
+                        <span className="font-bold text-foreground">
+                          {apt.price === 0 ? 'Pacote' : `R$ ${Number(apt.price).toFixed(2)}`}
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })
+          )}
+        </div>
+
+        {/* CREATE APPOINTMENT DIALOG (MOBILE SHEET/DIALOG) */}
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogContent className="max-w-[calc(100vw-1.5rem)] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Novo Agendamento</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-3">
+              <div className="space-y-2">
+                <Label>Cliente</Label>
+                <div className="flex gap-2">
+                  <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="flex-1 justify-between min-h-[44px]"
+                      >
+                        <span className="truncate">
+                          {form.client_id
+                            ? data.clients.find((c) => c.id === form.client_id)?.name
+                            : 'Buscar cliente...'}
+                        </span>
+                        <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[calc(100vw-2rem)] p-0" style={{ zIndex: 9999 }}>
+                      <Command>
+                        <CommandInput placeholder="Buscar nome ou telefone..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {data.clients.map((c) => (
+                              <CommandItem
+                                key={c.id}
+                                value={`${c.name} ${c.phone}`}
+                                onSelect={() => {
+                                  const updates: any = { client_id: c.id }
+                                  if (c.preferred_barber_id) {
+                                    updates.barber_id = c.preferred_barber_id
+                                  }
+                                  setForm({ ...form, ...updates })
+                                  setClientSearchOpen(false)
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-2 size-4',
+                                    form.client_id === c.id ? 'opacity-100' : 'opacity-0',
+                                  )}
+                                />
+                                {c.name} {c.surname || ''} ({c.phone})
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 min-h-[44px] min-w-[44px]"
+                    onClick={() => {
+                      setNewClient({ name: '', phone: '' })
+                      setNewClientDialogOpen(true)
+                    }}
+                    title="Novo Cliente"
+                    type="button"
+                  >
+                    <Plus className="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {clientPkgs.length > 0 && (
+                <div className="text-xs bg-amber-500/10 text-amber-600 p-2 rounded flex items-center font-medium">
+                  <Check className="size-3 mr-1" /> Pacote Ativo Encontrado!
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Serviço ou Pacote</Label>
+                <Select
+                  value={form.item_id}
+                  onValueChange={(v) => setForm({ ...form, item_id: v })}
+                >
+                  <SelectTrigger
+                    className={cn('min-h-[44px]', clientPkgs.length > 0 ? 'border-amber-400' : '')}
+                  >
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientPkgs.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-amber-500 font-bold">
+                          Pacotes do Cliente
+                        </SelectLabel>
+                        {clientPkgs.map((p) => (
+                          <SelectItem key={`pkg_${p.id}`} value={`pkg_${p.id}`}>
+                            {p.expand?.package_id?.name} (Restam: {p.remaining_uses})
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    <SelectGroup>
+                      <SelectLabel>Serviços Avulsos</SelectLabel>
+                      {data.services.map((s) => (
+                        <SelectItem key={`svc_${s.id}`} value={`svc_${s.id}`}>
+                          {s.name} - R${s.price}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-2 flex flex-col">
+                  <Label>Data</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal min-h-[44px]',
+                          !form.date && 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 size-4" />
+                        {form.date && isValid(form.date) ? (
+                          format(form.date, 'dd/MM/yyyy', { locale: ptBR })
+                        ) : (
+                          <span>Selecione</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" style={{ zIndex: 9999 }}>
+                      <Calendar
+                        mode="single"
+                        selected={form.date}
+                        onSelect={(d: Date | undefined) => d && setForm({ ...form, date: d })}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Horário</Label>
+                  <Select value={form.time} onValueChange={(v) => setForm({ ...form, time: v })}>
+                    <SelectTrigger className="min-h-[44px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {timeSlots.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Profissional</Label>
+                <Select
+                  value={form.barber_id}
+                  onValueChange={(v) => setForm({ ...form, barber_id: v })}
+                >
+                  <SelectTrigger className="min-h-[44px]">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {data.barbers.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleBooking} className="w-full min-h-[44px] font-bold">
+                Confirmar Agendamento
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* MOBILE DRAWER / SHEET PARA DETALHES E EDIÇÃO */}
+        <Drawer open={detailOpen} onOpenChange={setDetailOpen}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader className="text-left pb-2">
+              <div className="flex items-center justify-between">
+                <DrawerTitle>
+                  {selectedApt?.isBlock
+                    ? isEditMode
+                      ? 'Editar Bloqueio'
+                      : 'Detalhes do Bloqueio'
+                    : isEditMode
+                      ? 'Editar Agendamento'
+                      : 'Detalhes do Agendamento'}
+                </DrawerTitle>
+                {!isEditMode && (
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditMode(true)}>
+                    <Edit2 className="size-4 mr-1" /> Editar
+                  </Button>
+                )}
+              </div>
+              {!isEditMode && selectedApt && !selectedApt.isBlock && (
+                <DrawerDescription className="text-xs">
+                  Informações completas do atendimento.
+                </DrawerDescription>
+              )}
+            </DrawerHeader>
+
+            <div className="px-4 py-2 overflow-y-auto">
+              {selectedApt && (
+                <div>
+                  {selectedApt.isBlock ? (
+                    !isEditMode ? (
+                      <div className="space-y-3 py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-primary/10 p-2 rounded-full">
+                            <Scissors className="size-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Profissional</p>
+                            <p className="font-semibold text-sm">
+                              {selectedApt.expand?.barber_id?.name}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="bg-primary/10 p-2 rounded-full">
+                            <CalendarDays className="size-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Início</p>
+                            <p className="font-semibold text-sm">
+                              {(selectedApt.original_start_time || selectedApt.start_time) &&
+                              isValid(
+                                new Date(selectedApt.original_start_time || selectedApt.start_time),
+                              )
+                                ? format(
+                                    new Date(
+                                      selectedApt.original_start_time || selectedApt.start_time,
+                                    ),
+                                    'dd/MM/yyyy HH:mm',
+                                  )
+                                : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="bg-primary/10 p-2 rounded-full">
+                            <Clock className="size-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Fim</p>
+                            <p className="font-semibold text-sm">
+                              {(selectedApt.original_end_time || selectedApt.end_time) &&
+                              isValid(
+                                new Date(selectedApt.original_end_time || selectedApt.end_time),
+                              )
+                                ? format(
+                                    new Date(selectedApt.original_end_time || selectedApt.end_time),
+                                    'dd/MM/yyyy HH:mm',
+                                  )
+                                : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        {selectedApt.reason && (
+                          <div className="bg-muted p-3 rounded-md text-xs">
+                            <strong>Motivo:</strong> {selectedApt.reason}
+                          </div>
+                        )}
+                        <div className="pt-3 flex justify-between">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => handleDeleteBlock(selectedApt.id)}
+                          >
+                            Remover Bloqueio
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 py-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Profissional</Label>
+                          <Select
+                            value={editBlockForm.barber_id}
+                            onValueChange={(v) =>
+                              setEditBlockForm({ ...editBlockForm, barber_id: v })
+                            }
+                          >
+                            <SelectTrigger className="min-h-[44px]">
+                              <SelectValue placeholder="Selecione..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {visibleBarbers.map((b) => (
+                                <SelectItem key={b.id} value={b.id}>
+                                  {b.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Hora Inicial</Label>
+                            <Select
+                              value={editBlockForm.start_time}
+                              onValueChange={(v) =>
+                                setEditBlockForm({ ...editBlockForm, start_time: v })
+                              }
+                            >
+                              <SelectTrigger className="min-h-[44px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[200px]">
+                                {timeSlots.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Hora Final</Label>
+                            <Select
+                              value={editBlockForm.end_time}
+                              onValueChange={(v) =>
+                                setEditBlockForm({ ...editBlockForm, end_time: v })
+                              }
+                            >
+                              <SelectTrigger className="min-h-[44px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[200px]">
+                                {timeSlots.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Motivo</Label>
+                          <Input
+                            placeholder="Ex: Almoço, Médico"
+                            className="min-h-[44px]"
+                            value={editBlockForm.reason}
+                            onChange={(e) =>
+                              setEditBlockForm({ ...editBlockForm, reason: e.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
+                    )
+                  ) : !isEditMode ? (
+                    <div className="space-y-3 py-2">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 p-2.5 rounded-full">
+                          <User className="size-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Cliente</p>
+                          <p className="font-bold text-base">
+                            {selectedApt.expand?.client_id?.name}{' '}
+                            {selectedApt.expand?.client_id?.surname || ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 p-2.5 rounded-full">
+                          <Scissors className="size-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Serviço / Profissional</p>
+                          <p className="font-semibold text-sm">
+                            {selectedApt.expand?.service_id?.name} com{' '}
+                            {selectedApt.expand?.barber_id?.name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 p-2.5 rounded-full">
+                          <CalendarDays className="size-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Data e Hora</p>
+                          <p className="font-semibold text-sm">
+                            {selectedApt.date && isValid(new Date(selectedApt.date))
+                              ? format(new Date(selectedApt.date), 'dd/MM/yyyy')
+                              : 'N/A'}{' '}
+                            • {selectedApt.time || '--:--'} às {selectedApt.end_time || '--:--'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 p-2.5 rounded-full">
+                          <Clock className="size-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Status</p>
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold mt-0.5',
+                              selectedApt.status === 'Concluído'
+                                ? 'bg-green-100 text-green-800'
+                                : selectedApt.status === 'Cancelado'
+                                  ? 'bg-red-100 text-red-800'
+                                  : selectedApt.status === 'FALTOU'
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-yellow-100 text-yellow-800',
+                            )}
+                          >
+                            {selectedApt.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 py-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Profissional</Label>
+                        <Select
+                          value={editForm.barber_id}
+                          onValueChange={(v) => setEditForm({ ...editForm, barber_id: v })}
+                        >
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {data.barbers.map((b) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Serviço</Label>
+                        <Select
+                          value={editForm.service_id}
+                          onValueChange={(v) => setEditForm({ ...editForm, service_id: v })}
+                        >
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {data.services.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Início</Label>
+                          <Select
+                            value={editForm.time}
+                            onValueChange={(v) => setEditForm({ ...editForm, time: v })}
+                          >
+                            <SelectTrigger className="min-h-[44px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[200px]">
+                              {timeSlots.map((t) => (
+                                <SelectItem key={t} value={t}>
+                                  {t}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fim</Label>
+                          <Select
+                            value={editForm.end_time}
+                            onValueChange={(v) => setEditForm({ ...editForm, end_time: v })}
+                          >
+                            <SelectTrigger className="min-h-[44px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[200px]">
+                              {timeSlots.map((t) => (
+                                <SelectItem key={t} value={t}>
+                                  {t}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Status</Label>
+                        <Select
+                          value={editForm.status}
+                          onValueChange={(v) => setEditForm({ ...editForm, status: v })}
+                        >
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Pendente">Pendente</SelectItem>
+                            <SelectItem value="Confirmado">Confirmado</SelectItem>
+                            <SelectItem value="Concluído">Concluído</SelectItem>
+                            <SelectItem value="Cancelado">Cancelado</SelectItem>
+                            <SelectItem value="FALTOU">FALTOU</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DrawerFooter className="pt-2">
+              {isEditMode ? (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 min-h-[44px]"
+                    onClick={() => setIsEditMode(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="flex-1 min-h-[44px] font-bold"
+                    onClick={selectedApt?.isBlock ? handleUpdateBlock : handleUpdateBooking}
+                  >
+                    Salvar
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full min-h-[44px]"
+                  onClick={() => setDetailOpen(false)}
+                >
+                  Fechar
+                </Button>
+              )}
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+
+        {/* BLOCK TIME DIALOG */}
+        <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+          <DialogContent className="max-w-[calc(100vw-1.5rem)] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Bloquear Horário</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1">
+                <Label>Profissional</Label>
+                <Select
+                  value={blockForm.barber_id}
+                  onValueChange={(v) => setBlockForm({ ...blockForm, barber_id: v })}
+                >
+                  <SelectTrigger className="min-h-[44px]">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {visibleBarbers.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label>Hora Inicial</Label>
+                  <Select
+                    value={blockForm.start_time}
+                    onValueChange={(v) => setBlockForm({ ...blockForm, start_time: v })}
+                  >
+                    <SelectTrigger className="min-h-[44px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {timeSlots.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Hora Final</Label>
+                  <Select
+                    value={blockForm.end_time}
+                    onValueChange={(v) => setBlockForm({ ...blockForm, end_time: v })}
+                  >
+                    <SelectTrigger className="min-h-[44px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {timeSlots.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Motivo (opcional)</Label>
+                <Input
+                  placeholder="Ex: Almoço, Folga..."
+                  className="min-h-[44px]"
+                  value={blockForm.reason}
+                  onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleCreateBlock} className="w-full min-h-[44px] font-bold">
+                Confirmar Bloqueio
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* NEW CLIENT DIALOG */}
+        <Dialog open={newClientDialogOpen} onOpenChange={setNewClientDialogOpen}>
+          <DialogContent className="max-w-[calc(100vw-1.5rem)]" style={{ zIndex: 10000 }}>
+            <DialogHeader>
+              <DialogTitle>Novo Cliente</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1">
+                <Label>Nome</Label>
+                <Input
+                  placeholder="Nome do cliente"
+                  className="min-h-[44px]"
+                  value={newClient.name}
+                  onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Celular</Label>
+                <Input
+                  placeholder="(00) 00000-0000"
+                  className="min-h-[44px]"
+                  value={newClient.phone}
+                  onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleClientCreate} className="w-full min-h-[44px] font-bold">
+                Salvar Cliente
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    )
+  }
 
   return (
     <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-8rem)] flex flex-col space-y-4 max-w-7xl mx-auto animate-fade-in">

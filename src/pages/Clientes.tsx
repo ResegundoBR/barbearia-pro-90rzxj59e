@@ -44,7 +44,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
-import { getContrastColor } from '@/lib/utils'
+import { cn, getContrastColor } from '@/lib/utils'
 
 const applyPhoneMask = (v: string) => {
   if (!v) return ''
@@ -195,12 +195,22 @@ export default function Clientes() {
           </div>
 
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent
+              className={cn(
+                'max-w-2xl',
+                isMobile && 'max-w-[calc(100vw-1.5rem)] max-h-[90vh] overflow-y-auto',
+              )}
+            >
               <DialogHeader>
                 <DialogTitle>{editingId ? 'Editar Cliente' : 'Cadastrar Cliente'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                  className={cn(
+                    'grid gap-4',
+                    isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2',
+                  )}
+                >
                   <div className="space-y-2">
                     <Label>Nome</Label>
                     <Input
@@ -220,7 +230,12 @@ export default function Clientes() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                  className={cn(
+                    'grid gap-4',
+                    isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2',
+                  )}
+                >
                   <div className="space-y-2">
                     <Label>Celular Principal</Label>
                     <Input
@@ -249,7 +264,12 @@ export default function Clientes() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                  className={cn(
+                    'grid gap-4',
+                    isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2',
+                  )}
+                >
                   <div className="space-y-2">
                     <Label>Nascimento</Label>
                     <Input
@@ -291,7 +311,7 @@ export default function Clientes() {
                                   ? 'default'
                                   : 'outline'
                               }
-                              className="justify-start"
+                              className="justify-start min-h-[44px]"
                               onClick={() => {
                                 setFormData({ ...formData, preferred_barber_id: 'none' })
                                 setIsBarberDrawerOpen(false)
@@ -306,7 +326,7 @@ export default function Clientes() {
                                 variant={
                                   formData.preferred_barber_id === b.id ? 'default' : 'outline'
                                 }
-                                className="justify-start"
+                                className="justify-start min-h-[44px]"
                                 onClick={() => {
                                   setFormData({ ...formData, preferred_barber_id: b.id })
                                   setIsBarberDrawerOpen(false)
@@ -344,7 +364,7 @@ export default function Clientes() {
                   <RadioGroup
                     value={formData.location_type}
                     onValueChange={(v) => setFormData({ ...formData, location_type: v })}
-                    className="flex flex-wrap gap-4 mt-2"
+                    className={cn('gap-4 mt-2', isMobile ? 'flex flex-col' : 'flex flex-wrap')}
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="passage" id="r1" />
@@ -365,7 +385,7 @@ export default function Clientes() {
                   </RadioGroup>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" className="w-full mt-4">
+                  <Button type="submit" className="w-full min-h-[44px] mt-4 font-bold">
                     Salvar
                   </Button>
                 </DialogFooter>
@@ -373,36 +393,55 @@ export default function Clientes() {
             </DialogContent>
           </Dialog>
 
-          <Card>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table className="min-w-[600px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Contatos</TableHead>
-                    <TableHead className="text-center">Ativo</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClients.map((c) => (
-                    <TableRow key={c.id} className={c.is_active === false ? 'opacity-50' : ''}>
-                      <TableCell>
-                        <div className="font-medium text-base">
-                          {c.name || 'Cliente sem nome'} {c.surname || ''}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                          {c.expand?.created_by_id && (
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <span className="text-xs text-muted-foreground">Cadastrado por:</span>
-                              <span className="font-medium text-xs text-muted-foreground">
-                                {c.expand.created_by_id.name}
+          {isMobile ? (
+            <div className="space-y-3">
+              {filteredClients.length === 0 ? (
+                <Card className="shadow-sm border-dashed">
+                  <CardContent className="p-8 text-center text-muted-foreground text-sm">
+                    Nenhum cliente encontrado.
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredClients.map((c) => (
+                  <Card
+                    key={c.id}
+                    className={cn(
+                      'shadow-sm border transition-all',
+                      c.is_active === false && 'opacity-60 bg-muted/30',
+                    )}
+                  >
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="font-bold text-base leading-tight">
+                            {c.name || 'Cliente sem nome'} {c.surname || ''}
+                          </h4>
+                          <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-2">
+                            {c.phone && <span className="font-medium">{c.phone}</span>}
+                            {c.phone_secondary && (
+                              <span className="text-[11px] opacity-75">
+                                • {c.phone_secondary} (Sec)
                               </span>
-                            </div>
-                          )}
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {c.is_active !== false ? 'Ativo' : 'Inativo'}
+                          </span>
+                          <Switch
+                            checked={c.is_active !== false}
+                            onCheckedChange={() => toggleActive(c.id, c.is_active !== false)}
+                            disabled={!hasAccess('action_delete')}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50 text-xs">
+                        <div className="flex flex-col gap-0.5">
                           {c.expand?.preferred_barber_id && (
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <span className="text-xs text-muted-foreground">Atendido por:</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] text-muted-foreground">Atendido:</span>
                               <span
                                 className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                                 style={{
@@ -417,50 +456,133 @@ export default function Clientes() {
                               </span>
                             </div>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div>{c.phone}</div>
-                          {c.phone_secondary && (
-                            <div className="text-sm text-muted-foreground">
-                              {c.phone_secondary} (Sec)
-                            </div>
+                          {c.expand?.created_by_id && (
+                            <span className="text-[11px] text-muted-foreground">
+                              Cadastrado por: {c.expand.created_by_id.name}
+                            </span>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={c.is_active !== false}
-                          onCheckedChange={() => toggleActive(c.id, c.is_active !== false)}
-                          disabled={!hasAccess('action_delete')}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        {hasAccess('action_delete') && (
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
-                            <Edit className="size-4" />
+
+                        <div className="flex items-center gap-1.5 ml-auto">
+                          {hasAccess('action_delete') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2.5 text-xs"
+                              onClick={() => openEdit(c)}
+                            >
+                              <Edit className="size-3.5 mr-1" /> Editar
+                            </Button>
+                          )}
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-8 px-2.5 text-xs"
+                            asChild
+                          >
+                            <Link to={`/clientes/${c.id}`}>
+                              <Eye className="size-3.5 mr-1" /> Perfil
+                            </Link>
                           </Button>
-                        )}
-                        <Button variant="ghost" size="icon" asChild>
-                          <Link to={`/clientes/${c.id}`}>
-                            <Eye className="size-4" />
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredClients.length === 0 && (
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-0 overflow-x-auto">
+                <Table className="min-w-[600px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                        Nenhum cliente encontrado.
-                      </TableCell>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Contatos</TableHead>
+                      <TableHead className="text-center">Ativo</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredClients.map((c) => (
+                      <TableRow key={c.id} className={c.is_active === false ? 'opacity-50' : ''}>
+                        <TableCell>
+                          <div className="font-medium text-base">
+                            {c.name || 'Cliente sem nome'} {c.surname || ''}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                            {c.expand?.created_by_id && (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className="text-xs text-muted-foreground">
+                                  Cadastrado por:
+                                </span>
+                                <span className="font-medium text-xs text-muted-foreground">
+                                  {c.expand.created_by_id.name}
+                                </span>
+                              </div>
+                            )}
+                            {c.expand?.preferred_barber_id && (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className="text-xs text-muted-foreground">Atendido por:</span>
+                                <span
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                  style={{
+                                    backgroundColor:
+                                      c.expand.preferred_barber_id.color || 'hsl(var(--primary))',
+                                    color: getContrastColor(
+                                      c.expand.preferred_barber_id.color || 'hsl(var(--primary))',
+                                    ),
+                                  }}
+                                >
+                                  {c.expand.preferred_barber_id.name}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div>{c.phone}</div>
+                            {c.phone_secondary && (
+                              <div className="text-sm text-muted-foreground">
+                                {c.phone_secondary} (Sec)
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={c.is_active !== false}
+                            onCheckedChange={() => toggleActive(c.id, c.is_active !== false)}
+                            disabled={!hasAccess('action_delete')}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          {hasAccess('action_delete') && (
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
+                              <Edit className="size-4" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link to={`/clientes/${c.id}`}>
+                              <Eye className="size-4" />
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredClients.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                          Nenhum cliente encontrado.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         {(user?.access_level === 'Admin' || user?.access_level === 'Socio') && (
           <TabsContent value="ranking" className="mt-0">

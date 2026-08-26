@@ -49,8 +49,11 @@ import { useToast } from '@/hooks/use-toast'
 import { Separator } from '@/components/ui/separator'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
 import { CheckoutHistory } from '@/components/CheckoutHistory'
+import { CheckoutMobile } from '@/components/CheckoutMobile'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export default function Checkout() {
+  const isMobile = useIsMobile()
   const [barbers, setBarbers] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [packages, setPackages] = useState<any[]>([])
@@ -404,6 +407,10 @@ export default function Checkout() {
       ticketClientName = `${apt.expand?.client_id?.name || ''} ${apt.expand?.client_id?.surname || ''}`
       ticketServiceName = apt.expand?.service_id?.name || ''
     }
+  }
+
+  if (isMobile) {
+    return <CheckoutMobile />
   }
 
   return (
