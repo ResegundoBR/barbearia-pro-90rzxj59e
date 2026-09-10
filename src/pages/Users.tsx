@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { extractFieldErrors } from '@/lib/pocketbase/errors'
+import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 import pb from '@/lib/pocketbase/client'
 import { toast } from 'sonner'
 import { Loader2, Plus, Edit2, Trash2, Mail } from 'lucide-react'
@@ -124,7 +124,7 @@ export default function UsersPage() {
         await pb.collection('users').update(formData.id, data)
         toast.success('Usuário atualizado com sucesso')
       } else {
-        const createData = {
+        const createData: any = {
           name: formData.name,
           surname: formData.surname,
           email: formData.email,
@@ -133,6 +133,7 @@ export default function UsersPage() {
           access_level: formData.access_level,
           plan: formData.plan,
           whatsapp: formData.whatsapp,
+          organization_id: currentUser?.organization_id || pb.authStore.record?.organization_id,
         }
         await pb.collection('users').create(createData)
         toast.success('Usuário criado com sucesso')
@@ -143,11 +144,11 @@ export default function UsersPage() {
       const errs = extractFieldErrors(err)
       if (Object.keys(errs).length > 0) {
         setFieldErrors(errs)
-        toast.error('Verifique os erros nos campos do formulário.')
+        const firstErrorMessage = Object.values(errs)[0]
+        toast.error(firstErrorMessage || 'Verifique os erros nos campos do formulário.')
       } else {
-        toast.error(
-          'Erro ao salvar usuário. Verifique se as senhas coincidem e se o email já está em uso.',
-        )
+        const errorMsg = getErrorMessage(err)
+        toast.error(errorMsg || 'Erro ao salvar usuário. Verifique os dados informados.')
       }
     } finally {
       setSaving(false)
