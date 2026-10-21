@@ -28,8 +28,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { UserPlus, Edit, Eye, ChevronDown } from 'lucide-react'
-import { getClients, createClient, updateClient, getBarbers } from '@/services/api'
+import { UserPlus, Edit, Eye, ChevronDown, Loader2 } from 'lucide-react'
+import {
+  getClients,
+  getClientsPaginated,
+  createClient,
+  updateClient,
+  getBarbers,
+} from '@/services/api'
 import { useIsMobile } from '@/hooks/use-mobile'
 import {
   Drawer,
@@ -80,14 +86,43 @@ export default function Clientes() {
   const isMobile = useIsMobile()
   const [isBarberDrawerOpen, setIsBarberDrawerOpen] = useState(false)
 
+  // Paginação mobile
+  const [mobilePage, setMobilePage] = useState(1)
+  const [hasMoreMobile, setHasMoreMobile] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+
   const loadData = async () => {
-    setClients(await getClients())
-    setBarbers(await getBarbers())
+    if (isMobile) {
+      setMobilePage(1)
+      const [clientRes, barberRes] = await Promise.all([getClientsPaginated(1, 50), getBarbers()])
+      setClients(clientRes.items)
+      setHasMoreMobile(clientRes.page < clientRes.totalPages)
+      setBarbers(barberRes)
+    } else {
+      setClients(await getClients())
+      setBarbers(await getBarbers())
+    }
+  }
+
+  const loadMoreMobile = async () => {
+    if (isLoadingMore || !hasMoreMobile) return
+    setIsLoadingMore(true)
+    try {
+      const nextPage = mobilePage + 1
+      const res = await getClientsPaginated(nextPage, 50)
+      setClients((prev) => [...prev, ...res.items])
+      setMobilePage(nextPage)
+      setHasMoreMobile(res.page < res.totalPages)
+    } catch (err) {
+      console.error('Erro ao carregar mais clientes:', err)
+    } finally {
+      setIsLoadingMore(false)
+    }
   }
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [isMobile])
   useRealtime('clients', loadData)
 
   const loggedInBarber = barbers.find((b) => b.user_id === user?.id || b.name === user?.name)
@@ -140,6 +175,31 @@ export default function Clientes() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [barberFilter, setBarberFilter] = useState('all')
+
+  // Se estiver no mobile e o usuário pesquisar por algo que não está na página atual, permitir busca
+  useEffect(() => {
+    if (!isMobile) return
+    if (!searchQuery.trim()) {
+      // Quando limpa busca, reseta para paginação normal
+      loadData()
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const cleanQuery = searchQuery.trim().replace(/['"]/g, '')
+        const filterStr = `(name ~ "${cleanQuery}" || surname ~ "${cleanQuery}" || phone ~ "${cleanQuery}")`
+        const res = await getClientsPaginated(1, 50, filterStr)
+        setClients(res.items)
+        setMobilePage(1)
+        setHasMoreMobile(res.page < res.totalPages)
+      } catch (err) {
+        console.error('Erro na busca mobile:', err)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery, isMobile])
 
   const filteredClients = clients.filter((c) => {
     const matchesSearch =
@@ -489,6 +549,25 @@ export default function Clientes() {
                     </CardContent>
                   </Card>
                 ))
+              )}
+
+              {hasMoreMobile && (
+                <div className="pt-2 text-center">
+                  <Button
+                    variant="outline"
+                    onClick={loadMoreMobile}
+                    disabled={isLoadingMore}
+                    className="w-full min-h-[44px]"
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando...
+                      </>
+                    ) : (
+                      'Carregar mais clientes'
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           ) : (

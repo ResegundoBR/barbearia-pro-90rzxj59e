@@ -23,6 +23,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { getClients, getAppointments, getProductPurchases, getClientLogs } from '@/services/api'
 import { ArrowUpRight, AlertTriangle, Medal, Star } from 'lucide-react'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useIsMobile } from '@/hooks/use-mobile'
 import pb from '@/lib/pocketbase/client'
 
 export function RankingDashboard() {
@@ -34,6 +35,7 @@ export function RankingDashboard() {
   const [itemMetric, setItemMetric] = useState('Qtd')
   const [refreshKey, setRefreshKey] = useState(0)
 
+  const isMobile = useIsMobile()
   const reload = () => setRefreshKey((k) => k + 1)
   useRealtime('appointments', reload)
   useRealtime('product_purchases', reload)
@@ -57,9 +59,20 @@ export function RankingDashboard() {
           ? `event_type = 'no_show' && ${createdFilter} && ${orgFilter}`
           : `event_type = 'no_show' && ${createdFilter}`
 
+        const clientsPromise = isMobile
+          ? pb
+              .collection('clients')
+              .getList(1, 100, {
+                expand: 'created_by_id,preferred_barber_id',
+                sort: '-created',
+                filter: orgFilter,
+              })
+              .then((res) => res.items)
+          : getClients()
+
         const [clients, appointments, purchases, logs, servicesList, productsList] =
           await Promise.all([
-            getClients(),
+            clientsPromise,
             getAppointments(createdFilter),
             getProductPurchases(createdFilter),
             getClientLogs(logsFilter),

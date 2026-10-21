@@ -86,21 +86,41 @@ export default function Fila() {
   const loadBaseData = async () => {
     if (!user?.organization_id) return
     try {
-      const [cRes, sRes, bRes] = await Promise.all([
-        pb
-          .collection('clients')
-          .getFullList({ filter: `organization_id="${user.organization_id}"`, sort: '-created' }),
-        pb.collection('services').getFullList({
-          filter: `organization_id="${user.organization_id}" && is_active=true`,
-          sort: 'name',
-        }),
-        pb
-          .collection('barbers')
-          .getFullList({ filter: `organization_id="${user.organization_id}"`, sort: 'name' }),
-      ])
-      setClients(cRes)
-      setServices(sRes)
-      setBarbers(bRes)
+      if (isMobile) {
+        // No mobile: clientes limitados a 100 mais recentes para não estourar memória do navegador móvel
+        const [cRes, sRes, bRes] = await Promise.all([
+          pb.collection('clients').getList(1, 100, {
+            filter: `organization_id="${user.organization_id}"`,
+            sort: '-created',
+          }),
+          pb.collection('services').getFullList({
+            filter: `organization_id="${user.organization_id}" && is_active=true`,
+            sort: 'name',
+          }),
+          pb
+            .collection('barbers')
+            .getFullList({ filter: `organization_id="${user.organization_id}"`, sort: 'name' }),
+        ])
+        setClients(cRes.items)
+        setServices(sRes)
+        setBarbers(bRes)
+      } else {
+        const [cRes, sRes, bRes] = await Promise.all([
+          pb
+            .collection('clients')
+            .getFullList({ filter: `organization_id="${user.organization_id}"`, sort: '-created' }),
+          pb.collection('services').getFullList({
+            filter: `organization_id="${user.organization_id}" && is_active=true`,
+            sort: 'name',
+          }),
+          pb
+            .collection('barbers')
+            .getFullList({ filter: `organization_id="${user.organization_id}"`, sort: 'name' }),
+        ])
+        setClients(cRes)
+        setServices(sRes)
+        setBarbers(bRes)
+      }
     } catch (e) {
       console.error(e)
     }
@@ -284,6 +304,34 @@ export default function Fila() {
     const timer = setTimeout(calculateLocalEstimate, 100)
     return () => clearTimeout(timer)
   }, [selectedService, selectedBarber, todayAppointments, todayCheckouts, barbers, now])
+
+  useEffect(() => {
+    if (!isMobile || !user?.organization_id) return
+    if (!searchClient.trim()) return
+
+    const timer = setTimeout(async () => {
+      try {
+        const cleanQuery = searchClient.trim().replace(/['"]/g, '')
+        const res = await pb.collection('clients').getList(1, 50, {
+          filter: `organization_id="${user.organization_id}" && (name ~ "${cleanQuery}" || surname ~ "${cleanQuery}" || phone ~ "${cleanQuery}")`,
+          sort: 'name',
+        })
+        if (res.items.length > 0) {
+          setClients((prev) => {
+            const map = new Map(prev.map((c) => [c.id, c]))
+            for (const item of res.items) {
+              map.set(item.id, item)
+            }
+            return Array.from(map.values())
+          })
+        }
+      } catch (err) {
+        console.error('Erro na busca mobile da fila:', err)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchClient, isMobile, user?.organization_id])
 
   const filteredClients = clients.filter((c) =>
     (c.name + ' ' + (c.surname || '')).toLowerCase().includes(searchClient.toLowerCase()),

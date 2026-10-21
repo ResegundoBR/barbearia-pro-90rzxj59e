@@ -83,7 +83,7 @@ function RouteGuard({ module, children }: { module: string; children: React.Reac
     return <Navigate to="/dashboard" replace />
   }
 
-  return <>{children}</>
+  return <ErrorBoundary>{children}</ErrorBoundary>
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -132,7 +132,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route path="/dashboard" element={<Index />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ErrorBoundary>
+                    <Index />
+                  </ErrorBoundary>
+                }
+              />
               <Route
                 path="/agenda"
                 element={

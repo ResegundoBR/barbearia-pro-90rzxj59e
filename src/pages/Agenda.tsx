@@ -96,6 +96,7 @@ import { ptBR } from 'date-fns/locale'
 import { cn, getContrastColor } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { withOrgFilter } from '@/lib/pocketbase/helpers'
 import {
   Drawer,
   DrawerContent,
@@ -227,13 +228,35 @@ export default function Agenda() {
 
     const fetchedBarbers = await getBarbers()
 
-    setData({
-      barbers: fetchedBarbers,
-      apts: await getAppointments(`date >= "${startStr}" && date <= "${endStr}"`),
-      clients: await getClients(),
-      services: await getServices(),
-      packages: await getClientPackages(),
-    })
+    if (isMobile) {
+      // No mobile: clientes limitados a 100 na carga inicial para evitar travamento do navegador do celular
+      const [aptsData, clientsRes, servicesData, packagesData] = await Promise.all([
+        getAppointments(`date >= "${startStr}" && date <= "${endStr}"`),
+        pb.collection('clients').getList(1, 100, {
+          expand: 'created_by_id,preferred_barber_id',
+          sort: '-created',
+          filter: withOrgFilter(),
+        }),
+        getServices(),
+        getClientPackages(),
+      ])
+
+      setData({
+        barbers: fetchedBarbers,
+        apts: aptsData,
+        clients: clientsRes.items,
+        services: servicesData,
+        packages: packagesData,
+      })
+    } else {
+      setData({
+        barbers: fetchedBarbers,
+        apts: await getAppointments(`date >= "${startStr}" && date <= "${endStr}"`),
+        clients: await getClients(),
+        services: await getServices(),
+        packages: await getClientPackages(),
+      })
+    }
 
     const orgId = pb.authStore.record?.organization_id
     let blockFilter = `start_time <= "${endStr}" && end_time >= "${startStr}"`
@@ -1648,7 +1671,32 @@ export default function Agenda() {
                     </PopoverTrigger>
                     <PopoverContent className="w-[calc(100vw-2rem)] p-0" style={{ zIndex: 9999 }}>
                       <Command>
-                        <CommandInput placeholder="Buscar nome ou telefone..." />
+                        <CommandInput
+                          placeholder="Buscar nome ou telefone..."
+                          onValueChange={async (searchVal) => {
+                            if (!isMobile || !searchVal.trim()) return
+                            try {
+                              const clean = searchVal.trim().replace(/['"]/g, '')
+                              const res = await pb.collection('clients').getList(1, 40, {
+                                filter: withOrgFilter(
+                                  `name ~ "${clean}" || surname ~ "${clean}" || phone ~ "${clean}"`,
+                                ),
+                                sort: 'name',
+                              })
+                              if (res.items.length > 0) {
+                                setData((prev) => {
+                                  const map = new Map(prev.clients.map((c) => [c.id, c]))
+                                  for (const item of res.items) {
+                                    map.set(item.id, item)
+                                  }
+                                  return { ...prev, clients: Array.from(map.values()) }
+                                })
+                              }
+                            } catch (e) {
+                              console.error(e)
+                            }
+                          }}
+                        />
                         <CommandList>
                           <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
                           <CommandGroup>

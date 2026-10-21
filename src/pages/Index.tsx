@@ -62,6 +62,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { useAuth } from '@/hooks/use-auth'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { FinancialView } from '@/components/dashboard/FinancialView'
 import { PackagesView } from '@/components/dashboard/PackagesView'
 import { Badge } from '@/components/ui/badge'
@@ -80,6 +81,7 @@ import pb from '@/lib/pocketbase/client'
 export default function Index() {
   const { user } = useAuth()
   const { hasAccess, isAdmin } = usePermissions()
+  const isMobile = useIsMobile()
 
   const isSocio = user?.access_level === 'Socio'
   const canViewAllClients = isAdmin || isSocio
@@ -124,29 +126,86 @@ export default function Index() {
 
   const loadData = async () => {
     setIsLoading(true)
-    setAppointments(await getAppointments(''))
-    setClients(await getClients())
-    setPackages(await getClientPackages())
-    setBarbers(await getBarbers())
-    setProducts(await getProducts())
-    setCommissions(await getCommissions(''))
-    setProductPurchases(await getProductPurchases(''))
-    setPaymentMethods(await getPaymentMethods())
-    setBusinessHours(await getBusinessHours())
-    try {
-      setCategories(await getCategories())
-    } catch {
-      /* intentionally ignored */
-    }
-    try {
-      setCheckouts(
-        await pb.collection('checkouts').getFullList({
-          expand: 'client_id,barber_id',
+    if (isMobile) {
+      // No mobile: carregar dados de forma otimizada para evitar estouro de memória no navegador móvel
+      // Reduz o volume desnecessário de clientes para 100 mais recentes
+      const [
+        aptsData,
+        clientsRes,
+        packagesData,
+        barbersData,
+        productsData,
+        commissionsData,
+        purchasesData,
+        paymentMethodsData,
+        businessHoursData,
+      ] = await Promise.all([
+        getAppointments(''),
+        pb.collection('clients').getList(1, 100, {
+          expand: 'created_by_id,preferred_barber_id',
+          sort: '-created',
           filter: user?.organization_id ? `organization_id='${user.organization_id}'` : '',
         }),
-      )
-    } catch {
-      /* intentionally ignored */
+        getClientPackages(),
+        getBarbers(),
+        getProducts(),
+        getCommissions(''),
+        getProductPurchases(''),
+        getPaymentMethods(),
+        getBusinessHours(),
+      ])
+
+      setAppointments(aptsData)
+      setClients(clientsRes.items)
+      setPackages(packagesData)
+      setBarbers(barbersData)
+      setProducts(productsData)
+      setCommissions(commissionsData)
+      setProductPurchases(purchasesData)
+      setPaymentMethods(paymentMethodsData)
+      setBusinessHours(businessHoursData)
+
+      try {
+        setCategories(await getCategories())
+      } catch {
+        /* intentionally ignored */
+      }
+      try {
+        setCheckouts(
+          await pb.collection('checkouts').getFullList({
+            expand: 'client_id,barber_id',
+            filter: user?.organization_id ? `organization_id='${user.organization_id}'` : '',
+          }),
+        )
+      } catch {
+        /* intentionally ignored */
+      }
+    } else {
+      // No Desktop: comportamento exatamente idêntico
+      setAppointments(await getAppointments(''))
+      setClients(await getClients())
+      setPackages(await getClientPackages())
+      setBarbers(await getBarbers())
+      setProducts(await getProducts())
+      setCommissions(await getCommissions(''))
+      setProductPurchases(await getProductPurchases(''))
+      setPaymentMethods(await getPaymentMethods())
+      setBusinessHours(await getBusinessHours())
+      try {
+        setCategories(await getCategories())
+      } catch {
+        /* intentionally ignored */
+      }
+      try {
+        setCheckouts(
+          await pb.collection('checkouts').getFullList({
+            expand: 'client_id,barber_id',
+            filter: user?.organization_id ? `organization_id='${user.organization_id}'` : '',
+          }),
+        )
+      } catch {
+        /* intentionally ignored */
+      }
     }
     setIsLoading(false)
   }

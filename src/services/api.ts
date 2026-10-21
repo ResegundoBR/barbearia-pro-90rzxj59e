@@ -7,6 +7,13 @@ export const getClients = (filter?: string) =>
     sort: '-created',
     filter: withOrgFilter(filter),
   })
+
+export const getClientsPaginated = (page = 1, perPage = 50, filter?: string) =>
+  pb.collection('clients').getList(page, perPage, {
+    expand: 'created_by_id,preferred_barber_id',
+    sort: '-created',
+    filter: withOrgFilter(filter),
+  })
 export const createClient = (data: any) => pb.collection('clients').create(data)
 export const updateClient = (id: string, data: any) => pb.collection('clients').update(id, data)
 
