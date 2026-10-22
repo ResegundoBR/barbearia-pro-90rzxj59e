@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   BadgeDollarSign,
@@ -123,6 +123,7 @@ export default function Index() {
   const [gaugeMetric, setGaugeMetric] = useState<'revenue' | 'attendance' | 'occupancy'>('revenue')
 
   const [checkouts, setCheckouts] = useState<any[]>([])
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadData = async () => {
     setIsLoading(true)
@@ -217,15 +218,30 @@ export default function Index() {
 
   useEffect(() => {
     loadData()
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
   }, [])
 
-  useRealtime('appointments', () => loadData())
-  useRealtime('client_packages', () => loadData())
-  useRealtime('product_purchases', () => loadData())
-  useRealtime('commissions', () => loadData())
-  useRealtime('clients', () => loadData())
-  useRealtime('payment_methods', () => loadData())
-  useRealtime('checkouts', () => loadData())
+  // Agrupa rajadas de eventos de realtime (comum na reconexão mobile) em uma única recarga
+  const debouncedReload = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      loadData()
+    }, 400)
+  }, [])
+
+  useRealtime('appointments', debouncedReload)
+  useRealtime('client_packages', debouncedReload)
+  useRealtime('product_purchases', debouncedReload)
+  useRealtime('commissions', debouncedReload)
+  useRealtime('clients', debouncedReload)
+  useRealtime('payment_methods', debouncedReload)
+  useRealtime('checkouts', debouncedReload)
 
   const periodStart = useMemo(() => {
     const now = new Date()
@@ -353,20 +369,22 @@ export default function Index() {
       : clientsCreatedInPeriod.filter((c) => validAppointments.some((a) => a.client_id === c.id))
           .length
 
-  const atRiskClientsList = clients.filter(
-    (c) =>
-      c.is_at_risk || (c.last_visit && differenceInDays(new Date(), new Date(c.last_visit)) > 30),
-  )
+  const atRiskClientsList = clients.filter((c) => {
+    if (c.is_at_risk) return true
+    if (!c.last_visit) return false
+    const d = new Date(c.last_visit)
+    if (isNaN(d.getTime())) return false
+    return differenceInDays(new Date(), d) > 30
+  })
 
   const lowUsesPackagesList = filteredPackages.filter((p) => p.remaining_uses === 1)
 
-  const aptsTomorrowList = filteredAppointments.filter(
-    (a) =>
-      a.date &&
-      isTomorrow(new Date(a.date)) &&
-      a.status !== 'Cancelado' &&
-      a.status !== 'Concluído',
-  )
+  const aptsTomorrowList = filteredAppointments.filter((a) => {
+    if (!a.date || a.status === 'Cancelado' || a.status === 'Concluído') return false
+    const d = new Date(a.date)
+    if (isNaN(d.getTime())) return false
+    return isTomorrow(d)
+  })
 
   const calcApptRevenue = (a: any) => {
     if (a.client_package_id) return 0
@@ -389,21 +407,27 @@ export default function Index() {
 
   const predictedTomorrow = pendingAppointments
     .filter((a) => {
+      if (!a.date) return false
       const d = new Date(a.date)
+      if (isNaN(d.getTime())) return false
       return d >= tomorrow && d <= tomorrowEnd
     })
     .reduce((acc, a) => acc + calcApptRevenue(a), 0)
 
   const predictedRestOfWeek = pendingAppointments
     .filter((a) => {
+      if (!a.date) return false
       const d = new Date(a.date)
+      if (isNaN(d.getTime())) return false
       return d > tomorrowEnd && d <= weekEnd
     })
     .reduce((acc, a) => acc + calcApptRevenue(a), 0)
 
   const predictedRestOfMonth = pendingAppointments
     .filter((a) => {
+      if (!a.date) return false
       const d = new Date(a.date)
+      if (isNaN(d.getTime())) return false
       return d > tomorrowEnd && d <= monthEnd
     })
     .reduce((acc, a) => acc + calcApptRevenue(a), 0)
@@ -525,10 +549,13 @@ export default function Index() {
     const hours = Array.from({ length: 13 }, (_, i) => i + 8)
     const counts = hours.map((h) => ({ hour: `${h}h`, count: 0 }))
     completedPeriod.forEach((a) => {
-      if (a.time) {
-        const h = parseInt(a.time.split(':')[0], 10)
-        const entry = counts.find((c) => c.hour === `${h}h`)
-        if (entry) entry.count++
+      if (a.time && typeof a.time === 'string') {
+        const parts = a.time.split(':')
+        const h = parseInt(parts[0], 10)
+        if (!isNaN(h)) {
+          const entry = counts.find((c) => c.hour === `${h}h`)
+          if (entry) entry.count++
+        }
       }
     })
     return counts
@@ -571,19 +598,28 @@ export default function Index() {
     const dataMap: Record<string, { date: string; services: number; products: number }> = {}
 
     completedPeriod.forEach((a) => {
-      const d = a.date ? a.date.substring(0, 10) : a.updated.substring(0, 10)
+      const rawDate = a.date || a.updated || a.created
+      const d =
+        typeof rawDate === 'string' && rawDate.length >= 10 ? rawDate.substring(0, 10) : null
+      if (!d) return
       if (!dataMap[d]) dataMap[d] = { date: d, services: 0, products: 0 }
       dataMap[d].services += a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0
     })
 
     productPurchasesPeriod.forEach((p) => {
-      const d = p.date ? p.date.substring(0, 10) : p.created.substring(0, 10)
+      const rawDate = p.date || p.created || p.updated
+      const d =
+        typeof rawDate === 'string' && rawDate.length >= 10 ? rawDate.substring(0, 10) : null
+      if (!d) return
       if (!dataMap[d]) dataMap[d] = { date: d, services: 0, products: 0 }
       dataMap[d].products += p.price_at_sale || p.expand?.product_id?.price || 0
     })
 
     packagesPeriod.forEach((pkg) => {
-      const d = pkg.created.substring(0, 10)
+      const rawDate = pkg.created || pkg.date || pkg.updated
+      const d =
+        typeof rawDate === 'string' && rawDate.length >= 10 ? rawDate.substring(0, 10) : null
+      if (!d) return
       if (!dataMap[d]) dataMap[d] = { date: d, services: 0, products: 0 }
       dataMap[d].services += pkg.expand?.package_id?.price || 0
     })
@@ -629,11 +665,13 @@ export default function Index() {
       if (checkoutId) {
         return checkouts.find((c: any) => c.id === checkoutId)
       }
-      return checkouts.find(
-        (c: any) =>
-          c.client_id === clientId &&
-          Math.abs(new Date(c.created).getTime() - date.getTime()) < 60000,
-      )
+      return checkouts.find((c: any) => {
+        if (c.client_id !== clientId) return false
+        const cTime = c.created ? new Date(c.created).getTime() : NaN
+        const targetTime = date.getTime()
+        if (isNaN(cTime) || isNaN(targetTime)) return false
+        return Math.abs(cTime - targetTime) < 60000
+      })
     }
 
     const addCheckout = (ck: any) => {
@@ -643,102 +681,135 @@ export default function Index() {
       let itemNames: string[] = []
       if (ck.items_snapshot) {
         if (ck.items_snapshot.service) itemNames.push(ck.items_snapshot.service)
-        if (ck.items_snapshot.products)
-          itemNames.push(...ck.items_snapshot.products.map((p: any) => p.name))
-        if (ck.items_snapshot.packages)
-          itemNames.push(...ck.items_snapshot.packages.map((p: any) => p.name))
+        if (Array.isArray(ck.items_snapshot.products))
+          itemNames.push(...ck.items_snapshot.products.map((p: any) => p?.name).filter(Boolean))
+        if (Array.isArray(ck.items_snapshot.packages))
+          itemNames.push(...ck.items_snapshot.packages.map((p: any) => p?.name).filter(Boolean))
       }
+
+      const rawDate = ck.date || ck.created
+      const parsedDate = rawDate ? new Date(rawDate) : new Date(0)
 
       list.push({
         id: `chk_${ck.id}`,
-        date: new Date(ck.date || ck.created),
+        date: isNaN(parsedDate.getTime()) ? new Date(0) : parsedDate,
         client: ck.expand?.client_id?.name || 'Avulso',
         item: itemNames.length > 0 ? itemNames.join(', ') : 'Múltiplos itens',
         barber: ck.expand?.barber_id?.name || '-',
         method: getMethodName(ck.payment_method || '-'),
-        value: ck.total_amount,
+        value: Number(ck.total_amount) || 0,
         type: 'checkout',
       })
       return true
     }
 
     completedPeriod.forEach((a: any) => {
-      const comm = commissions.find(
-        (c: any) =>
-          c.barber_id === a.barber_id &&
-          c.type === 'service' &&
-          Math.abs(new Date(c.created).getTime() - new Date(a.created).getTime()) < 15000,
+      const aTime = a.created ? new Date(a.created).getTime() : NaN
+      const comm = commissions.find((c: any) => {
+        if (c.barber_id !== a.barber_id || c.type !== 'service') return false
+        const cTime = c.created ? new Date(c.created).getTime() : NaN
+        if (isNaN(cTime) || isNaN(aTime)) return false
+        return Math.abs(cTime - aTime) < 15000
+      })
+      const aDate = a.created ? new Date(a.created) : new Date()
+      const ck = findCheckout(
+        a.client_id,
+        isNaN(aDate.getTime()) ? new Date() : aDate,
+        comm?.checkout_id,
       )
-      const ck = findCheckout(a.client_id, new Date(a.created), comm?.checkout_id)
       if (ck) {
         addCheckout(ck)
       } else {
+        const rawDate = a.updated || a.created || a.date
+        const parsedDate = rawDate ? new Date(rawDate) : new Date(0)
         list.push({
           id: `apt_${a.id}`,
-          date: new Date(a.updated || a.created),
+          date: isNaN(parsedDate.getTime()) ? new Date(0) : parsedDate,
           client: a.expand?.client_id?.name || 'Avulso',
           item: a.expand?.service_id?.name || 'Serviço',
           barber: a.expand?.barber_id?.name || '-',
           method: getMethodName(
             comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
           ),
-          value: a.client_package_id ? 0 : a.price || a.expand?.service_id?.price || 0,
+          value: a.client_package_id ? 0 : Number(a.price || a.expand?.service_id?.price) || 0,
           type: 'service',
         })
       }
     })
 
     productPurchasesPeriod.forEach((p: any) => {
-      const comm = commissions.find(
-        (c: any) =>
-          c.type === 'product' &&
-          Math.abs(new Date(c.created).getTime() - new Date(p.created).getTime()) < 15000,
+      const pTime = p.created ? new Date(p.created).getTime() : NaN
+      const comm = commissions.find((c: any) => {
+        if (c.type !== 'product') return false
+        const cTime = c.created ? new Date(c.created).getTime() : NaN
+        if (isNaN(cTime) || isNaN(pTime)) return false
+        return Math.abs(cTime - pTime) < 15000
+      })
+      const pDate = p.created ? new Date(p.created) : new Date()
+      const ck = findCheckout(
+        p.client_id,
+        isNaN(pDate.getTime()) ? new Date() : pDate,
+        comm?.checkout_id,
       )
-      const ck = findCheckout(p.client_id, new Date(p.created), comm?.checkout_id)
       if (ck) {
         addCheckout(ck)
       } else {
+        const rawDate = p.created || p.date || p.updated
+        const parsedDate = rawDate ? new Date(rawDate) : new Date(0)
         list.push({
           id: `prod_${p.id}`,
-          date: new Date(p.created),
+          date: isNaN(parsedDate.getTime()) ? new Date(0) : parsedDate,
           client: p.expand?.client_id?.name || 'Avulso',
           item: p.expand?.product_id?.name || 'Produto',
           barber: p.expand?.barber_id?.name || '-',
           method: getMethodName(
             comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
           ),
-          value: p.price_at_sale || p.expand?.product_id?.price || 0,
+          value: Number(p.price_at_sale || p.expand?.product_id?.price) || 0,
           type: 'product',
         })
       }
     })
 
     packagesPeriod.forEach((pkg: any) => {
-      const comm = commissions.find(
-        (c: any) =>
-          (c.type === 'package' || c.type === 'package_sale') &&
-          Math.abs(new Date(c.created).getTime() - new Date(pkg.created).getTime()) < 15000,
+      const pkgTime = pkg.created ? new Date(pkg.created).getTime() : NaN
+      const comm = commissions.find((c: any) => {
+        if (c.type !== 'package' && c.type !== 'package_sale') return false
+        const cTime = c.created ? new Date(c.created).getTime() : NaN
+        if (isNaN(cTime) || isNaN(pkgTime)) return false
+        return Math.abs(cTime - pkgTime) < 15000
+      })
+      const pkgDate = pkg.created ? new Date(pkg.created) : new Date()
+      const ck = findCheckout(
+        pkg.client_id,
+        isNaN(pkgDate.getTime()) ? new Date() : pkgDate,
+        comm?.checkout_id,
       )
-      const ck = findCheckout(pkg.client_id, new Date(pkg.created), comm?.checkout_id)
       if (ck) {
         addCheckout(ck)
       } else {
+        const rawDate = pkg.created || pkg.date || pkg.updated
+        const parsedDate = rawDate ? new Date(rawDate) : new Date(0)
         list.push({
           id: `pkg_${pkg.id}`,
-          date: new Date(pkg.created),
+          date: isNaN(parsedDate.getTime()) ? new Date(0) : parsedDate,
           client: pkg.expand?.client_id?.name || 'Avulso',
           item: pkg.expand?.package_id?.name || 'Pacote',
           barber: pkg.expand?.barber_id?.name || '-',
           method: getMethodName(
             comm?.payment_method || (paymentMethods.length > 0 ? paymentMethods[0].type : '-'),
           ),
-          value: pkg.expand?.package_id?.price || 0,
+          value: Number(pkg.expand?.package_id?.price) || 0,
           type: 'package',
         })
       }
     })
 
-    return list.sort((a, b) => b.date.getTime() - a.date.getTime())
+    return list.sort((a, b) => {
+      const timeA = a.date instanceof Date && !isNaN(a.date.getTime()) ? a.date.getTime() : 0
+      const timeB = b.date instanceof Date && !isNaN(b.date.getTime()) ? b.date.getTime() : 0
+      return timeB - timeA
+    })
   }, [
     completedPeriod,
     productPurchasesPeriod,
@@ -771,10 +842,18 @@ export default function Index() {
     while (d <= actualEnd) {
       const dayOfWeek = d.getDay().toString()
       const bh = businessHours.find((b) => b.day_of_week === dayOfWeek && b.is_active)
-      if (bh && bh.open_time && bh.close_time) {
+      if (
+        bh &&
+        bh.open_time &&
+        bh.close_time &&
+        typeof bh.open_time === 'string' &&
+        typeof bh.close_time === 'string'
+      ) {
         const [oH, oM] = bh.open_time.split(':').map(Number)
         const [cH, cM] = bh.close_time.split(':').map(Number)
-        minutes += Math.max(0, cH * 60 + cM - (oH * 60 + oM))
+        if (!isNaN(oH) && !isNaN(oM) && !isNaN(cH) && !isNaN(cM)) {
+          minutes += Math.max(0, cH * 60 + cM - (oH * 60 + oM))
+        }
       }
       d = addDays(d, 1)
     }
@@ -839,11 +918,14 @@ export default function Index() {
     }))
 
     completedPeriod.forEach((a) => {
-      if (!a.date || !a.time) return
-      const d = new Date(a.date).getDay()
-      const h = parseInt(a.time.split(':')[0], 10)
+      if (!a.date || !a.time || typeof a.time !== 'string') return
+      const dateObj = new Date(a.date)
+      if (isNaN(dateObj.getTime())) return
+      const d = dateObj.getDay()
+      const parts = a.time.split(':')
+      const h = parseInt(parts[0], 10)
 
-      if (h >= 8 && h <= 20) {
+      if (!isNaN(h) && h >= 8 && h <= 20 && grid[d]?.hours[h - 8]) {
         grid[d].hours[h - 8].count++
       }
     })
@@ -868,7 +950,10 @@ export default function Index() {
     }
 
     filteredCheckouts.forEach((c) => {
-      const d = new Date(c.date || c.created)
+      const rawDate = c.date || c.created
+      if (!rawDate) return
+      const d = new Date(rawDate)
+      if (isNaN(d.getTime())) return
       const diffMonths =
         (today.getFullYear() - d.getFullYear()) * 12 + (today.getMonth() - d.getMonth())
       if (diffMonths >= 0 && diffMonths < 12) {
@@ -1155,7 +1240,7 @@ export default function Index() {
                           </TableCell>
                           <TableCell className="text-center px-2 py-1.5">{item.count}</TableCell>
                           <TableCell className="text-right text-emerald-500 font-medium px-2 py-1.5 whitespace-nowrap">
-                            R$ {item.revenue.toFixed(2)}
+                            R$ {(Number(item.revenue) || 0).toFixed(2)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1763,23 +1848,28 @@ export default function Index() {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {birthdayDashboardData.today.map((c: any) => (
-                            <div
-                              key={c.id}
-                              className="flex items-center gap-3 p-2 rounded-md bg-purple-500/10 text-purple-600"
-                            >
-                              <Gift className="size-4 shrink-0" />
-                              <div className="flex flex-col">
-                                <span className="text-sm font-semibold">
-                                  {c.name} {c.surname}
-                                </span>
-                                <span className="text-xs opacity-80">
-                                  {format(new Date(c.birthday), 'dd/MM/yyyy')} • Prof:{' '}
-                                  {c.expand?.preferred_barber_id?.name || 'Não informado'}
-                                </span>
+                          {birthdayDashboardData.today.map((c: any) => {
+                            const bDate = c.birthday ? new Date(c.birthday) : null
+                            return (
+                              <div
+                                key={c.id}
+                                className="flex items-center gap-3 p-2 rounded-md bg-purple-500/10 text-purple-600"
+                              >
+                                <Gift className="size-4 shrink-0" />
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-semibold">
+                                    {c.name} {c.surname}
+                                  </span>
+                                  <span className="text-xs opacity-80">
+                                    {bDate && !isNaN(bDate.getTime())
+                                      ? format(bDate, 'dd/MM/yyyy')
+                                      : '-'}{' '}
+                                    • Prof: {c.expand?.preferred_barber_id?.name || 'Não informado'}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </TabsContent>
@@ -1791,23 +1881,28 @@ export default function Index() {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {birthdayDashboardData.tomorrow.map((c: any) => (
-                            <div
-                              key={c.id}
-                              className="flex items-center gap-3 p-2 rounded-md bg-muted text-foreground"
-                            >
-                              <Gift className="size-4 shrink-0 opacity-50" />
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">
-                                  {c.name} {c.surname}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(new Date(c.birthday), 'dd/MM/yyyy')} • Prof:{' '}
-                                  {c.expand?.preferred_barber_id?.name || 'Não informado'}
-                                </span>
+                          {birthdayDashboardData.tomorrow.map((c: any) => {
+                            const bDate = c.birthday ? new Date(c.birthday) : null
+                            return (
+                              <div
+                                key={c.id}
+                                className="flex items-center gap-3 p-2 rounded-md bg-muted text-foreground"
+                              >
+                                <Gift className="size-4 shrink-0 opacity-50" />
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">
+                                    {c.name} {c.surname}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {bDate && !isNaN(bDate.getTime())
+                                      ? format(bDate, 'dd/MM/yyyy')
+                                      : '-'}{' '}
+                                    • Prof: {c.expand?.preferred_barber_id?.name || 'Não informado'}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </TabsContent>
@@ -1819,23 +1914,28 @@ export default function Index() {
                         </div>
                       ) : (
                         <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1 styled-scrollbar">
-                          {birthdayDashboardData.nextWeek.map((c: any) => (
-                            <div
-                              key={c.id}
-                              className="flex items-center gap-3 p-2 rounded-md border text-foreground"
-                            >
-                              <Gift className="size-4 shrink-0 opacity-40 text-muted-foreground" />
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">
-                                  {c.name} {c.surname}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(new Date(c.birthday), 'dd/MM/yyyy')} • Prof:{' '}
-                                  {c.expand?.preferred_barber_id?.name || 'Não informado'}
-                                </span>
+                          {birthdayDashboardData.nextWeek.map((c: any) => {
+                            const bDate = c.birthday ? new Date(c.birthday) : null
+                            return (
+                              <div
+                                key={c.id}
+                                className="flex items-center gap-3 p-2 rounded-md border text-foreground"
+                              >
+                                <Gift className="size-4 shrink-0 opacity-40 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">
+                                    {c.name} {c.surname}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {bDate && !isNaN(bDate.getTime())
+                                      ? format(bDate, 'dd/MM/yyyy')
+                                      : '-'}{' '}
+                                    • Prof: {c.expand?.preferred_barber_id?.name || 'Não informado'}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </TabsContent>
@@ -1923,18 +2023,20 @@ export default function Index() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {lowUsesPackagesList.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>{p.expand?.client_id?.name || '-'}</TableCell>
-                      <TableCell>{p.expand?.package_id?.name || '-'}</TableCell>
-                      <TableCell>
-                        {p.expires_at ? format(new Date(p.expires_at), 'dd/MM/yyyy') : '-'}
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-amber-500">
-                        {p.remaining_uses}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {lowUsesPackagesList.map((p) => {
+                    const expDate = p.expires_at ? new Date(p.expires_at) : null
+                    const validExp = expDate && !isNaN(expDate.getTime())
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell>{p.expand?.client_id?.name || '-'}</TableCell>
+                        <TableCell>{p.expand?.package_id?.name || '-'}</TableCell>
+                        <TableCell>{validExp ? format(expDate, 'dd/MM/yyyy') : '-'}</TableCell>
+                        <TableCell className="text-right font-bold text-amber-500">
+                          {p.remaining_uses}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                   {lowUsesPackagesList.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
@@ -1967,10 +2069,13 @@ export default function Index() {
                 </TableHeader>
                 <TableBody>
                   {birthdayClientsList.map((c) => {
-                    const bDate = new Date(c.birthday)
+                    const bDate = c.birthday ? new Date(c.birthday) : null
+                    const validDate = bDate && !isNaN(bDate.getTime())
                     return (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">{format(bDate, 'dd/MM')}</TableCell>
+                        <TableCell className="font-medium">
+                          {validDate ? format(bDate, 'dd/MM') : '-'}
+                        </TableCell>
                         <TableCell>
                           {c.name} {c.surname}
                         </TableCell>
@@ -2072,11 +2177,19 @@ export default function Index() {
                   <TableBody>
                     {transactions.map((t) => (
                       <TableRow key={t.id}>
-                        <TableCell>{format(t.date, 'dd/MM/yyyy HH:mm')}</TableCell>
+                        <TableCell>
+                          {t.date instanceof Date &&
+                          !isNaN(t.date.getTime()) &&
+                          t.date.getTime() > 0
+                            ? format(t.date, 'dd/MM/yyyy HH:mm')
+                            : '-'}
+                        </TableCell>
                         <TableCell>{t.client}</TableCell>
                         <TableCell>{t.barber}</TableCell>
                         <TableCell>{t.method}</TableCell>
-                        <TableCell className="text-right">R$ {t.value.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          R$ {(Number(t.value) || 0).toFixed(2)}
+                        </TableCell>
                       </TableRow>
                     ))}
                     {transactions.length === 0 && (
@@ -2128,12 +2241,15 @@ export default function Index() {
                   <TableBody>
                     {clientsCreatedInPeriod.map((c) => {
                       const firstApt = appointments.find((a) => a.client_id === c.id)
+                      const cDate = c.created ? new Date(c.created) : null
                       return (
                         <TableRow key={c.id}>
                           <TableCell>
                             {c.name} {c.surname}
                           </TableCell>
-                          <TableCell>{format(new Date(c.created), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell>
+                            {cDate && !isNaN(cDate.getTime()) ? format(cDate, 'dd/MM/yyyy') : '-'}
+                          </TableCell>
                           <TableCell>{firstApt?.expand?.barber_id?.name || '-'}</TableCell>
                         </TableRow>
                       )
@@ -2177,15 +2293,18 @@ export default function Index() {
                 </TableHeader>
                 <TableBody>
                   {completedPeriod
-                    .filter(
-                      (a) =>
-                        (a.date ? a.date.substring(0, 10) : a.updated.substring(0, 10)) ===
-                        historyModalDate,
-                    )
+                    .filter((a) => {
+                      const raw = a.date || a.updated || a.created
+                      return typeof raw === 'string' && raw.substring(0, 10) === historyModalDate
+                    })
                     .map((a) => (
                       <TableRow key={`hist_apt_${a.id}`}>
                         <TableCell>
-                          {a.updated ? format(new Date(a.updated), 'dd/MM/yyyy HH:mm') : ''}
+                          {a.updated
+                            ? format(new Date(a.updated), 'dd/MM/yyyy HH:mm')
+                            : a.created
+                              ? format(new Date(a.created), 'dd/MM/yyyy HH:mm')
+                              : ''}
                         </TableCell>
                         <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
                         <TableCell>{a.expand?.service_id?.name || 'Serviço'}</TableCell>
@@ -2200,15 +2319,18 @@ export default function Index() {
                       </TableRow>
                     ))}
                   {productPurchasesPeriod
-                    .filter(
-                      (p) =>
-                        (p.date ? p.date.substring(0, 10) : p.created.substring(0, 10)) ===
-                        historyModalDate,
-                    )
+                    .filter((p) => {
+                      const raw = p.date || p.created || p.updated
+                      return typeof raw === 'string' && raw.substring(0, 10) === historyModalDate
+                    })
                     .map((p) => (
                       <TableRow key={`hist_prod_${p.id}`}>
                         <TableCell>
-                          {p.created ? format(new Date(p.created), 'dd/MM/yyyy HH:mm') : ''}
+                          {p.created
+                            ? format(new Date(p.created), 'dd/MM/yyyy HH:mm')
+                            : p.date
+                              ? format(new Date(p.date), 'dd/MM/yyyy HH:mm')
+                              : ''}
                         </TableCell>
                         <TableCell>{p.expand?.client_id?.name || 'Avulso'}</TableCell>
                         <TableCell>{p.expand?.product_id?.name || 'Produto'}</TableCell>
@@ -2219,7 +2341,10 @@ export default function Index() {
                       </TableRow>
                     ))}
                   {packagesPeriod
-                    .filter((pkg) => pkg.created.substring(0, 10) === historyModalDate)
+                    .filter((pkg) => {
+                      const raw = pkg.created || pkg.date || pkg.updated
+                      return typeof raw === 'string' && raw.substring(0, 10) === historyModalDate
+                    })
                     .map((pkg) => (
                       <TableRow key={`hist_pkg_${pkg.id}`}>
                         <TableCell>
@@ -2233,19 +2358,18 @@ export default function Index() {
                         </TableCell>
                       </TableRow>
                     ))}
-                  {completedPeriod.filter(
-                    (a) =>
-                      (a.date ? a.date.substring(0, 10) : a.updated.substring(0, 10)) ===
-                      historyModalDate,
-                  ).length === 0 &&
-                    productPurchasesPeriod.filter(
-                      (p) =>
-                        (p.date ? p.date.substring(0, 10) : p.created.substring(0, 10)) ===
-                        historyModalDate,
-                    ).length === 0 &&
-                    packagesPeriod.filter(
-                      (pkg) => pkg.created.substring(0, 10) === historyModalDate,
-                    ).length === 0 && (
+                  {completedPeriod.filter((a) => {
+                    const raw = a.date || a.updated || a.created
+                    return typeof raw === 'string' && raw.substring(0, 10) === historyModalDate
+                  }).length === 0 &&
+                    productPurchasesPeriod.filter((p) => {
+                      const raw = p.date || p.created || p.updated
+                      return typeof raw === 'string' && raw.substring(0, 10) === historyModalDate
+                    }).length === 0 &&
+                    packagesPeriod.filter((pkg) => {
+                      const raw = pkg.created || pkg.date || pkg.updated
+                      return typeof raw === 'string' && raw.substring(0, 10) === historyModalDate
+                    }).length === 0 && (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
                           Nenhuma venda registrada nesta data.
@@ -2284,49 +2408,67 @@ export default function Index() {
                     completedPeriod
                       .filter((a) => a.barber_id === selectedTeamMember.id)
                       .forEach((a) => {
+                        const raw = a.date || a.updated || a.created
+                        const d = raw ? new Date(raw) : new Date(0)
                         memberSales.push({
                           id: `apt_${a.id}`,
-                          date: new Date(a.date ? a.date : a.updated),
+                          date: isNaN(d.getTime()) ? new Date(0) : d,
                           client: a.expand?.client_id?.name || 'Avulso',
                           item: a.expand?.service_id?.name || 'Serviço',
                           qty: 1,
                           val: a.client_package_id
                             ? 0
-                            : a.price || a.expand?.service_id?.price || 0,
+                            : Number(a.price || a.expand?.service_id?.price) || 0,
                         })
                       })
 
                     productPurchasesPeriod
                       .filter((p) => p.barber_id === selectedTeamMember.id)
                       .forEach((p) => {
+                        const raw = p.date || p.created || p.updated
+                        const d = raw ? new Date(raw) : new Date(0)
                         memberSales.push({
                           id: `prod_${p.id}`,
-                          date: new Date(p.date ? p.date : p.created),
+                          date: isNaN(d.getTime()) ? new Date(0) : d,
                           client: p.expand?.client_id?.name || 'Avulso',
                           item: p.expand?.product_id?.name || 'Produto',
                           qty: 1,
-                          val: p.price_at_sale || p.expand?.product_id?.price || 0,
+                          val: Number(p.price_at_sale || p.expand?.product_id?.price) || 0,
                         })
                       })
 
                     packagesPeriod
                       .filter((pkg) => pkg.barber_id === selectedTeamMember.id)
                       .forEach((pkg) => {
+                        const raw = pkg.created || pkg.date || pkg.updated
+                        const d = raw ? new Date(raw) : new Date(0)
                         memberSales.push({
                           id: `pkg_${pkg.id}`,
-                          date: new Date(pkg.created),
+                          date: isNaN(d.getTime()) ? new Date(0) : d,
                           client: pkg.expand?.client_id?.name || 'Avulso',
                           item: pkg.expand?.package_id?.name || 'Pacote',
                           qty: 1,
-                          val: pkg.expand?.package_id?.price || 0,
+                          val: Number(pkg.expand?.package_id?.price) || 0,
                         })
                       })
 
-                    memberSales.sort((a, b) => b.date.getTime() - a.date.getTime())
+                    memberSales.sort((a, b) => {
+                      const timeA =
+                        a.date instanceof Date && !isNaN(a.date.getTime()) ? a.date.getTime() : 0
+                      const timeB =
+                        b.date instanceof Date && !isNaN(b.date.getTime()) ? b.date.getTime() : 0
+                      return timeB - timeA
+                    })
 
                     return memberSales.map((sale) => (
                       <TableRow key={sale.id}>
-                        <TableCell>{format(sale.date, 'dd/MM/yyyy HH:mm')}</TableCell>
+                        <TableCell>
+                          {sale.date instanceof Date &&
+                          !isNaN(sale.date.getTime()) &&
+                          sale.date.getTime() > 0
+                            ? format(sale.date, 'dd/MM/yyyy HH:mm')
+                            : '-'}
+                        </TableCell>
                         <TableCell>{sale.client}</TableCell>
                         <TableCell>{sale.item}</TableCell>
                         <TableCell className="text-center">{sale.qty}</TableCell>
@@ -2380,7 +2522,9 @@ export default function Index() {
                 <TableBody>
                   {pendingAppointments
                     .filter((a) => {
+                      if (!a.date) return false
                       const d = new Date(a.date)
+                      if (isNaN(d.getTime())) return false
                       if (forecastModal === 'tomorrow') return d >= tomorrow && d <= tomorrowEnd
                       if (forecastModal === 'week') return d > tomorrowEnd && d <= weekEnd
                       if (forecastModal === 'month') return d > tomorrowEnd && d <= monthEnd
@@ -2389,7 +2533,10 @@ export default function Index() {
                     .map((a) => (
                       <TableRow key={a.id}>
                         <TableCell>
-                          {a.date ? format(new Date(a.date), 'dd/MM/yyyy') : ''} {a.time}
+                          {a.date && !isNaN(new Date(a.date).getTime())
+                            ? format(new Date(a.date), 'dd/MM/yyyy')
+                            : ''}{' '}
+                          {a.time || ''}
                         </TableCell>
                         <TableCell>{a.expand?.client_id?.name || 'Avulso'}</TableCell>
                         <TableCell>
@@ -2404,7 +2551,9 @@ export default function Index() {
                       </TableRow>
                     ))}
                   {pendingAppointments.filter((a) => {
+                    if (!a.date) return false
                     const d = new Date(a.date)
+                    if (isNaN(d.getTime())) return false
                     if (forecastModal === 'tomorrow') return d >= tomorrow && d <= tomorrowEnd
                     if (forecastModal === 'week') return d > tomorrowEnd && d <= weekEnd
                     if (forecastModal === 'month') return d > tomorrowEnd && d <= monthEnd

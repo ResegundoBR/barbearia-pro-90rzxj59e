@@ -75,26 +75,29 @@ export function FinancialView({
     const methods: Record<string, number> = {}
 
     const addVal = (item: any, type: string, val: number) => {
+      const itemTime = item.created ? new Date(item.created).getTime() : NaN
       let comm
       if (type === 'service') {
-        comm = commissions.find(
-          (c: any) =>
-            c.barber_id === item.barber_id &&
-            c.type === type &&
-            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
-        )
+        comm = commissions.find((c: any) => {
+          if (c.barber_id !== item.barber_id || c.type !== type) return false
+          const cTime = c.created ? new Date(c.created).getTime() : NaN
+          if (isNaN(cTime) || isNaN(itemTime)) return false
+          return Math.abs(cTime - itemTime) < 15000
+        })
       } else if (type === 'package') {
-        comm = commissions.find(
-          (c: any) =>
-            (c.type === 'package' || c.type === 'package_sale') &&
-            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
-        )
+        comm = commissions.find((c: any) => {
+          if (c.type !== 'package' && c.type !== 'package_sale') return false
+          const cTime = c.created ? new Date(c.created).getTime() : NaN
+          if (isNaN(cTime) || isNaN(itemTime)) return false
+          return Math.abs(cTime - itemTime) < 15000
+        })
       } else {
-        comm = commissions.find(
-          (c: any) =>
-            c.type === type &&
-            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
-        )
+        comm = commissions.find((c: any) => {
+          if (c.type !== type) return false
+          const cTime = c.created ? new Date(c.created).getTime() : NaN
+          if (isNaN(cTime) || isNaN(itemTime)) return false
+          return Math.abs(cTime - itemTime) < 15000
+        })
       }
 
       const methodRaw =
@@ -127,26 +130,29 @@ export function FinancialView({
   const totalFinancialFees = useMemo(() => {
     let fees = 0
     const addFee = (item: any, type: string, val: number) => {
+      const itemTime = item.created ? new Date(item.created).getTime() : NaN
       let comm
       if (type === 'service') {
-        comm = commissions.find(
-          (c: any) =>
-            c.barber_id === item.barber_id &&
-            c.type === type &&
-            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
-        )
+        comm = commissions.find((c: any) => {
+          if (c.barber_id !== item.barber_id || c.type !== type) return false
+          const cTime = c.created ? new Date(c.created).getTime() : NaN
+          if (isNaN(cTime) || isNaN(itemTime)) return false
+          return Math.abs(cTime - itemTime) < 15000
+        })
       } else if (type === 'package') {
-        comm = commissions.find(
-          (c: any) =>
-            (c.type === 'package' || c.type === 'package_sale') &&
-            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
-        )
+        comm = commissions.find((c: any) => {
+          if (c.type !== 'package' && c.type !== 'package_sale') return false
+          const cTime = c.created ? new Date(c.created).getTime() : NaN
+          if (isNaN(cTime) || isNaN(itemTime)) return false
+          return Math.abs(cTime - itemTime) < 15000
+        })
       } else {
-        comm = commissions.find(
-          (c: any) =>
-            c.type === type &&
-            Math.abs(new Date(c.created).getTime() - new Date(item.created).getTime()) < 15000,
-        )
+        comm = commissions.find((c: any) => {
+          if (c.type !== type) return false
+          const cTime = c.created ? new Date(c.created).getTime() : NaN
+          if (isNaN(cTime) || isNaN(itemTime)) return false
+          return Math.abs(cTime - itemTime) < 15000
+        })
       }
 
       const methodRaw = comm?.payment_method || 'other'

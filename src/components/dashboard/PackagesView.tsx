@@ -45,7 +45,8 @@ export function PackagesView({ packages: initialPackages }: PackagesViewProps) {
         const used = total - remaining
         const progress = (used / total) * 100
         const isWarning = remaining <= 2
-        const isExpired = p.expires_at && new Date(p.expires_at) < new Date()
+        const expDate = p.expires_at ? new Date(p.expires_at) : null
+        const isExpired = expDate && !isNaN(expDate.getTime()) ? expDate < new Date() : false
 
         return (
           <Card key={p.id} className="bg-glass border-none">
@@ -96,7 +97,8 @@ export function PackagesView({ packages: initialPackages }: PackagesViewProps) {
                 />
                 <div className="flex justify-between items-center text-xs text-muted-foreground mt-4 pt-2 border-t border-border/50">
                   <span>
-                    Vence: {p.expires_at ? format(new Date(p.expires_at), 'dd/MM/yyyy') : '-'}
+                    Vence:{' '}
+                    {expDate && !isNaN(expDate.getTime()) ? format(expDate, 'dd/MM/yyyy') : '-'}
                   </span>
                   <span>Vendido por: {p.expand?.barber_id?.name || 'Não informado'}</span>
                 </div>
