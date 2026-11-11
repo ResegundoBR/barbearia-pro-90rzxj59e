@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 import { useRealtime } from '@/hooks/use-realtime'
 import { usePermissions } from '@/hooks/use-permissions'
 
@@ -100,13 +101,20 @@ export default function Financeiro() {
         await pb.collection('payment_methods').update(editingId, payload)
         toast({ title: 'Método atualizado!' })
       } else {
-        await pb.collection('payment_methods').create(payload)
+        // A regra de segurança da coleção exige organization_id na criação
+        // (mesmo padrão do cadastro de usuários em Users.tsx)
+        const organization_id = user?.organization_id || pb.authStore.record?.organization_id
+        await pb.collection('payment_methods').create({ ...payload, organization_id })
         toast({ title: 'Método criado!' })
       }
       setIsModalOpen(false)
       loadMethods()
     } catch (err) {
-      toast({ title: 'Erro ao salvar', variant: 'destructive' })
+      toast({
+        title: 'Erro ao salvar',
+        description: getErrorMessage(err),
+        variant: 'destructive',
+      })
     }
   }
 
