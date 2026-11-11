@@ -85,6 +85,18 @@ routerAdd(
       const grandTotal = Math.max(0, subtotal - discountAmount)
       const proportion = subtotal > 0 ? 1 - discountAmount / subtotal : 1
 
+      // Normaliza o nome do método (ex.: "Pix", " crédito ") para o valor do select de commissions
+      function normalizePaymentType(raw) {
+        const v = String(raw || '')
+          .trim()
+          .toLowerCase()
+        if (v.indexOf('pix') !== -1) return 'pix'
+        if (/cr.dit/.test(v)) return 'credito'
+        if (/d.bit/.test(v)) return 'debito'
+        if (v.indexOf('dinheiro') !== -1 || v.indexOf('cash') !== -1) return 'cash'
+        return ''
+      }
+
       let pmName = svcForm.payment_method
       let pmFeePct = 0
       let commissionPm = 'pix'
@@ -97,7 +109,7 @@ routerAdd(
         else if (pType === 'debit_card') commissionPm = 'debito'
         else if (pType === 'cash') commissionPm = 'cash'
         else if (pType === 'pix') commissionPm = 'pix'
-        else commissionPm = pm.getString('name')
+        else commissionPm = normalizePaymentType(pm.getString('name')) || 'pix'
       } catch (_) {}
 
       let nextCheckoutNumber = 5500
@@ -113,7 +125,7 @@ routerAdd(
       checkout.set('checkout_number', nextCheckoutNumber)
       checkout.set('client_id', clientId)
       checkout.set('barber_id', barberId)
-      checkout.set('total_amount', grandTotal)
+      checkout.set('total_amount', Number(grandTotal) || 0)
       checkout.set('date', new Date().toISOString())
       checkout.set('payment_method', pmName)
       if (orgId) checkout.set('organization_id', orgId)

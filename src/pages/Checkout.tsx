@@ -217,7 +217,7 @@ export default function Checkout() {
       loadData()
     } catch (err: any) {
       toast({
-        title: err instanceof Error ? err.message : getErrorMessage(err),
+        title: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {
@@ -316,7 +316,7 @@ export default function Checkout() {
       setSuccessState({ type: 'service', message: 'Venda finalizada com sucesso!' })
     } catch (err: any) {
       toast({
-        title: err instanceof Error ? err.message : getErrorMessage(err),
+        title: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {

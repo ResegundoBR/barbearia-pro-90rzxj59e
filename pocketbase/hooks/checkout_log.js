@@ -3,6 +3,17 @@ routerAdd(
   '/backend/v1/checkouts/log',
   (e) => {
     const body = e.requestInfo().body || {}
+    // Normaliza o nome do método (ex.: "Pix") para o valor aceito pelo select de commissions
+    function normalizePaymentType(raw) {
+      const v = String(raw || '')
+        .trim()
+        .toLowerCase()
+      if (v.indexOf('pix') !== -1) return 'pix'
+      if (/cr.dit/.test(v)) return 'credito'
+      if (/d.bit/.test(v)) return 'debito'
+      if (v.indexOf('dinheiro') !== -1 || v.indexOf('cash') !== -1) return 'cash'
+      return ''
+    }
     let nextCheckoutNumber = 5500
     let recordId = null
 
@@ -19,9 +30,9 @@ routerAdd(
       checkout.set('checkout_number', nextCheckoutNumber)
       checkout.set('client_id', body.client_id)
       checkout.set('barber_id', body.barber_id)
-      checkout.set('total_amount', body.total_amount)
+      checkout.set('total_amount', Number(body.total_amount) || 0)
       checkout.set('date', body.date || new Date().toISOString())
-      checkout.set('payment_method', body.payment_method)
+      checkout.set('payment_method', String(body.payment_method || '').trim())
       checkout.set('items_snapshot', body.items_snapshot)
       txApp.save(checkout)
       recordId = checkout.id
@@ -64,8 +75,9 @@ routerAdd(
 
         if (isMatch && !comm.getString('checkout_id')) {
           comm.set('checkout_id', recordId)
-          if (body.payment_method) {
-            comm.set('payment_method', body.payment_method)
+          const commPm = normalizePaymentType(body.payment_method)
+          if (commPm) {
+            comm.set('payment_method', commPm)
           }
           txApp.save(comm)
         }

@@ -379,7 +379,7 @@ export function CheckoutMobile() {
       setSuccessState({ type: 'service', message: 'Venda finalizada com sucesso!' })
     } catch (err: any) {
       toast({
-        title: err instanceof Error ? err.message : getErrorMessage(err),
+        title: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {
@@ -431,7 +431,7 @@ export function CheckoutMobile() {
       setSuccessState({ type: 'package', message: 'Pacote vendido com sucesso!' })
     } catch (err: any) {
       toast({
-        title: err instanceof Error ? err.message : getErrorMessage(err),
+        title: getErrorMessage(err),
         variant: 'destructive',
       })
     } finally {
