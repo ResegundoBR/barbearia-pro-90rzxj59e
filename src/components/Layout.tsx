@@ -58,7 +58,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { usePermissions } from '@/hooks/use-permissions'
 import pb from '@/lib/pocketbase/client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { Label } from '@/components/ui/label'
@@ -170,7 +170,7 @@ export default function Layout() {
     navigate('/')
   }
 
-  const loadAlerts = async () => {
+  const loadAlerts = useCallback(async () => {
     try {
       const pkgs = await pb.collection('client_packages').getFullList({
         filter: 'remaining_uses = 1',
@@ -188,7 +188,27 @@ export default function Layout() {
     } catch (e) {
       console.error('Failed to load alerts', e)
     }
-  }
+  }, [user])
+
+  const alertDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Agrupa rajadas de eventos de realtime (comum na reconexão mobile) em uma única recarga
+  const debouncedLoadAlerts = useCallback(() => {
+    if (alertDebounceTimerRef.current) {
+      clearTimeout(alertDebounceTimerRef.current)
+    }
+    alertDebounceTimerRef.current = setTimeout(() => {
+      loadAlerts()
+    }, 400)
+  }, [loadAlerts])
+
+  useEffect(() => {
+    return () => {
+      if (alertDebounceTimerRef.current) {
+        clearTimeout(alertDebounceTimerRef.current)
+      }
+    }
+  }, [])
 
   const markNotificationAsRead = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -247,17 +267,11 @@ export default function Layout() {
   const isLab =
     orgName.toLowerCase().includes('laboratório') || orgName.toLowerCase().includes('laboratorio')
 
-  useRealtime('client_packages', () => {
-    loadAlerts()
-  })
+  useRealtime('client_packages', debouncedLoadAlerts)
 
-  useRealtime('notifications', () => {
-    loadAlerts()
-  })
+  useRealtime('notifications', debouncedLoadAlerts)
 
-  useRealtime('appointments', () => {
-    loadAlerts()
-  })
+  useRealtime('appointments', debouncedLoadAlerts)
 
   return (
     <SidebarProvider>
