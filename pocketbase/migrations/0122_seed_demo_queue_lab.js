@@ -43,7 +43,9 @@ migrate(
       0,
     )
     if (barbers.length === 0 || services.length === 0 || demoClients.length === 0) {
-      throw new Error('[demo-0122] dependências ausentes (barbeiros/serviços/clientes demo) — abortando')
+      throw new Error(
+        '[demo-0122] dependências ausentes (barbeiros/serviços/clientes demo) — abortando',
+      )
     }
 
     // guarda: já existe entrada de fila desta org de cliente demo?

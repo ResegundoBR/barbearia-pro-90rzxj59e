@@ -54,11 +54,7 @@ migrate(
     // guarda de idempotência: já existe agendamento futuro de cliente demo?
     const future = app.findRecordsByFilter(
       'appointments',
-      "organization_id = '" +
-        orgId +
-        "' && client_id.surname = '" +
-        DEMO_TAG +
-        "' && date > @now",
+      "organization_id = '" + orgId + "' && client_id.surname = '" + DEMO_TAG + "' && date > @now",
       '',
       1,
       0,
@@ -143,9 +139,7 @@ migrate(
           created++
         }
       }
-      console.log(
-        '[demo-0119] criados ' + created + ' agendamentos futuros demo na org ' + orgId,
-      )
+      console.log('[demo-0119] criados ' + created + ' agendamentos futuros demo na org ' + orgId)
       if (created < 60) {
         throw new Error(
           '[demo-0119] apenas ' + created + ' agendamentos criados (esperados ~80) — abortando',

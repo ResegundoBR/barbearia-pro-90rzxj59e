@@ -5,15 +5,21 @@
 /// de registros nas duas orgs de clientes reais (La Barberia e Barbearia
 /// Default), para provar que nada foi criado nelas. Remover após conferência.
 ///
+/// Contagens via SQL cru: $app.countRecords espera dbx.Expression, não string
+/// de filtro — a versão anterior falhava em TODAS as contagens com
+/// "could not convert function call parameter 1 ... to dbx.Expression".
+///
 cronAdd('demo_verificacao_tmp', '*/10 * * * *', () => {
   const LAB = 'qwc9rf8564p8pev'
   const REAL1 = '1p50utwrzq1hv35' // La Barberia (cliente real)
   const REAL2 = 'ozzi2oua5psdyho' // Barbearia Default (cliente real)
 
-  const count = (col, filter) => {
+  const count = (col, where) => {
     try {
-      return $app.countRecords(col, filter)
+      const rows = new Record(col).all('SELECT COUNT(*) as total FROM ' + col + ' WHERE ' + where)
+      return rows.length > 0 ? rows[0].getInt('total') : 0
     } catch (err) {
+      console.error('[demo-verif] count(' + col + ') falhou: ' + err)
       return 'ERR ' + err
     }
   }
@@ -37,7 +43,10 @@ cronAdd('demo_verificacao_tmp', '*/10 * * * *', () => {
       "organization_id = '" + LAB + "' && client_id.surname = '(Demo)' && status = 'Concluído'",
     ),
   )
-  console.log('[demo-verif] checkouts (LAB):', count('checkouts', "organization_id = '" + LAB + "'"))
+  console.log(
+    '[demo-verif] checkouts (LAB):',
+    count('checkouts', "organization_id = '" + LAB + "'"),
+  )
   console.log(
     '[demo-verif] comissões available (LAB):',
     count('commissions', "organization_id = '" + LAB + "' && status = 'available'"),
@@ -67,24 +76,40 @@ cronAdd('demo_verificacao_tmp', '*/10 * * * *', () => {
   console.log('[demo-verif] ===== orgs reais (não deve ter demo) =====')
   console.log(
     '[demo-verif] La Barberia ' + REAL1 + ':',
-    'clientes=' + count('clients', "organization_id = '" + REAL1 + "'") +
-      ' agendamentos=' + count('appointments', "organization_id = '" + REAL1 + "'") +
-      ' checkouts=' + count('checkouts', "organization_id = '" + REAL1 + "'") +
-      ' comissoes=' + count('commissions', "organization_id = '" + REAL1 + "'") +
-      ' fornecedores=' + count('suppliers', "organization_id = '" + REAL1 + "'") +
-      ' produtos=' + count('products', "organization_id = '" + REAL1 + "'") +
-      ' compras=' + count('inventory_purchases', "organization_id = '" + REAL1 + "'") +
-      ' fila=' + count('queue_entries', "organization_id = '" + REAL1 + "'"),
+    'clientes=' +
+      count('clients', "organization_id = '" + REAL1 + "'") +
+      ' agendamentos=' +
+      count('appointments', "organization_id = '" + REAL1 + "'") +
+      ' checkouts=' +
+      count('checkouts', "organization_id = '" + REAL1 + "'") +
+      ' comissoes=' +
+      count('commissions', "organization_id = '" + REAL1 + "'") +
+      ' fornecedores=' +
+      count('suppliers', "organization_id = '" + REAL1 + "'") +
+      ' produtos=' +
+      count('products', "organization_id = '" + REAL1 + "'") +
+      ' compras=' +
+      count('inventory_purchases', "organization_id = '" + REAL1 + "'") +
+      ' fila=' +
+      count('queue_entries', "organization_id = '" + REAL1 + "'"),
   )
   console.log(
     '[demo-verif] Barbearia Default ' + REAL2 + ':',
-    'clientes=' + count('clients', "organization_id = '" + REAL2 + "'") +
-      ' agendamentos=' + count('appointments', "organization_id = '" + REAL2 + "'") +
-      ' checkouts=' + count('checkouts', "organization_id = '" + REAL2 + "'") +
-      ' comissoes=' + count('commissions', "organization_id = '" + REAL2 + "'") +
-      ' fornecedores=' + count('suppliers', "organization_id = '" + REAL2 + "'") +
-      ' produtos=' + count('products', "organization_id = '" + REAL2 + "'") +
-      ' compras=' + count('inventory_purchases', "organization_id = '" + REAL2 + "'") +
-      ' fila=' + count('queue_entries', "organization_id = '" + REAL2 + "'"),
+    'clientes=' +
+      count('clients', "organization_id = '" + REAL2 + "'") +
+      ' agendamentos=' +
+      count('appointments', "organization_id = '" + REAL2 + "'") +
+      ' checkouts=' +
+      count('checkouts', "organization_id = '" + REAL2 + "'") +
+      ' comissoes=' +
+      count('commissions', "organization_id = '" + REAL2 + "'") +
+      ' fornecedores=' +
+      count('suppliers', "organization_id = '" + REAL2 + "'") +
+      ' produtos=' +
+      count('products', "organization_id = '" + REAL2 + "'") +
+      ' compras=' +
+      count('inventory_purchases', "organization_id = '" + REAL2 + "'") +
+      ' fila=' +
+      count('queue_entries', "organization_id = '" + REAL2 + "'"),
   )
 })
